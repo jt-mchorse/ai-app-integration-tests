@@ -7,19 +7,38 @@ on:
     branches: [main]
 
 jobs:
-  lint:
+  toolkit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Add language-specific lint setup per repo (ruff for Python, eslint for TS)
-      - run: echo "Configure lint for this repo's stack"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
 
-  test:
+  no-leaked-secrets:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Add test runner per repo (pytest, vitest, jest)
-      - run: echo "Configure tests for this repo's stack"
+      - name: Reject any committed cassette that still contains a sk- or Bearer token
+        run: |
+          set -euo pipefail
+          if [ -d fixtures ]; then
+            if grep -E -r --include="*.json" '\bsk-(ant-)?[A-Za-z0-9_-]{32,}\b' fixtures/ ; then
+              echo "::error::A cassette contains an unredacted secret. Re-record after fixing redactHeaders()."
+              exit 1
+            fi
+            if grep -E -r --include="*.json" '\bBearer[[:space:]]+[A-Za-z0-9._/+=-]{20,}\b' fixtures/ ; then
+              echo "::error::A cassette contains a Bearer token."
+              exit 1
+            fi
+          fi
+          echo "no leaked secrets found in fixtures/"
 
   memory-check:
     runs-on: ubuntu-latest

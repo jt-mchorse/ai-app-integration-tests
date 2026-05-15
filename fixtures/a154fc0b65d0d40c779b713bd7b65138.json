@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "request_hash": "a154fc0b65d0d40c779b713bd7b65138",
+  "request": {
+    "method": "POST",
+    "url": "https://api.anthropic.com/v1/messages",
+    "headers": {
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+      "x-api-key": "[REDACTED]"
+    },
+    "body": {
+      "max_tokens": 64,
+      "messages": [
+        {
+          "content": "What's the integer answer to 7+13? Reply with just the number.",
+          "role": "user"
+        }
+      ],
+      "model": "claude-haiku-4-5-20251001"
+    }
+  },
+  "response": {
+    "kind": "non_streaming",
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": "{\"id\":\"msg_demo_replay_fixture\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"claude-haiku-4-5-20251001\",\"content\":[{\"type\":\"text\",\"text\":\"20\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"usage\":{\"input_tokens\":24,\"output_tokens\":3,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0}}"
+  },
+  "recorded_at": "2026-05-15T10:15:00Z"
+}
