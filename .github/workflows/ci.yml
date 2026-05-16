@@ -35,6 +35,40 @@ jobs:
       - name: Test example-app routes (in-process, no real Anthropic)
         run: npm test --prefix example-app
 
+  playwright:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install example-app deps
+        run: npm install --prefix example-app
+      - name: Get Playwright version
+        id: pw
+        run: |
+          v=$(node -e "console.log(require('./example-app/node_modules/@playwright/test/package.json').version)")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install Chromium
+        run: npx --prefix example-app playwright install --with-deps chromium
+      - name: Build Next.js (production server is what Playwright targets)
+        run: npm run build --prefix example-app
+      - name: Run Playwright tests
+        run: npm run test:e2e --prefix example-app
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace
+          path: example-app/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
   no-leaked-secrets:
     runs-on: ubuntu-latest
     steps:

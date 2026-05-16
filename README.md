@@ -77,13 +77,41 @@ ANTHROPIC_TEST_MODE=record ANTHROPIC_API_KEY=sk-... npm test
 ANTHROPIC_TEST_MODE=live ANTHROPIC_API_KEY=sk-... npm test
 ```
 
+### Playwright tests for streaming UI (#2)
+
+`example-app/e2e/streaming.spec.ts` drives the example app's
+`/streaming` page through three deterministic UI states using
+`@playwright/test`:
+
+1. **short stream** — prompt contains "short" → `idle → loading → first-token → done` in ≤ 1 s.
+2. **long stream** — 32 chunks ~12 ms apart → `idle → loading → first-token → streaming → done`; asserted text landmarks across the stream.
+3. **error stream** — prompt contains "error" → `idle → loading → error`; error card visible.
+
+A Next.js `instrumentation.ts` hook installs a deterministic
+Anthropic-API stub (`example-app/instrumentation-stub.ts`) when the
+server boots with `ANTHROPIC_TEST_MODE=replay`. The stub intercepts
+`globalThis.fetch` calls to `api.anthropic.com` and routes the request
+to a canned SSE stream based on a keyword in the user prompt — no API
+key, no network. Production behavior is unchanged when the env var is
+unset.
+
+Local run (after `npm install --prefix example-app && npx --prefix example-app playwright install chromium`):
+
+```bash
+npm run test:e2e --prefix example-app
+# 3 passed in ~5 s
+```
+
+The `playwright` CI job caches the Chromium download keyed on the
+Playwright package version, so post-cache runs are dominated by the
+Next.js build, not the browser install.
+
 ## Benchmarks / Results
 
 The relevant metric for this layer is "tests stay green and fast" —
-24 tests run in ~325ms locally with zero network access. Once the
-example app + Playwright tests land in #2/#4, the benchmark becomes
-total CI run time on `ubuntu-latest` (target: <5 minutes per the §2
-spec).
+24 vitest tests run in ~325 ms locally with zero network access; the
+3 Playwright streaming tests run in ~5 s (CI target: <60 s per the
+issue acceptance criteria, comfortably met).
 
 ## Demo
 
