@@ -25,9 +25,12 @@ live is forbidden). Third, **mode is environment-driven** —
 `ANTHROPIC_TEST_MODE` is `record | replay | live`, defaulting to
 `replay` so CI never accidentally hits the real API.
 
-This PR (issue #1) ships the toolkit and a demo test that runs against
-a committed Anthropic-shaped cassette. Subsequent issues (#2 Playwright
-streaming tests, #4 example app under test) build on this layer.
+Issue #1 shipped the toolkit and a demo test against a committed
+Anthropic-shaped cassette. Issue #4 (this layer) ships the **example
+Next.js app** that the toolkit's downstream patterns test against —
+three screens (streaming, tool use, error path) under `example-app/`,
+runnable with `npm run example:dev`. Playwright tests across those
+screens (issue #2) layer on top.
 
 ## Architecture
 

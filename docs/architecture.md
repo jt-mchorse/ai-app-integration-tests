@@ -17,8 +17,18 @@ ai-app-integration-tests/
 │   ├── cassette.test.ts     ← unit tests on hashing + redaction
 │   ├── record-replay.test.ts← end-to-end record→replay round-trip
 │   └── demo.test.ts         ← runs against a committed Anthropic-shaped fixture
-└── fixtures/
-    └── <hash>.json          ← one file per recorded request
+├── fixtures/
+│   └── <hash>.json          ← one file per recorded request
+└── example-app/             ← Next.js 15 app under test (#4, peer subproject)
+    ├── app/
+    │   ├── page.tsx          home / nav
+    │   ├── streaming/        SSE token streaming UI + /api/streaming route
+    │   ├── tools/            tool-use UI + /api/tools route (2 tools)
+    │   └── error/            error-path UI + /api/error route (3 failure kinds)
+    └── test/
+        ├── streaming-route.test.ts
+        ├── tools-route.test.ts
+        └── error-route.test.ts
 ```
 
 ## Three modes
@@ -114,12 +124,53 @@ If a second provider lands, swapping to MSW is a one-file change inside
 `fetch-recorder.ts` — the public API (`installRecorder` /
 `installReplayer` / `installFromEnv` / `uninstall`) doesn't change.
 
+## Example app under test (#4)
+
+`example-app/` is a peer Next.js 15 (app router, React 19) subproject —
+its own `package.json`, its own `node_modules`, so the toolkit's
+runtime stays dep-clean per **D-006**. Three pages each backed by a
+small route handler:
+
+| Route          | What it does                                                                 |
+| -------------- | ---------------------------------------------------------------------------- |
+| `/streaming`   | Streams tokens via SSE; UI transitions `loading → first-token → done`.      |
+| `/tools`       | Two tools (`get_weather`, `calculate`); UI renders tool calls + final answer.|
+| `/error`       | Three failure kinds (`validation`, `upstream`, `shape`); UI renders envelope.|
+
+The pages are client components driving `fetch` against their sibling
+`/api/*` route handler, which uses the Anthropic SDK. Route handlers
+are exported functions — tests import them directly and call with a
+synthetic `Request`, no Next.js server needed.
+
+Three vitest suites in `example-app/test/`:
+
+- **`error-route.test.ts`** — no Anthropic call at all (validation +
+  synthetic `shape` paths return early). 4 tests.
+- **`streaming-route.test.ts`** — monkey-patches `globalThis.fetch` with
+  a canned Anthropic SSE response (`message_start` →
+  `content_block_delta`+ → `message_stop`); asserts the route emits one
+  `data` frame per text delta plus a terminal `done` frame. 5 tests.
+- **`tools-route.test.ts`** — sequences two canned responses (turn 1:
+  `tool_use`, turn 2: final `text`); asserts both tool-routing paths
+  (`calculate` for math, `get_weather` for cities) and the deterministic
+  sandbox (`calculate` rejects non-arithmetic characters). 5 tests.
+
+Run locally:
+
+```bash
+npm run example:install     # one-time: install example-app deps
+npm run example:dev         # http://localhost:3000
+npm run example:test        # 14 tests, no real API needed
+```
+
+Playwright integration tests across these screens are **#2**'s scope.
+This PR ships the substrate.
+
 ## What this layer is NOT
 
 - Not a Playwright test runner. Playwright tests on streaming UI states
   are issue **#2** and run *on top of* this layer (intercept the SDK
   calls inside the example app via this same install function).
-- Not the example app under test. That's issue **#4**.
 - Not a flake-reduction library. Test stability is a downstream
   concern — this layer makes the API call deterministic, but
   `await page.waitForSelector(...)` policies live in #2.

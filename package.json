@@ -16,7 +16,12 @@
     "lint": "eslint . --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "example:install": "npm install --prefix example-app",
+    "example:dev": "npm run dev --prefix example-app",
+    "example:build": "npm run build --prefix example-app",
+    "example:test": "npm test --prefix example-app",
+    "test:all": "npm test && npm test --prefix example-app"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
