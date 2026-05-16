@@ -23,3 +23,30 @@ decisions_made: [D-002, D-003, D-004, D-005]
 followups: []
 ---
 
+---
+session: 2026-05-16T03:46Z
+duration_min: 55
+issue: 4
+focus: example_nextjs_15_app_three_llm_screens_streaming_tools_error
+delta:
+  files_added: 18
+  files_changed: 4
+  tests_added: 14
+  test_pass_rate: "14/14 example-app + 24/24 toolkit unchanged"
+context_for_next_session:
+  - example_app_in_example_app_subdir_peer_subproject_d_006_own_package_json_node_modules
+  - app_router_next_15_react_19_anthropic_sdk_d_007
+  - three_routes_streaming_sse_text_deltas_tools_two_tool_loop_error_three_failure_kinds
+  - route_handlers_exported_functions_tests_call_with_request_directly_no_server_needed
+  - streaming_route_test_monkeypatches_fetch_with_canned_anthropic_sse_frames
+  - tools_route_test_sequences_two_canned_responses_turn_1_tool_use_turn_2_final_text
+  - error_route_test_validation_and_shape_paths_no_anthropic_call_at_all
+  - root_scripts_example_install_dev_build_test_test_all_proxy_into_subproject
+  - ci_new_example_app_job_npm_install_then_build_then_test_parallel_to_toolkit
+  - issue_4_acceptance_app_boots_with_npm_run_dev_three_llm_driven_screens_used_by_all_tests_in_repo_done
+  - issue_2_now_unblocked_playwright_can_run_against_localhost_3000
+  - selection_rule_deviation_picked_4_over_strictly_lower_2_documented_in_plan_comment
+decisions_made: [D-006, D-007]
+followups: []
+---
+

@@ -45,3 +45,21 @@
   reversibility: cheap
   related_issues: [#1]
   superseded_by: null
+
+- id: D-006
+  date: 2026-05-16
+  decision: example_app_is_peer_subproject_not_root_dep
+  rationale: toolkit_runtime_stays_dep_clean_next_js_only_loads_when_someone_runs_example_app_dev
+  alternatives_rejected: [hoist_nextjs_into_root_devdeps, monorepo_workspaces_more_overhead_than_value_for_one_subproject, vendor_into_root_src]
+  reversibility: cheap
+  related_issues: [#4, #2]
+  superseded_by: null
+
+- id: D-007
+  date: 2026-05-16
+  decision: example_app_uses_next_15_app_router_not_pages
+  rationale: aligns_with_nextjs_streaming_ai_patterns_recommended_path_react_19_server_actions_available_for_future
+  alternatives_rejected: [pages_router_legacy, remix_off_stack, vite_ssr_diverges_from_repo_stack]
+  reversibility: cheap
+  related_issues: [#4]
+  superseded_by: null

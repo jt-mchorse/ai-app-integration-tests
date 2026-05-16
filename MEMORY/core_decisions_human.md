@@ -72,3 +72,31 @@ Loud failure means the test author who changes a prompt sees the test fail with 
 **Reversibility:** Cheap.
 
 **Related issues:** #1
+
+## D-006 — Example app is a peer subproject under `example-app/`, not a root dep (2026-05-16)
+**Decision:** The example Next.js app lives in `example-app/` with its own `package.json` and `node_modules`. The toolkit's root `package.json` does not depend on Next.js, React, or `@anthropic-ai/sdk`. Scripts at the root level (`example:install`, `example:dev`, `example:build`, `example:test`) proxy into the subproject.
+
+**Why:** The toolkit is a *library* — anyone who installs `ai-app-integration-tests` should not pull Next.js + React + an LLM SDK as transitive deps just to use the fetch-replay layer. The example app is the *substrate the toolkit's patterns test against*, not part of the toolkit's API. Keeping the dep graphs separate honors that distinction and keeps `npm install` at the root fast. CI runs both jobs in parallel (`toolkit` and `example-app`); a future failure in one doesn't block the other.
+
+**Alternatives considered:**
+- Hoist Next.js into root devDeps — rejected: leaks unrelated deps into anyone who clones the toolkit for its library functionality.
+- npm workspaces — rejected: more overhead than value for a single subproject; the root scripts proxy is two lines.
+- Vendor the app source into `src/example-app/` — rejected: makes the toolkit's TS config straddle library and app concerns, which never ends well.
+
+**Reversibility:** Cheap. A future workspace migration is mechanical.
+
+**Related issues:** #4, #2
+
+## D-007 — Example app uses Next.js 15 App Router (not Pages) (2026-05-16)
+**Decision:** `example-app/` is Next.js 15 with the App Router and React 19. No Pages router. Server Components by default; client components are explicitly marked with `"use client"`.
+
+**Why:** The handoff §2 #5 stack pins Next.js 15. App Router is the recommended path for new apps in the Next.js 15 era; aligning here keeps this repo and `nextjs-streaming-ai-patterns` (which it shares a stack with) on the same page. Streaming SSE through a route handler is straightforward in App Router; Server Actions and the rest of the React 19 surface are available if the example app ever needs them.
+
+**Alternatives considered:**
+- Pages Router — rejected: legacy, fewer first-class streaming primitives, diverges from sister repos.
+- Remix — off-stack per handoff.
+- Vite SSR — off-stack per handoff.
+
+**Reversibility:** Cheap. The app is small enough that a router migration would be a 1–2 hour rewrite.
+
+**Related issues:** #4
