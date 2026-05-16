@@ -100,3 +100,17 @@ Loud failure means the test author who changes a prompt sees the test fail with 
 **Reversibility:** Cheap. The app is small enough that a router migration would be a 1–2 hour rewrite.
 
 **Related issues:** #4
+
+## D-008 — Playwright Anthropic stub via Next.js instrumentation hook, not the toolkit cassette layer (2026-05-16)
+**Decision:** Playwright tests for the example-app's `/streaming` page get a deterministic Anthropic response from a `globalThis.fetch` interceptor installed in a Next.js `instrumentation.ts` hook. The interceptor routes the request to one of three canned SSE streams based on a keyword in the user prompt. The toolkit's cassette layer (D-001 through D-005 in this repo) is NOT used at the Playwright layer.
+
+**Why:** The cassette layer hashes the exact request body the SDK sends, which means hand-authoring a cassette requires either a real recording (needs an API key budget) or a hand-computed hash that drifts whenever `@anthropic-ai/sdk` changes the wire shape. For three deterministic UI streams, a prompt-keyword stub is simpler, has zero hash drift, and the cassette layer's own scope (in-process vitest route tests + recorder mode for real captures) stays narrow. If Playwright tests later need to cover *real* recorded conversations (issue beyond #2), they can switch to the cassette layer via `installFromEnv()` in the same instrumentation hook — D-008 is a per-issue choice, not a repo-wide rejection.
+
+**Alternatives considered:**
+- Cassette layer with hand-authored cassettes — rejected; hash drift on SDK upgrades + maintenance cost.
+- MSW or another third-party mock at the browser layer — rejected; adds a dep and lives in the wrong place (the SDK runs server-side in Next.js, so browser-layer mocks don't apply).
+- Real Anthropic in CI with an API key — rejected; D-005 (no live API in CI) and budget concerns.
+
+**Reversibility:** Cheap. The stub is ~150 lines in `example-app/instrumentation-stub.ts`; replacing it with `installFromEnv()` is a four-line edit in `instrumentation.ts` once recordings exist.
+
+**Related issues:** #2

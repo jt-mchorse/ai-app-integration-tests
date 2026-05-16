@@ -50,3 +50,29 @@ decisions_made: [D-006, D-007]
 followups: []
 ---
 
+
+---
+session: 2026-05-16T15:37Z
+duration_min: 45
+issue: 2
+focus: playwright_streaming_ui_tests_with_nextjs_instrumentation_stub
+delta:
+  files_added: 4  # instrumentation.ts, instrumentation-stub.ts, playwright.config.ts, e2e/streaming.spec.ts
+  files_changed: 4  # ci.yml, README, example-app package.json/lock, example-app .gitignore
+  tests_added: 3
+  test_pass_rate: "3/3 playwright + 24/24 root vitest + 14/14 example-app vitest"
+  benchmarks:
+    playwright_total_seconds: 4.5
+    short_stream_ms: 962
+    long_stream_ms: 1000
+    error_stream_ms: 175
+context_for_next_session:
+  - nextjs_instrumentation_ts_installs_fetch_interceptor_when_anthropic_test_mode_replay
+  - stub_routes_by_prompt_keyword_short_error_default_long
+  - playwright_chromium_only_singleworker_15s_timeout_traces_on_failure
+  - ci_caches_ms_playwright_dir_keyed_on_playwright_version
+  - d_008_records_decision_to_use_instrumentation_stub_not_cassette_layer_for_this_issue
+  - cassette_layer_remains_available_for_future_playwright_issues_that_need_recorded_conversations
+decisions_made: [D-008]
+followups: []
+---

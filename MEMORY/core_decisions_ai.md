@@ -63,3 +63,12 @@
   reversibility: cheap
   related_issues: [#4]
   superseded_by: null
+
+- id: D-008
+  date: 2026-05-16
+  decision: playwright_anthropic_stub_via_next_instrumentation_hook_not_toolkit_cassette_layer
+  rationale: hash_matching_against_sdk_request_body_for_hand_authored_cassettes_is_finicky_and_drifts_on_sdk_upgrades_prompt_keyword_stub_is_simpler_for_three_deterministic_streams
+  alternatives_rejected: [cassette_layer_with_hand_authored_cassettes, msw_or_other_third_party_mock_at_browser_layer, real_anthropic_in_ci_with_api_key]
+  reversibility: cheap
+  related_issues: [#2]
+  superseded_by: null
