@@ -76,3 +76,28 @@ context_for_next_session:
 decisions_made: [D-008]
 followups: []
 ---
+
+---
+session: 2026-05-17T23:55Z
+duration_min: 35
+issue: 3
+focus: flake_reduction_patterns_retry_budget_wait_for_semantic_assert
+delta:
+  files_added: 6  # src/support/{retry-budget,wait-for,semantic-assert,index}.ts, test/support.test.ts, test/demo-flake-patterns.test.ts (+ docs/patterns.md)
+  files_changed: 2  # src/index.ts, README.md
+  tests_added: 25  # 24 unit + 1 demo
+  test_pass_rate: "49/49 vitest + 3/3 playwright unchanged + 14/14 example-app unchanged"
+context_for_next_session:
+  - three_helpers_under_src_support_with_retry_budget_wait_for_expect_semantically_similar_all_dep_free
+  - retry_budget_uses_caller_supplied_classify_callback_default_treats_network_families_plus_429_5xx_as_flake_d_009
+  - retry_budget_backoff_multiplier_default_2_0_sleep_pluggable_onattempt_observer_for_diagnostics
+  - wait_for_caps_final_sleep_to_remaining_budget_so_deadline_fires_on_time_sleep_and_now_injectable
+  - semantic_assert_uses_jaccard_over_normalized_tokens_default_threshold_0_6_default_english_stopwords_pure_ts
+  - composition_rule_documented_in_docs_patterns_md_retry_then_assert_then_wait
+  - demo_test_in_test_demo_flake_patterns_test_ts_exercises_all_three_in_one_realistic_flow_flaky_503_paraphrased_response_delayed_ui_surface
+  - public_surface_widened_root_index_re_exports_all_three_helpers_and_their_error_classes
+  - vitest_total_49_passing_lint_clean_typecheck_clean
+  - jaccard_calibration_section_in_docs_recommends_5_min_exercise_to_pick_threshold_per_workload
+decisions_made: [D-009]
+followups: []
+---

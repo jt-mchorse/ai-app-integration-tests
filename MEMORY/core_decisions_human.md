@@ -114,3 +114,17 @@ Loud failure means the test author who changes a prompt sees the test fail with 
 **Reversibility:** Cheap. The stub is ~150 lines in `example-app/instrumentation-stub.ts`; replacing it with `installFromEnv()` is a four-line edit in `instrumentation.ts` once recordings exist.
 
 **Related issues:** #2
+
+## D-009 — Flake classification is a caller-supplied callback; default treats network + 429/5xx as flake (2026-05-17)
+**Decision:** `withRetryBudget` accepts an optional `classify(err, attempt) -> "flake" | "hard"` callback that decides per-error whether to retry. The default classifier treats `AbortError`, `TimeoutError`, `ECONNRESET/REFUSED/TIMEDOUT/ENOTFOUND`, `"fetch failed"`, and HTTP 429 / 5xx as flake; everything else as hard.
+
+**Why:** Two pieces. **First**, "what counts as flake" varies by stack — one caller's `429` is a deliberate rate-limit signal they want to surface immediately; another caller's `429` is a backoff hint from a SaaS that'll succeed on retry. Hardcoding the classifier into the helper would force every caller of that other persuasion to wrap their fetch in custom error-rewriting logic, which is exactly the kind of "test-runtime helpers that own the stack" mistake the rest of the portfolio avoids. The classifier callback pushes the decision to the callsite where the context is visible. **Second**, most callers shouldn't have to think about this — the network families (`ECONNRESET` and friends) are universally transient, and HTTP 429 + 5xx are the documented Anthropic / OpenAI / Cohere retry signals. So the default classifier handles the 80% case; the override exists for the 20%. This is the same single-method-protocol seam pattern as `Embedder`, `Reranker`, `Generator`, `EscalationSignal`, `Backend`, et al across the portfolio.
+
+**Alternatives considered:**
+- Thrown-class hierarchy with a `FlakeMarker` — rejected. Requires callers to wrap third-party errors before throwing, which silently fails the "AbortError is flake" rule when the caller forgets to wrap (which they will).
+- Hardcoded classifier in the helper — rejected. Loses per-callsite context; forces a fork every time a new stack convention shows up.
+- No default classifier; every caller must configure — rejected. The network families are universal; making every caller wire them is gratuitous boilerplate that would land 30+ lines of `classify: (e) => isNetworkError(e) ? "flake" : "hard"` across the example app.
+
+**Reversibility:** Cheap. The classifier is one function passed through; expanding the default set of recognized errors is a one-line addition with a regression test.
+
+**Related issues:** #3
