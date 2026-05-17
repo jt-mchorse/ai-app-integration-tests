@@ -23,3 +23,18 @@ export {
   installReplayer,
   uninstall,
 } from "./install.js";
+export {
+  RetryBudgetExhaustedError,
+  SemanticMismatchError,
+  WaitTimeoutError,
+  defaultClassify,
+  expectSemanticallySimilar,
+  jaccardSimilarity,
+  tokenize,
+  waitFor,
+  withRetryBudget,
+  type FlakeClassification,
+  type RetryPolicy,
+  type SemanticAssertOptions,
+  type WaitForOptions,
+} from "./support/index.js";

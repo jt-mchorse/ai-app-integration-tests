@@ -106,10 +106,41 @@ The `playwright` CI job caches the Chromium download keyed on the
 Playwright package version, so post-cache runs are dominated by the
 Next.js build, not the browser install.
 
+### Flake-reduction patterns (#3)
+
+Three small helpers under `src/support/` cover the test-runtime
+failure modes that come up when AI features hit non-deterministic
+surfaces:
+
+- **`withRetryBudget(fn, policy)`** — bounded retries with a
+  classifier callback so flaky errors retry but real bugs throw
+  immediately. The default classifier treats network families +
+  429 + 5xx as flake.
+- **`waitFor(predicate, options)`** — time-bounded predicate
+  polling with a documented label and the last-value attached to
+  the timeout error.
+- **`expectSemanticallySimilar(actual, expected, opts)`** — Jaccard
+  similarity over normalized tokens with a tunable threshold, for
+  AI-text assertions that survive minor wording drift.
+
+All three are dep-free, both `sleep` and `now` are pluggable for
+synchronous unit tests, and the three compose cleanly — see
+[`docs/patterns.md`](docs/patterns.md) for the per-helper writeups
+and `test/demo-flake-patterns.test.ts` for the executable
+composition example.
+
+```typescript
+import { expectSemanticallySimilar, waitFor, withRetryBudget } from "ai-app-integration-tests";
+
+const response = await withRetryBudget(() => callLLM(), { maxAttempts: 3, backoffMs: 200 });
+expectSemanticallySimilar(response, expectedAnswer, { threshold: 0.4 });
+const surfaced = await waitFor(() => readUiResponse(), { timeoutMs: 5000, intervalMs: 100, label: "ui-response" });
+```
+
 ## Benchmarks / Results
 
 The relevant metric for this layer is "tests stay green and fast" —
-24 vitest tests run in ~325 ms locally with zero network access; the
+49 vitest tests run in ~340 ms locally with zero network access; the
 3 Playwright streaming tests run in ~5 s (CI target: <60 s per the
 issue acceptance criteria, comfortably met).
 
