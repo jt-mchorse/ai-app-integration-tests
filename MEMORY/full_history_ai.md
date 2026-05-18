@@ -120,3 +120,27 @@ context_for_next_session:
 decisions_made: [D-010]
 followups: []
 ---
+
+---
+session: 2026-05-18T23:30Z
+duration_min: 20
+issue: 11
+focus: readme_truth_pass_drop_pending_4_framing_plus_count_drift_guard
+delta:
+  files_changed: 1   # README.md
+  files_added: 1     # test/readme-snapshot.test.ts
+  tests_added: 6
+  test_pass_rate: "55/55"
+  typecheck_pass: true
+  lint_pass: true
+  build_pass: true
+context_for_next_session:
+  - readme_what_this_is_section_rewritten_past_tense_describes_all_five_shipped_features
+  - quickstart_hardcoded_24_tests_pass_comment_dropped_replaced_with_full_hermetic_vitest_suite_passes
+  - demo_section_describes_today_two_command_runnable_demo_capture_filed_as_followup_12
+  - new_test_readme_snapshot_test_ts_locks_referenced_files_exist_npm_run_resolves_no_bash_fence_hardcoded_test_count
+  - drift_guard_specifically_rejects_pattern_n_tests_pass_inside_bash_fence_caught_the_drift_mode_this_pr_fixed
+  - pattern_parallels_today_portfolio_wide_six_readme_hygiene_prs
+decisions_made: []
+followups: [#12]
+---

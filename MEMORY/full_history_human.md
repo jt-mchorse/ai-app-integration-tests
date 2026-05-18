@@ -87,3 +87,17 @@ Chronological log of work sessions. Most recent first below the divider.
 **Open questions / blockers:** The PR body explicitly flags that the 5-runs-under-5-min acceptance can't be closed inside the PR. JT (or the next session) should watch the Step Summary on the next 5 runs after merge and close the issue when the data lands.
 
 **Next session:** Loop is at 4 shipped issues (plus one blocked-on-data skip). Budget allows for more — likely targets: nextjs-streaming-ai-patterns #5 (error recovery mid-stream) or a smaller cookbook issue. Will pick from build sequence next.
+
+## 2026-05-18 — Issue #11: README truth pass + count-drift guard
+
+**Duration:** ~20 min · **Branch:** `session/2026-05-18-2330-issue-11`
+
+- Removed three stale fragments. "What this is" still framed #4 as "this layer" (PR-relative wording); rewritten as past tense describing today's full shipped set (toolkit + cassette, Playwright streaming tests, flake-reduction helpers, example app, sub-5-min CI). Quickstart had `# 24 tests pass — fully hermetic` hard-coded; real count drifted to 49 already; replaced with `# full hermetic vitest suite passes — no API key needed`. Demo section claimed the 60s capture was "pending the example app (#4)" — #4 closed; reframed to describe today's two-command runnable demo (`npm test` + Playwright e2e against the deterministic Anthropic stub) and tracked the captured asset as low-priority #12.
+- Added `test/readme-snapshot.test.ts` (6 tests). Three invariants: every example-app / src / test path the README cites exists on disk, every `npm run <name>` invocation resolves to a real script in the appropriate `package.json`, and no bash code fence contains a `# <N> tests` comment. The third is the drift-mode-specific guard — the failure path was verified by reverting the Quickstart comment to a count-bearing form and watching the test fire with `bash fence contains a hard-coded test-count comment: # 24 tests`.
+- 49 → 55 tests. `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` all clean.
+
+**Why this work, this session:** Closing the loop on today's portfolio-wide README hygiene pass — five other repos (`llm-cost-optimizer`, `prompt-regression-suite`, `rag-production-kit`, `nextjs-streaming-ai-patterns`, `agent-orchestration-platform`, `mcp-server-cookbook`) had matching drift modes fixed earlier in the day with similar snapshot/check tests. Catching the test-count drift in a dedicated guard means the future cleanup pass for *this* repo won't need to re-litigate the same lesson.
+
+**Open questions / blockers:** Captured 60s asset still pending — owned by #12. Best done with screen-capture tooling rather than in an autonomous session.
+
+**Next session:** Substantive feature work for this repo is done. Open issues are now #12 (low) only.
