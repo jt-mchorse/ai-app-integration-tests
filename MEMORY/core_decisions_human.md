@@ -128,3 +128,23 @@ Loud failure means the test author who changes a prompt sees the test fail with 
 **Reversibility:** Cheap. The classifier is one function passed through; expanding the default set of recognized errors is a one-line addition with a regression test.
 
 **Related issues:** #3
+
+## D-010 — CI caching uses GitHub Actions built-ins only; per-job timing is exposed in the workflow Step Summary (2026-05-18)
+
+**Decision:** CI caching uses `actions/cache@v4` for application-specific caches (Next.js build, Playwright browsers) and `actions/setup-node`'s built-in `cache: "npm"` for npm caches. No third-party caching layer. Each job ends with a `Job timing` step that emits a `::notice` and writes a `**job:** Ns` row to `$GITHUB_STEP_SUMMARY` — the playwright row also reports `pw-cache-hit=true|false`.
+
+**Why:** The "under 5 minutes" target is an *observed* property, not a configured one. Tooling that hides the observation behind a third-party dashboard (Turbo Cloud, Nx Cloud, a self-hosted runner pool) trades visibility for an abstraction we don't need for a single-repo CI of five jobs. The built-in cache action is enough: its keying is granular (npm cache invalidates per-lockfile, Next.js cache invalidates per-source-tree-hash, Playwright invalidates per-pinned-version), and the cost is one declarative block per cache.
+
+Exposing the timing in the Step Summary is the load-bearing piece: a future maintainer reading a failing run doesn't need to know `jq` or scroll through logs to see whether a slow run was a cache miss vs. a real regression. The summary row + the `cache-hit` output answer "was the cache warm?" in two clicks. Same posture as the rest of the portfolio — the demo's *behavior* is the artifact, not the infra.
+
+The "5 consecutive runs under 5 min" acceptance is *post-merge*. This PR is the instrumentation; verification is operator-side. The summary makes the per-run check trivial.
+
+**Alternatives considered:**
+- Turbo / Nx / similar remote build cache — rejected: overkill for a single repo, adds infra surface (auth, retention, billing) that this repo doesn't need to teach.
+- Self-hosted runners — rejected: out of scope for a hobby portfolio repo; runs against the "fresh-clone reproducibility" posture from D-003.
+- Playwright sharding — rejected: the current e2e suite runs in seconds. Setup overhead of two parallel browser installs would exceed the parallelism win at this suite size. Revisit when e2e count grows.
+- Caching `node_modules` directly instead of npm's global cache — rejected: brittle (npm's own integrity checks fight cached node_modules across versions); the npm cache action invalidates cleanly on lockfile change.
+
+**Reversibility:** Cheap. Every cache block is independent and removable; removing one returns the affected job to its pre-#5 cold-cache baseline.
+
+**Related issues:** #5

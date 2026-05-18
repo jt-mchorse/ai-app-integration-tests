@@ -101,3 +101,22 @@ context_for_next_session:
 decisions_made: [D-009]
 followups: []
 ---
+
+---
+session: 2026-05-18T04:10Z
+duration_min: 25
+issue: 5
+focus: ci_under_5_minutes_caches_plus_timing_summary
+delta:
+  files_changed: 3
+  tests_added: 0
+context_for_next_session:
+  - d_010_ci_caches_via_github_actions_builtins_only_no_third_party_tooling
+  - example_app_npm_cache_was_missing_biggest_single_win
+  - next_js_build_cache_keyed_on_lockfile_plus_source_hash_with_restore_keys_fallback
+  - workflow_concurrency_group_cancels_stale_push_on_push_runs
+  - per_job_timing_step_writes_step_summary_row_pw_job_includes_cache_hit_state
+  - acceptance_5_consecutive_runs_under_5_min_is_post_merge_observable_pr_is_instrumentation_only
+decisions_made: [D-010]
+followups: []
+---

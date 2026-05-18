@@ -73,3 +73,17 @@ Chronological log of work sessions. Most recent first below the divider.
 **Open questions / blockers:** None. The composition rule (retry → assert → wait) is documented + demoed; the calibration exercise for the semantic threshold is documented inline. A follow-up could add a stemming option to the tokenizer, but that's a polish item, not a blocker.
 
 **Next session:** Issue #5 (sub-5-min CI) is the last `priority:med` open. Or loop to a different repo per the multi-issue prompt.
+
+## 2026-05-18 — Issue #5: CI suite under 5 minutes total
+**Duration:** ~25 min · **Branch:** `session/2026-05-18-issue-05` · **PR:** #10
+
+- Restructured `.github/workflows/ci.yml` for sub-5-minute warm-cache wall time: added npm cache to the previously-uncached `example-app` job (the biggest single win), cached `example-app/.next/cache` on both Next-building jobs keyed on the lockfile + every file under `app/`, `lib/`, `components/` with `restore-keys` fallback, swapped every `npm install` for `npm ci`, and added a workflow-level `concurrency` group that cancels stale push-on-push runs.
+- Each job ends with a per-job timing step that emits a duration `::notice` and writes a `**job:** Ns` row to `$GITHUB_STEP_SUMMARY`. The playwright row also reports `pw-cache-hit=true|false`. The "under 5 min" goal is now visible in the run's Summary tab — no log scrolling.
+- New `docs/ci-timing.md` documents each cache, its key, what it skips, the expected warm-hit savings, and the invalidation rules of thumb. README gets a one-line `CI wall-time target: < 5 min on warm-cache runs` next to the existing CI badge, linked to the timing doc.
+- D-010 records the GitHub-Actions-built-ins-only posture and the per-job-summary-row visibility decision.
+
+**Why this work, this session:** #5 was the only remaining med-priority issue in the repo and a natural fit for a contained session. The "5 consecutive runs under 5 min" acceptance is post-merge — the PR is the *instrumentation* that makes verification cheap.
+
+**Open questions / blockers:** The PR body explicitly flags that the 5-runs-under-5-min acceptance can't be closed inside the PR. JT (or the next session) should watch the Step Summary on the next 5 runs after merge and close the issue when the data lands.
+
+**Next session:** Loop is at 4 shipped issues (plus one blocked-on-data skip). Budget allows for more — likely targets: nextjs-streaming-ai-patterns #5 (error recovery mid-stream) or a smaller cookbook issue. Will pick from build sequence next.

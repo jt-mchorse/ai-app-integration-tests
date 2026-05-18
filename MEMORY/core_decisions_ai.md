@@ -81,3 +81,12 @@
   reversibility: cheap
   related_issues: [3]
   superseded_by: null
+
+- id: D-010
+  date: 2026-05-18
+  decision: ci_caching_uses_github_actions_builtin_actions_cache_plus_setup_node_npm_cache_only_no_third_party_tooling
+  rationale: stdlib_over_framework_cache_keys_invalidated_by_lockfile_plus_source_hashes_is_the_right_granularity_for_a_small_repo_per_job_timing_summary_makes_the_under_5_min_goal_observable_in_the_github_ui_no_jq_no_log_scrolling
+  alternatives_rejected: [turbo_style_remote_build_cache_overkill_single_repo, self_hosted_runners_out_of_scope_hobby_portfolio, playwright_sharding_suite_too_small_setup_overhead_exceeds_parallelism_win]
+  reversibility: cheap
+  related_issues: [5]
+  superseded_by: null
