@@ -4,6 +4,8 @@
 ![CI](https://github.com/jt-mchorse/ai-app-integration-tests/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
+> **CI wall-time target:** < 5 min on warm-cache runs (#5). The workflow caches npm, Next.js builds, and Playwright browsers; each job emits a duration line into the run's Summary tab. Cache strategy: [`docs/ci-timing.md`](docs/ci-timing.md).
+
 ## What this is
 
 A small TypeScript toolkit for testing AI features in Next.js apps

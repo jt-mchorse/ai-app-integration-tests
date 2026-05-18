@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel an in-flight run when a newer push lands on the same ref. Cuts
+# wall time on rapid push-on-push by ~30-60s of wasted CI.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   toolkit:
     runs-on: ubuntu-latest
@@ -15,11 +21,17 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+          cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Job timing
+        if: always()
+        run: |
+          echo "::notice title=toolkit duration::$(($SECONDS))s"
+          echo "**toolkit:** \`${SECONDS}s\`" >> "$GITHUB_STEP_SUMMARY"
 
   example-app:
     runs-on: ubuntu-latest
@@ -28,12 +40,30 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
+          cache-dependency-path: example-app/package-lock.json
+      - name: Cache Next.js build artifacts
+        uses: actions/cache@v4
+        with:
+          # The .next/cache/ directory carries the Next build cache (SWC
+          # transforms, webpack module graph). Keyed on the lockfile + every
+          # source file so an unchanged tree gets a near-instant rebuild.
+          path: example-app/.next/cache
+          key: nextjs-cache-${{ runner.os }}-${{ hashFiles('example-app/package-lock.json') }}-${{ hashFiles('example-app/app/**', 'example-app/lib/**', 'example-app/components/**') }}
+          restore-keys: |
+            nextjs-cache-${{ runner.os }}-${{ hashFiles('example-app/package-lock.json') }}-
+            nextjs-cache-${{ runner.os }}-
       - name: Install example-app deps
-        run: npm install --prefix example-app
+        run: npm ci --prefix example-app
       - name: Build Next.js
         run: npm run build --prefix example-app
       - name: Test example-app routes (in-process, no real Anthropic)
         run: npm test --prefix example-app
+      - name: Job timing
+        if: always()
+        run: |
+          echo "::notice title=example-app duration::$(($SECONDS))s"
+          echo "**example-app:** \`${SECONDS}s\`" >> "$GITHUB_STEP_SUMMARY"
 
   playwright:
     runs-on: ubuntu-latest
@@ -42,20 +72,34 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
+          cache-dependency-path: example-app/package-lock.json
       - name: Install example-app deps
-        run: npm install --prefix example-app
+        run: npm ci --prefix example-app
       - name: Get Playwright version
         id: pw
         run: |
           v=$(node -e "console.log(require('./example-app/node_modules/@playwright/test/package.json').version)")
           echo "version=$v" >> "$GITHUB_OUTPUT"
       - name: Cache Playwright browsers
+        id: pw-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: ms-playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-      - name: Install Chromium
+      - name: Install Chromium (skip if cache hit)
+        # When the browser cache restores we still need the OS deps, which
+        # are not in the cache; `--with-deps` is cheap when the browser
+        # itself is already present.
         run: npx --prefix example-app playwright install --with-deps chromium
+      - name: Cache Next.js build artifacts (Playwright job's own copy)
+        uses: actions/cache@v4
+        with:
+          path: example-app/.next/cache
+          key: nextjs-cache-${{ runner.os }}-${{ hashFiles('example-app/package-lock.json') }}-${{ hashFiles('example-app/app/**', 'example-app/lib/**', 'example-app/components/**') }}
+          restore-keys: |
+            nextjs-cache-${{ runner.os }}-${{ hashFiles('example-app/package-lock.json') }}-
+            nextjs-cache-${{ runner.os }}-
       - name: Build Next.js (production server is what Playwright targets)
         run: npm run build --prefix example-app
       - name: Run Playwright tests
@@ -68,6 +112,11 @@ jobs:
           path: example-app/test-results/
           if-no-files-found: ignore
           retention-days: 7
+      - name: Job timing
+        if: always()
+        run: |
+          echo "::notice title=playwright duration::$(($SECONDS))s"
+          echo "**playwright:** \`${SECONDS}s\` · pw-cache-hit=\`${{ steps.pw-cache.outputs.cache-hit || 'false' }}\`" >> "$GITHUB_STEP_SUMMARY"
 
   no-leaked-secrets:
     runs-on: ubuntu-latest
