@@ -27,12 +27,15 @@ live is forbidden). Third, **mode is environment-driven** —
 `ANTHROPIC_TEST_MODE` is `record | replay | live`, defaulting to
 `replay` so CI never accidentally hits the real API.
 
-Issue #1 shipped the toolkit and a demo test against a committed
-Anthropic-shaped cassette. Issue #4 (this layer) ships the **example
-Next.js app** that the toolkit's downstream patterns test against —
-three screens (streaming, tool use, error path) under `example-app/`,
-runnable with `npm run example:dev`. Playwright tests across those
-screens (issue #2) layer on top.
+All five feature issues (#1–#5) have shipped: the toolkit + cassette
+replay (#1), Playwright streaming tests (#2), flake-reduction helpers
+(#3), the example Next.js app (#4), and the sub-5-minute CI workflow
+(#5). The **example Next.js app** under `example-app/` has three
+screens (streaming, tool use, error path), runnable with
+`npm run example:dev`. Playwright tests drive those screens through
+deterministic UI states (see the "Playwright tests for streaming UI"
+section below); the flake-reduction helpers under `src/support/` cover
+retry budgets, time-bounded waits, and semantic equality.
 
 ## Architecture
 
@@ -53,7 +56,7 @@ flowchart LR
 ```bash
 npm install
 npm run lint && npm run typecheck && npm test && npm run build
-# 24 tests pass — fully hermetic, no API key needed
+# full hermetic vitest suite passes — no API key needed
 ```
 
 In your own test setup:
@@ -148,9 +151,15 @@ issue acceptance criteria, comfortably met).
 
 ## Demo
 
-`test/demo.test.ts` exercises the full install→fetch→replay flow against
-a committed Anthropic `/v1/messages` cassette. 60-second video demo
-pending the example app (#4).
+Today's runnable demo is two commands. `test/demo.test.ts` exercises the
+full install→fetch→replay flow against a committed Anthropic
+`/v1/messages` cassette (`npm test`). The Playwright suite under
+`example-app/e2e/` drives the three example-app screens against the
+deterministic Anthropic stub installed by `instrumentation.ts`
+(`npm run test:e2e --prefix example-app`).
+
+A captured 60-second walkthrough (GIF or video) is **pending** —
+tracked in [#12](https://github.com/jt-mchorse/ai-app-integration-tests/issues/12).
 
 ## Why these decisions
 
