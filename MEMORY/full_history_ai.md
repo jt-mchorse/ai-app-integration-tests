@@ -144,3 +144,25 @@ context_for_next_session:
 decisions_made: []
 followups: [#12]
 ---
+
+---
+session: 2026-05-20T03:51Z
+duration_min: 15
+issue: 14
+focus: ts_public_surface_pattern_third_typescript_variant_library_shape_with_exports_field
+delta:
+  files_added: 1   # test/public-surface.test.ts (vitest)
+  files_changed: 0
+  tests_added: 8   # 4 standalone, 1 of which is it.each over 5 README names
+  test_pass_rate: "63/63"
+  typecheck_pass: true
+  lint_pass: true
+context_for_next_session:
+  - third_ts_variant_after_agent_orchestration_platform_pr_19_and_nextjs_streaming_pr_15
+  - this_repo_is_library_shape_with_src_index_ts_aggregator_plus_dist_build_target_template_from_agent_orchestration_largely_copy_paste
+  - swap_only_package_json_exports_dot_import_instead_of_bin_as_dist_source_of_truth
+  - tamper_verified_three_axes_bad_version_drop_installfromenv_from_index_bad_exports_target
+  - portfolio_wide_pattern_now_twelve_strikes_complete_across_all_python_and_ts_packages_in_portfolio_remaining_only_typescript_servers_in_mcp_cookbook_three_tsd_or_tsc_noemit_pattern_would_be_separate_effort
+decisions_made: []
+followups: []
+---

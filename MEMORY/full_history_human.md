@@ -101,3 +101,16 @@ Chronological log of work sessions. Most recent first below the divider.
 **Open questions / blockers:** Captured 60s asset still pending — owned by #12. Best done with screen-capture tooling rather than in an autonomous session.
 
 **Next session:** Substantive feature work for this repo is done. Open issues are now #12 (low) only.
+
+## 2026-05-20 — Issue #14: lock public surface (TS variant, library shape with `exports` field)
+**Duration:** ~15 min · **Branch:** `session/2026-05-20-0351-issue-14`
+
+- Added `test/public-surface.test.ts` (vitest, 4 test definitions → 8 test items after `it.each` over 5 README names). Third TS variant of the portfolio-wide hygiene pattern. This repo is shape-equivalent to `agent-orchestration-platform` (library with `src/index.ts` + dist build target), so the template was largely copy-paste; the only swap is `package.json#exports["."].import` instead of `package.json#bin` as the dist source-of-truth. Four axes: pkg version semver, every value export from `src/index.ts` defined and non-null at runtime, 5 README-quoted import names resolve (`installFromEnv`, `uninstall`, `expectSemanticallySimilar`, `waitFor`, `withRetryBudget`), exports field maps to `src/index.ts` via tsconfig `rootDir=src`/`outDir=dist`.
+- Tamper-verified three axes: bad version, drop `installFromEnv,` line from `src/index.ts` re-exports (fires both value-exports and README-quickstart tests), bad exports target (`./dist/index-renamed.js`).
+- Full suite 63/63 (was 55; +8 new), typecheck + lint clean.
+
+**Why this work, this session:** Twelfth strike of the portfolio-wide public-surface hygiene pattern (9 Python + 3 TS). Completes coverage of every Python and TypeScript package surface in the portfolio.
+
+**Open questions / blockers:** None — PR ready for review.
+
+**Next session:** The TypeScript servers in `mcp-server-cookbook` (3 TS MCP servers) would need a separate pattern (`tsd` or `tsc --noEmit` snapshot) and are the only remaining un-locked TS surface; that's a follow-up effort.
