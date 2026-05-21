@@ -114,3 +114,19 @@ Chronological log of work sessions. Most recent first below the divider.
 **Open questions / blockers:** None — PR ready for review.
 
 **Next session:** The TypeScript servers in `mcp-server-cookbook` (3 TS MCP servers) would need a separate pattern (`tsd` or `tsc --noEmit` snapshot) and are the only remaining un-locked TS surface; that's a follow-up effort.
+
+## 2026-05-21 — Issue #12: 60-second walkthrough capture (script + smoke test; binary deferred to #16)
+**Duration:** ~25 min · **Branch:** `session/2026-05-21-2323-issue-12` · **PR:** to be opened
+
+- Added `scripts/capture_demo.sh` — bash driver, three surfaces. (1) `npx vitest run test/demo.test.ts test/record-replay.test.ts` shows the cassette replay flow + record→replay round-trip without recursing with the smoke test. (2) `scripts/missing_cassette_demo.ts` (invoked via `npx tsx`) installs the replayer against an empty fixtures dir and fetches `/v1/messages`, catches the real `MissingCassetteError` from `src/fetch-recorder.ts`, prints its message — D-005 is *demonstrated*, not just claimed. (3) `npm run test:e2e --prefix example-app` runs the Playwright streaming suite against the deterministic Anthropic stub (D-008); auto-skipped with a clear banner when chromium isn't installed locally, so the toolkit CI job can run the script.
+- Added `test/capture-demo-smoke.test.ts` — 6 vitest tests. `spawnSync` the bash script with `CAPTURE_PACE_SECONDS=0 CAPTURE_SKIP_E2E=1`, assert exit 0, assert each surface's banner + distinctive output line. Surface 2 assertions pin both the helper's "caught MissingCassetteError" line AND the "no cassette found" / "In replay mode this is fatal" substrings from the error message — drift in either fires the test. Surface 3 assertion pins the explicit skip line. Tamper-verified: changing the surface 1 banner fires the matching assertion; reverted clean.
+- Added `tsx` as a root devDep so surface 2's helper runs on Node 20 (CI) and Node 25 (local) alike without depending on a pre-built `dist/`. Extended `eslint.config.js` to include `scripts/**/*.ts` so the helper's type assertion parses.
+- README "Demo" section: replaced the "pending" paragraph with the `bash scripts/capture_demo.sh` walkthrough explaining all three surfaces, the mode-pill / chromium prerequisite, and the binary-commit split to #16. `readme-snapshot.test.ts` still passes — the new `npm run test:e2e --prefix example-app` reference resolves to a real script in `example-app/package.json`, and the new bash fence carries no hard-coded test-count comment.
+- Filed follow-up #16 — "run the script, ffmpeg-optimize the output, commit `docs/demo.{webm,mp4,gif}`, embed in README." Estimated 30 min, ridden by D-011.
+- New core decision **D-011** — capture-via-deterministic-script-binary-deferred-to-followup. Mirrors D-012 in `nextjs-streaming-ai-patterns` and equivalent decisions in 5 sister repos earlier today. Full suite 69/69, typecheck + lint clean.
+
+**Why this work, this session:** Seventh and last repo to land the `scripts/capture_demo.*` pattern today. Closes the script side of this repo's "Demo" quality-bar item. After this, every portfolio repo has the same capture-script pattern as the canonical answer to the README "Demo" placeholder, with binary recordings tracked as a per-repo low-priority follow-up.
+
+**Open questions / blockers:** None for the engineering. #16 is a 30-min operational task gated on local Playwright chromium + ffmpeg.
+
+**Next session:** Portfolio's v0.1 engineering quality bar is now essentially complete; remaining open issues across all 12 repos are the per-repo binary-recording follow-ups. The next autonomous session should either (a) consolidate the seven binary follow-ups into a single recording sweep, (b) start v0.2-style improvements driven by trending intake, or (c) survey the repos for under-documented decisions and write up the missing `core_decisions_human.md` entries.

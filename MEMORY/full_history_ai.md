@@ -166,3 +166,30 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-05-21T23:23Z
+duration_min: 25
+issue: 12
+focus: scripts_capture_demo_sh_three_surface_driver_plus_tsx_helper_plus_smoke_test_binary_deferred
+delta:
+  files_added: 3   # scripts/capture_demo.sh, scripts/missing_cassette_demo.ts, test/capture-demo-smoke.test.ts
+  files_changed: 3 # README.md (Demo section), package.json (tsx devDep), eslint.config.js (scripts/**/*.ts)
+  tests_added: 6
+  test_pass_rate: "69/69"
+  typecheck_pass: true
+  lint_pass: true
+context_for_next_session:
+  - seventh_and_final_capture_demo_pattern_landed_across_portfolio_today_six_in_phase_a_merges_plus_nextjs_streaming_plus_this
+  - tsx_added_as_devdep_so_capture_script_runs_typescript_helper_without_pre_built_dist_works_on_node_20_ci_and_node_25_local
+  - eslint_config_extended_to_include_scripts_star_star_ts_so_the_helpers_type_assertion_parses_without_node_20_native_strip_types
+  - surface_2_inline_tsx_helper_catches_real_missingcasseteerror_smoke_test_asserts_no_cassette_found_and_in_replay_mode_is_fatal_substrings_pinning_both_helper_and_error_message_text
+  - surface_3_auto_skips_when_capture_skip_e2e_1_or_chromium_not_detected_so_toolkit_ci_job_runs_the_script_without_playwright_dep_dedicated_playwright_job_covers_e2e_path
+  - smoke_test_uses_spawnsync_with_capture_pace_seconds_0_capture_skip_e2e_1_runs_in_1_6s_local_well_under_60s_ci_timeout
+  - tamper_verified_surface_1_banner_change_fires_correct_assertion_reverted_clean
+  - new_d_011_mirrors_d_012_in_nextjs_streaming_ai_patterns_and_equivalent_decisions_in_five_other_repos_that_landed_today
+  - readme_snapshot_test_compatible_new_bash_fence_has_no_test_count_comment_new_npm_run_test_e2e_prefix_example_app_resolves_to_existing_script
+  - portfolio_v01_engineering_quality_bar_essentially_complete_after_this_pr_only_remaining_open_issues_across_all_12_repos_are_priority_low_binary_recordings_followups_one_per_repo
+decisions_made: [D-011]
+followups: [#16]
+---

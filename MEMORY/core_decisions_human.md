@@ -148,3 +148,18 @@ The "5 consecutive runs under 5 min" acceptance is *post-merge*. This PR is the 
 **Reversibility:** Cheap. Every cache block is independent and removable; removing one returns the affected job to its pre-#5 cold-cache baseline.
 
 **Related issues:** #5
+
+## D-011 — `scripts/capture_demo.sh` is the demo's source of truth; binary recording is a separate follow-up (2026-05-21)
+
+**Decision:** The 60-second walkthrough demo is engineered as a deterministic bash driver (`scripts/capture_demo.sh`), a tsx helper that exercises the D-005 missing-cassette failure mode (`scripts/missing_cassette_demo.ts`), and a `spawnSync`-based smoke test (`test/capture-demo-smoke.test.ts`) that pins the script's contract surface-by-surface. The actual `docs/demo.{webm,mp4,gif}` binary commit + README embed is split into a separate issue (#16). The infrastructure lands now; the binary lands when someone has 30 min, Playwright chromium installed, and ffmpeg.
+
+**Why:** What makes the demo durable is reproducibility — a behavior change to D-005 (cassette miss is fatal) or D-008 (Playwright stub via `instrumentation.ts`) must not silently leave the recording lying. The script + smoke test together are the reproducibility mechanism: surface 1's vitest invocation pins the cassette replay flow; surface 2 catches the actual `MissingCassetteError` from `src/fetch-recorder.ts` and prints its message (drift in either the helper or the error fires the test); surface 3's auto-skip branch keeps the script runnable in the toolkit CI job without adding Playwright to the root package or doubling the chromium cache. A committed binary without that infrastructure rots on the first D-005 / D-008 / stub-name refactor. Splitting also lets the binary step ride to an operational session — it needs a terminal recorder (asciinema or OBS), `npx --prefix example-app playwright install chromium` (~150 MB), and `ffmpeg` for size optimization — none of which CI cares about. Pattern mirrors D-012 in `nextjs-streaming-ai-patterns` and the equivalent decisions in `embedding-model-shootout`, `chunking-strategies-lab`, `vector-search-at-scale`, `python-async-llm-pipelines`, and `agent-orchestration-platform` that all landed earlier today.
+
+**Alternatives considered:**
+- Record the binary in this PR — rejected: requires Playwright browsers + ffmpeg + terminal recorder during a remote autonomous session; not reproducible in CI; the diff would be a binary instead of reviewable engineering.
+- Ship only the binary, no script — rejected: the demonstration becomes oral tradition; first stub-name refactor silently breaks it; no test surface to catch drift.
+- Fold the e2e surface into the smoke test directly — rejected: would force Playwright chromium installation into the toolkit CI job, doubling install time and browser cache storage. The dedicated `playwright` CI job already covers e2e; the capture script just has to be runnable without it.
+
+**Reversibility:** Cheap. If we later want the binary committed in the same PR pattern, it's `bash scripts/capture_demo.sh | tee` → record → ffmpeg → `git add docs/demo.<ext>` + README embed away. The decision documents the *split*, not a hard line against committed binaries.
+
+**Related issues:** #12, #16
