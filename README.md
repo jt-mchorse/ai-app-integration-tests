@@ -151,15 +151,38 @@ issue acceptance criteria, comfortably met).
 
 ## Demo
 
-Today's runnable demo is two commands. `test/demo.test.ts` exercises the
-full install→fetch→replay flow against a committed Anthropic
-`/v1/messages` cassette (`npm test`). The Playwright suite under
-`example-app/e2e/` drives the three example-app screens against the
-deterministic Anthropic stub installed by `instrumentation.ts`
-(`npm run test:e2e --prefix example-app`).
+```bash
+bash scripts/capture_demo.sh
+```
 
-A captured 60-second walkthrough (GIF or video) is **pending** —
-tracked in [#12](https://github.com/jt-mchorse/ai-app-integration-tests/issues/12).
+The capture script ([#12], D-011, `scripts/capture_demo.sh`) drives
+three surfaces end-to-end on a fresh clone with no API key. (1)
+`npx vitest run test/demo.test.ts test/record-replay.test.ts` —
+exercises the install-from-env + cassette replay flow (D-002, D-003)
+plus the record→replay round-trip. The two test files are passed by
+path so this surface doesn't recurse with the smoke test that drives
+the script itself. (2) An inline tsx helper
+(`scripts/missing_cassette_demo.ts`) installs the replayer against an
+empty fixtures dir and fetches `/v1/messages` — D-005 makes that
+fatal, and the script prints the actual `MissingCassetteError` text
+so a viewer sees the guarantee enforced, not just claimed. (3)
+`npm run test:e2e --prefix example-app` runs the Playwright streaming
+suite from `example-app/e2e/streaming.spec.ts` against the
+deterministic Anthropic stub installed by
+`example-app/instrumentation-stub.ts` via `instrumentation.ts` (D-008).
+Surface 3 auto-skips with a clear banner when Playwright's chromium
+isn't installed locally, so the same script runs in the `toolkit` CI
+job (via `test/capture-demo-smoke.test.ts`) without needing browsers.
+
+Run the full three-surface tour for a recording with
+`npx --prefix example-app playwright install chromium` first.
+The actual binary commit (`docs/demo.{webm,mp4,gif}` + README embed)
+is split into a follow-up — see [#16] — because that's a 30-min
+operational step gated on local browsers + ffmpeg, separate from
+the engineering that makes the recording reproducible.
+
+[#12]: https://github.com/jt-mchorse/ai-app-integration-tests/issues/12
+[#16]: https://github.com/jt-mchorse/ai-app-integration-tests/issues/16
 
 ## Why these decisions
 
