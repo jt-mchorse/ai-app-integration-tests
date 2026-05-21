@@ -91,9 +91,16 @@ describe("scripts/capture_demo.sh", () => {
   it("fires surface 1 (cassette replay) with a passing vitest summary", () => {
     const r = runCapture();
     expect(r.stdout).toContain("surface 1: cassette replay");
-    // vitest's "Test Files  N passed" line is the load-bearing signal
-    // that the demo + record-replay tests actually ran.
-    expect(r.stdout).toMatch(/Test Files\s+2 passed/);
+    // The "Test Files … 2 passed" header is what vitest writes when
+    // surface 1's two test files both pass. We pin the distinctive
+    // tokens separately (rather than a regex with `\s+`) because
+    // vitest's CI reporter sometimes inserts non-`\s`-matching
+    // characters between header words. `toContain` is also what the
+    // sister repos' smoke tests use for the same reason.
+    expect(r.stdout).toContain("Test Files");
+    expect(r.stdout).toContain("2 passed");
+    expect(r.stdout).toContain("test/demo.test.ts");
+    expect(r.stdout).toContain("test/record-replay.test.ts");
   });
 
   it("fires surface 2 (missing cassette) and prints the D-005 error text", () => {
