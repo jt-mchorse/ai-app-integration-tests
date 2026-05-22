@@ -8,27 +8,43 @@ point — no per-test plumbing, no MSW worker bootstrap.
 ```
 ai-app-integration-tests/
 ├── src/
-│   ├── cassette.ts          ← schema, normalization, hashing, redaction
-│   ├── io.ts                ← CassetteStore (read/write JSON files)
-│   ├── fetch-recorder.ts    ← wraps fetch: recorder + replayer
-│   ├── install.ts           ← installFromEnv() + uninstall()
-│   └── index.ts             ← public exports
+│   ├── cassette.ts                       ← schema, normalization, hashing, redaction
+│   ├── io.ts                             ← CassetteStore (read/write JSON files)
+│   ├── fetch-recorder.ts                 ← wraps fetch: recorder + replayer
+│   ├── install.ts                        ← installFromEnv() + uninstall()
+│   ├── index.ts                          ← public exports
+│   └── support/                          ← flake-reduction helpers
+│       ├── retry-budget.ts               ← bounded-retry primitive
+│       ├── semantic-assert.ts            ← LLM-output-shaped equality
+│       ├── wait-for.ts                   ← polling helper with timeout
+│       └── index.ts                      ← public re-exports
 ├── test/
-│   ├── cassette.test.ts     ← unit tests on hashing + redaction
-│   ├── record-replay.test.ts← end-to-end record→replay round-trip
-│   └── demo.test.ts         ← runs against a committed Anthropic-shaped fixture
+│   ├── cassette.test.ts                  ← src/cassette.ts unit tests
+│   ├── record-replay.test.ts             ← end-to-end record→replay round-trip
+│   ├── demo.test.ts                      ← Anthropic-shaped fixture replay
+│   ├── support.test.ts                   ← src/support/* unit tests
+│   ├── demo-flake-patterns.test.ts       ← src/support helpers in action
+│   ├── public-surface.test.ts            ← exports + dist build target snapshot
+│   ├── readme-snapshot.test.ts           ← README ↔ filesystem path lock
+│   └── capture-demo-smoke.test.ts        ← scripts/capture_demo.sh smoke test
 ├── fixtures/
-│   └── <hash>.json          ← one file per recorded request
-└── example-app/             ← Next.js 15 app under test (#4, peer subproject)
+│   └── <hash>.json                       ← one file per recorded request
+├── scripts/
+│   ├── capture_demo.sh                   ← three-surface demo driver (D-011)
+│   └── missing_cassette_demo.ts          ← inline helper for surface 2
+└── example-app/                          ← Next.js 15 app under test (#4, peer subproject)
     ├── app/
-    │   ├── page.tsx          home / nav
-    │   ├── streaming/        SSE token streaming UI + /api/streaming route
-    │   ├── tools/            tool-use UI + /api/tools route (2 tools)
-    │   └── error/            error-path UI + /api/error route (3 failure kinds)
-    └── test/
-        ├── streaming-route.test.ts
-        ├── tools-route.test.ts
-        └── error-route.test.ts
+    │   ├── page.tsx                      ← home / nav
+    │   ├── streaming/                    ← SSE token streaming UI
+    │   ├── tools/                        ← tool-use UI (get_weather + calculate)
+    │   ├── error/                        ← error-path UI (validation/upstream/shape)
+    │   └── api/                          ← route handlers (streaming, tools, error)
+    ├── test/                             ← vitest suites (route handlers)
+    │   ├── streaming-route.test.ts
+    │   ├── tools-route.test.ts
+    │   └── error-route.test.ts
+    └── e2e/                              ← Playwright tests on streaming UI (#2)
+        └── streaming.spec.ts
 ```
 
 ## Three modes
@@ -160,17 +176,27 @@ Run locally:
 ```bash
 npm run example:install     # one-time: install example-app deps
 npm run example:dev         # http://localhost:3000
-npm run example:test        # 14 tests, no real API needed
+npm run example:test        # route-handler vitest suites, no real API needed
 ```
 
-Playwright integration tests across these screens are **#2**'s scope.
-This PR ships the substrate.
+Playwright streaming-UI tests ship today under `example-app/e2e/streaming.spec.ts`
+([#2]), driving the `/streaming` page against the same install function
+this substrate exposes. The substrate makes the upstream Anthropic call
+deterministic; the Playwright run drives the UI on top of it.
+
+[#2]: https://github.com/jt-mchorse/ai-app-integration-tests/issues/2
 
 ## What this layer is NOT
 
-- Not a Playwright test runner. Playwright tests on streaming UI states
-  are issue **#2** and run *on top of* this layer (intercept the SDK
-  calls inside the example app via this same install function).
-- Not a flake-reduction library. Test stability is a downstream
-  concern — this layer makes the API call deterministic, but
-  `await page.waitForSelector(...)` policies live in #2.
+- **Not a hosted recording service.** Cassettes live on disk in
+  `fixtures/`; checked into the repo, reviewed in PRs. No central
+  store, no per-developer accounts, no replay-as-a-service. Hosted
+  cassette stores pull the toolkit into deployment-infra territory
+  the cookbook deliberately avoids.
+- **Not a generic HTTP recorder for arbitrary providers.** The
+  toolkit intercepts exactly one provider surface (Anthropic) and
+  knows the SSE shape, the streaming token framing, and the
+  redaction rules (D-004) for that specific API. A second provider
+  is a one-file swap (`fetch-recorder.ts`) — but the public API is
+  pinned to "Anthropic SDK call deterministic," not "any fetch
+  deterministic." MSW remains the right tool for the generic case.
