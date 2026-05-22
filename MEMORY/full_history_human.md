@@ -130,3 +130,15 @@ Chronological log of work sessions. Most recent first below the divider.
 **Open questions / blockers:** None for the engineering. #16 is a 30-min operational task gated on local Playwright chromium + ffmpeg.
 
 **Next session:** Portfolio's v0.1 engineering quality bar is now essentially complete; remaining open issues across all 12 repos are the per-repo binary-recording follow-ups. The next autonomous session should either (a) consolidate the seven binary follow-ups into a single recording sweep, (b) start v0.2-style improvements driven by trending intake, or (c) survey the repos for under-documented decisions and write up the missing `core_decisions_human.md` entries.
+
+## 2026-05-22 — docs/architecture.md claimed Playwright + flake-reduction were out of scope; both shipped weeks ago (#18)
+
+**Duration:** ~30 min. **Issue:** [#18](https://github.com/jt-mchorse/ai-app-integration-tests/issues/18). **PR:** [#19](https://github.com/jt-mchorse/ai-app-integration-tests/pull/19).
+
+The architecture doc was committed at the substrate-only PR and never reframed when Playwright tests (#2 CLOSED) and the `src/support/` flake-reduction helpers shipped. Four drift sites: directory diagram listed `src/` as 5 files and `test/` as 3 (reality: 6 and 8); the Example-app section said "Playwright is #2's scope, this PR ships the substrate" (Playwright shipped); "What this layer is NOT" listed Playwright and flake-reduction as out-of-scope (both shipped); an `# 14 tests` count-comment rot trap.
+
+Rewrote the directory diagram to enumerate `src/support/`, all 8 test files, `example-app/e2e/`, and `scripts/`. Replaced the "Playwright is #2's scope" paragraph with the actual shipped split. Replaced "What this layer is NOT" with the genuinely-not bullets (not a hosted recording service; not a generic HTTP recorder) — both still accurate scope boundaries. Replaced `# 14 tests` with count-free phrasing.
+
+Lock-against-drift: `test/architecture-doc.test.ts` (vitest, parallel to existing `readme-snapshot.test.ts`). Five invariants — path tokens resolve, four banned phrases absent, banned phrases hard-pinned, doc references at least one `src/support/` path, doc references at least one `example-app/e2e/` path. Tamper-verified.
+
+Third architecture-doc-freeze fix this session, after `mcp-server-cookbook` #22 and `nextjs-streaming-ai-patterns` #18; all three same shape (arch doc commits at first PR and is never reframed when subsequent scope lands). Fifth drift fix of the session; thirteenth in the portfolio pattern. Open questions / blockers: none.
