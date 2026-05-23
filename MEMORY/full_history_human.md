@@ -142,3 +142,38 @@ Rewrote the directory diagram to enumerate `src/support/`, all 8 test files, `ex
 Lock-against-drift: `test/architecture-doc.test.ts` (vitest, parallel to existing `readme-snapshot.test.ts`). Five invariants — path tokens resolve, four banned phrases absent, banned phrases hard-pinned, doc references at least one `src/support/` path, doc references at least one `example-app/e2e/` path. Tamper-verified.
 
 Third architecture-doc-freeze fix this session, after `mcp-server-cookbook` #22 and `nextjs-streaming-ai-patterns` #18; all three same shape (arch doc commits at first PR and is never reframed when subsequent scope lands). Fifth drift fix of the session; thirteenth in the portfolio pattern. Open questions / blockers: none.
+
+
+## 2026-05-23 — Architecture-doc lock gains active-decision-range + shipped-issue axes; backfills four D-NNNs and three issue refs (#20)
+
+**Duration:** ~35 min. **Issue:** [#20](https://github.com/jt-mchorse/ai-app-integration-tests/issues/20). **PR:** TBD (this session).
+
+`ai-app-integration-tests` is the **last of twelve repos** to gain the active-decision-range upper-bound axis on its architecture-doc lock — the pattern shipped first in `llm-eval-harness` (#32 just merged) and rolled out across the portfolio over the past two sessions. With this PR landed, all twelve portfolio repos carry the full upper-bound axis.
+
+Two new invariants on `test/architecture-doc.test.ts`:
+
+1. **Active-decision coverage.** Every non-superseded `D-NNN >= MIN_ACTIVE_DECISION_ID (= 2)` in `MEMORY/core_decisions_ai.md` must be cited at least once in `docs/architecture.md`. Regex parser (no YAML dep). `D-7`/`D-07`/`D-007` normalize to id 7.
+
+2. **Closed-feature-issue coverage.** Every entry in `KNOWN_SHIPPED_ISSUES = [1, 2, 3, 4, 5]` (the five core deliverables per handoff §2: deterministic Anthropic replay, Playwright streaming tests, flake reduction, example-app, CI under 5 min) must be referenced. A sixth deliverable would require bumping the array; the hard-pin makes that unmissable.
+
+Both `MIN_ACTIVE_DECISION_ID` and `KNOWN_SHIPPED_ISSUES` got their own hard-pin `it()` blocks so a loose edit can't widen the floor silently.
+
+**Real drift caught on first run.** Four `D-NNN`s and three `#NN`s were missing from the doc:
+
+- **D-007** (Next 15 App Router not Pages) — was implicit in the "Next.js 15 (app router, React 19)" prose; added `**D-007**` parenthetical.
+- **D-008** (Playwright Anthropic stub via Next instrumentation hook, not the cassette layer) — the Playwright paragraph never explained *how* the deterministic stream gets into the browser context; backfilled the rationale.
+- **D-009** (caller-supplied `classify` callback for flake classification) — the doc had `src/support/` paths in the directory diagram but no prose explaining the helpers; new "Flake-reduction helpers" section.
+- **D-010** (CI caching, sub-five-minute goal) — the doc had no CI discussion at all; new "CI runtime" section.
+- **#1** (deterministic Anthropic replay) — implicit throughout but never annotated; added to opening prose alongside D-002.
+- **#3** (flake-reduction) — added in the new flake-helpers section.
+- **#5** (CI under 5 min) — added in the new CI-runtime section.
+
+Tamper-verified two ways: synthetic `D-099 superseded_by: null` appended to the decisions file → axis 4 fires naming `D-099`; `sed -i.bak 's/#1[^0-9]/_X/g'` stripping `#1` → axis 5 fires naming `#1`. A BSD-sed gotcha — `\b` word-boundary isn't supported — surfaced when the first attempt silently changed nothing; switched to the explicit `[^0-9]` look-behind shape.
+
+Full vitest: 81/81 green (was 77 — gained 4 from the new axes). eslint clean. `tsc --noEmit` clean.
+
+**Why this work, this session:** Second of two issues in this DAY session (first was `mcp-server-cookbook` PR #26, same axis pattern). Closes the last gap in the portfolio-wide active-decision-range upper-bound axis. With this and #26 merged, all twelve repos carry the full lock shape.
+
+**Open questions / blockers:** None — PR ready for review.
+
+**Next session:** The architecture-doc lock pattern is complete across the portfolio. Next sessions can pivot to other hygiene gaps, or wait for JT to direct (the only remaining open issues across all twelve repos are the seven priority:low operator-supplied 60-second demo GIFs — outside Cowork's reach).

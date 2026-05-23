@@ -217,3 +217,27 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-05-23T19:40Z
+duration_min: 35
+issue: 20
+focus: architecture_doc_lock_active_decision_range_axis_plus_shipped_issue_axis_three_to_five_invariants_real_drift_backfill_four_d_nnns_three_hash_nns
+delta:
+  files_changed: 2   # docs/architecture.md, test/architecture-doc.test.ts
+  tests_added: 4     # active-decision-coverage, shipped-issue-coverage, MIN hard-pin, KNOWN hard-pin
+  tamper_verify_axes: 2
+  test_pass_rate: "81/81 (was 77 in #18, gained 4 here)"
+  drift_d_nnn_caught_and_fixed: [D-007, D-008, D-009, D-010]
+  drift_hash_nn_caught_and_fixed: [1, 3, 5]
+context_for_next_session:
+  - active_decision_range_axis_pattern_now_at_12_of_12_repos_complete_portfolio_coverage_starting_with_llm_eval_harness_32_and_ending_with_ai_app_integration_tests_20_this_pr
+  - shipped_issue_axis_now_in_two_repos_mcp_server_cookbook_26_and_ai_app_integration_tests_20_other_repos_use_alternative_lock_shapes_for_per_issue_coverage
+  - real_drift_caught_first_run_d_007_d_008_d_009_d_010_missing_from_arch_doc_hash_1_hash_3_hash_5_missing_added_d_007_to_next_15_app_router_paragraph_d_008_to_playwright_paragraph_with_one_sentence_rationale_d_009_in_new_flake_reduction_helpers_section_d_010_in_new_ci_runtime_section_hash_1_added_to_opening_substrate_prose_hash_3_and_hash_5_in_new_sections
+  - the_doc_grew_two_new_sections_flake_reduction_helpers_and_ci_runtime_each_about_one_paragraph_natural_fits_for_those_d_nnns_that_didnt_have_an_existing_section_to_amend_inline
+  - bsd_sed_doesnt_support_b_word_boundary_used_explicit_hash_1_followed_by_non_digit_pattern_for_tamper_verify_caught_in_first_pass_when_sed_appeared_to_do_nothing
+  - 4_new_invariants_added_to_what_was_an_8_test_file_now_12_tests_one_invariant_used_to_be_3_now_5_test_count_increase_4_due_to_2_axes_plus_2_hard_pins
+  - portfolio_pattern_complete_active_decision_range_upper_bound_axis_at_12_of_12_repos
+decisions_made: []
+followups: []
+---
