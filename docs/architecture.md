@@ -3,7 +3,9 @@
 The toolkit is a small TypeScript package that intercepts Node's global
 `fetch` and routes calls to a recorder (writes cassette to disk) or a
 replayer (reads cassette from disk). One package, one interception
-point — no per-test plumbing, no MSW worker bootstrap.
+point — no per-test plumbing, no MSW worker bootstrap. That deterministic
+Anthropic-replay substrate is the core deliverable from `#1`, with the
+fetch-monkey-patch posture chosen over MSW per `D-002`.
 
 ```
 ai-app-integration-tests/
@@ -142,10 +144,10 @@ If a second provider lands, swapping to MSW is a one-file change inside
 
 ## Example app under test (#4)
 
-`example-app/` is a peer Next.js 15 (app router, React 19) subproject —
-its own `package.json`, its own `node_modules`, so the toolkit's
-runtime stays dep-clean per **D-006**. Three pages each backed by a
-small route handler:
+`example-app/` is a peer Next.js 15 (app router, React 19, **D-007**)
+subproject — its own `package.json`, its own `node_modules`, so the
+toolkit's runtime stays dep-clean per **D-006**. Three pages each backed
+by a small route handler:
 
 | Route          | What it does                                                                 |
 | -------------- | ---------------------------------------------------------------------------- |
@@ -182,9 +184,39 @@ npm run example:test        # route-handler vitest suites, no real API needed
 Playwright streaming-UI tests ship today under `example-app/e2e/streaming.spec.ts`
 ([#2]), driving the `/streaming` page against the same install function
 this substrate exposes. The substrate makes the upstream Anthropic call
-deterministic; the Playwright run drives the UI on top of it.
+deterministic; the Playwright run drives the UI on top of it. In the
+browser context, where this toolkit's fetch-monkey-patch can't reach,
+the deterministic stream is supplied by a small Anthropic stub mounted
+via Next's `instrumentation.ts` hook rather than the cassette layer
+(**D-008** — prompt-keyword routing is simpler than cassette-hash
+matching against drifting SDK request bodies for three deterministic
+streams).
 
 [#2]: https://github.com/jt-mchorse/ai-app-integration-tests/issues/2
+
+## Flake-reduction helpers (#3, D-009)
+
+`src/support/` ships three small primitives — `retry-budget.ts`,
+`semantic-assert.ts`, `wait-for.ts` — that callers compose into their
+own test code. The retry budget is the load-bearing piece: it accepts
+a caller-supplied `classify` callback that decides whether a thrown
+error counts as a flake or as a hard failure (**D-009**). The default
+classifier treats the universal network families plus HTTP 429/5xx as
+flake and everything else as hard, so the common case needs zero
+configuration; callers with their own conventions (custom error
+hierarchies, library-specific timeout markers) pass their own
+`classify` and the budget machinery is unchanged.
+
+## CI runtime (#5, D-010)
+
+The CI workflow keeps the full toolkit suite plus the example-app's
+route-handler suite under five minutes wall-clock by relying on
+GitHub Actions' built-in caching (`actions/cache` + `setup-node`'s
+npm cache) — no third-party tooling. Cache keys are invalidated by
+the lockfile plus the source hashes that affect the relevant build,
+which is the right granularity for a small repo (**D-010**).
+Per-job timing summaries make the under-five-minute goal observable
+in the Actions UI without scrolling logs or shelling out to `jq`.
 
 ## What this layer is NOT
 
