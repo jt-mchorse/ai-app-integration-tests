@@ -98,6 +98,10 @@ const SENSITIVE_HEADER_NAMES = new Set([
   "x-api-key",
   "anthropic-api-key",
   "openai-api-key",
+  // `x-goog-api-key` is the canonical header for Google Gemini / Vertex AI
+  // and the official Anthropic-via-Vertex SDK paths. Without this entry a
+  // cassette recorded against a Google API committed the key value.
+  "x-goog-api-key",
   "x-amz-security-token",
   "cookie",
   "set-cookie",

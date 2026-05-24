@@ -114,6 +114,13 @@ describe("redactHeaders", () => {
     expect(keys).toEqual(["anthropic-api-key", "bar", "foo"]);
     expect(r["anthropic-api-key"]).toBe("[REDACTED]");
   });
+
+  it("redacts x-goog-api-key (#22)", () => {
+    // Mixed-case input also re-proves the case-insensitive branch in the
+    // same assertion path.
+    const r = redactHeaders({ "X-Goog-Api-Key": "AIzaSy_some_key_value" });
+    expect(r["x-goog-api-key"]).toBe("[REDACTED]");
+  });
 });
 
 describe("assertNoLeakedSecrets", () => {

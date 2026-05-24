@@ -158,6 +158,39 @@ describe("withRetryBudget", () => {
     ).rejects.toBeInstanceOf(RangeError);
   });
 
+  test("rejects non-positive backoffMultiplier (#22)", async () => {
+    // Issue #22: only user-supplied values are validated — undefined still
+    // resolves to the 2.0 default. Zero multiplier zeroes-out exponential
+    // backoff; negative multiplier produces sign-alternating / NaN
+    // backoffs via Math.pow that then poison sleep().
+    await expect(
+      withRetryBudget(async () => "x", {
+        maxAttempts: 3,
+        backoffMs: 1,
+        backoffMultiplier: 0,
+      }),
+    ).rejects.toBeInstanceOf(RangeError);
+    await expect(
+      withRetryBudget(async () => "x", {
+        maxAttempts: 3,
+        backoffMs: 1,
+        backoffMultiplier: -1,
+      }),
+    ).rejects.toBeInstanceOf(RangeError);
+  });
+
+  test("accepts sub-1.0 backoffMultiplier (#22, regression-pin)", async () => {
+    // 0.5 is a valid (decreasing) backoff multiplier — the guard is `> 0`
+    // not `>= 1.0`, so a deliberately-decaying backoff is supported.
+    const result = await withRetryBudget(async () => "ok", {
+      maxAttempts: 2,
+      backoffMs: 1,
+      backoffMultiplier: 0.5,
+      sleep: async () => {},
+    });
+    expect(result).toBe("ok");
+  });
+
   test("defaultClassify treats network families as flake and other errors as hard", () => {
     expect(defaultClassify(new Error("ECONNRESET"))).toBe("flake");
     expect(defaultClassify(new Error("fetch failed"))).toBe("flake");

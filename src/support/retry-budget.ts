@@ -92,6 +92,16 @@ export async function withRetryBudget<T>(
   if (policy.backoffMs < 0) {
     throw new RangeError(`backoffMs must be >= 0, got ${policy.backoffMs}`);
   }
+  // Only validate user-supplied values — undefined still resolves to the
+  // 2.0 default below. A non-positive multiplier produces 0 or alternating-
+  // sign / NaN backoffs (Math.pow with a non-positive base on a fractional
+  // exponent is NaN), which then poison the sleep() call. Catching it here
+  // surfaces the bug at the boundary instead of mid-loop.
+  if (policy.backoffMultiplier !== undefined && policy.backoffMultiplier <= 0) {
+    throw new RangeError(
+      `backoffMultiplier must be > 0, got ${policy.backoffMultiplier}`,
+    );
+  }
   const classify = policy.classify ?? defaultClassify;
   const sleep = policy.sleep ?? defaultSleep;
   const multiplier = policy.backoffMultiplier ?? DEFAULT_BACKOFF_MULTIPLIER;
