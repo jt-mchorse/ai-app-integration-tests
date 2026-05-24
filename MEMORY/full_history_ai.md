@@ -241,3 +241,23 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-05-24T15:50Z
+duration_min: 10
+issue: 22
+focus: with_retry_budget_multiplier_validation_plus_x_goog_api_key_redaction
+delta:
+  files_changed: 4   # src/support/retry-budget.ts, src/cassette.ts, test/support.test.ts, test/cassette.test.ts
+  files_added: 0
+  tests_added: 3
+  test_pass_rate: "84/84"
+decisions_made: []
+context_for_next_session:
+  - with_retry_budget_validated_max_attempts_ge_1_and_backoff_ms_ge_0_but_not_backoff_multiplier_zero_multiplier_zeroes_exponential_negative_yields_nan_via_math_pow_into_sleep
+  - guard_only_fires_when_value_is_supplied_undefined_still_falls_through_to_default_2_0_public_surface_unchanged_for_callers_without_the_field
+  - sub_1_0_multiplier_is_valid_deliberate_decay_guard_is_gt_0_not_ge_1_0_explicit_test_pins_this
+  - sensitive_header_names_was_missing_x_goog_api_key_canonical_for_google_gemini_vertex_ai_and_anthropic_via_vertex_sdk_flows
+  - portfolio_pattern_eighth_in_day_session_loop_after_eval_harness_37_prompt_regression_32_mcp_cookbook_31_emb_shootout_26_async_pipelines_29_agent_orch_28_nextjs_23_second_ts_frontend_target_of_the_day
+followups: []
+---

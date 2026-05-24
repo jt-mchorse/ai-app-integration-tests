@@ -177,3 +177,19 @@ Full vitest: 81/81 green (was 77 — gained 4 from the new axes). eslint clean. 
 **Open questions / blockers:** None — PR ready for review.
 
 **Next session:** The architecture-doc lock pattern is complete across the portfolio. Next sessions can pivot to other hygiene gaps, or wait for JT to direct (the only remaining open issues across all twelve repos are the seven priority:low operator-supplied 60-second demo GIFs — outside Cowork's reach).
+
+## 2026-05-24 — Issue #22: `withRetryBudget` validates `backoffMultiplier`; `x-goog-api-key` joins the redaction allowlist
+
+**Duration:** ~10 min. **Issue:** [#22](https://github.com/jt-mchorse/ai-app-integration-tests/issues/22). **Branch:** `session/2026-05-24-1548-issue-22`.
+
+Two small parity / defensive gaps in the test-support modules. `withRetryBudget` was validating `maxAttempts >= 1` and `backoffMs >= 0` at function entry but not `backoffMultiplier` — a caller passing `0` zeroed-out exponential backoff after the first attempt, and a negative or non-finite multiplier produced alternating-sign / NaN backoffs via `Math.pow` that then poisoned the `sleep()` call. The undefined-default path (→ 2.0) is unchanged; only user-supplied values are validated, so callers that don't pass the field see no behavior change.
+
+Separately, `SENSITIVE_HEADER_NAMES` was missing `x-goog-api-key` — the canonical header for Google Gemini / Vertex AI and Anthropic-via-Vertex SDK flows. A cassette recorded against a Google API today would have committed the key value. The redaction set now covers the four major AI provider header conventions: Anthropic native, OpenAI, AWS Bedrock (`x-amz-security-token`), and Google.
+
+Three new tests: two on the multiplier guard (zero/negative reject; sub-1.0 valid because the guard is `> 0` not `>= 1.0`, so deliberate decay is supported); one on the redactor (mixed-case `X-Goog-Api-Key` redacts via the existing case-insensitive lower-key contract).
+
+**Why this work, this session:** Eighth Phase B+C target of a 180-min day session — second TS frontend target after `nextjs-streaming-ai-patterns` #23. Same pattern as the day's earlier work: a previously-shipped capability didn't extend a small inch further than it should have. The session as a whole has been a sweep of these inch-gaps across the portfolio.
+
+**Open questions / blockers:** none — PR ready for review.
+
+**Next session:** Wrap. Remaining repos for the loop (if continuing): `rag-production-kit`, `chunking-strategies-lab`, `vector-search-at-scale`, `llm-cost-optimizer` — all touched in Phase A this morning so the natural-rotation candidates are spent for now.
