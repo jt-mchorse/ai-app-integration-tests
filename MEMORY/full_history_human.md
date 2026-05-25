@@ -193,3 +193,17 @@ Three new tests: two on the multiplier guard (zero/negative reject; sub-1.0 vali
 **Open questions / blockers:** none — PR ready for review.
 
 **Next session:** Wrap. Remaining repos for the loop (if continuing): `rag-production-kit`, `chunking-strategies-lab`, `vector-search-at-scale`, `llm-cost-optimizer` — all touched in Phase A this morning so the natural-rotation candidates are spent for now.
+
+## 2026-05-25 — Issue #24: support/ range validators extended to finiteness
+**Duration:** ~30 min · **Branch:** `session/2026-05-24-issue-24`
+
+- Three existing range validators in `src/support/` checked sign-direction only. NaN and ±Infinity slipped past every guard, silently degrading test guarantees. The worst case was `expectSemanticallySimilar` with `threshold = NaN` — the check `threshold < 0 || threshold > 1` fails both arms (NaN comparisons are always false), so threshold passes, then `similarity < NaN` is also false, so the assertion *always passes regardless of input* — silently vacuous. A test author passing a NaN (from a config-derived value, a bad division, an empty env var) ends up with an assertion that looks fine until a real regression slips through review.
+- `waitFor` with `timeoutMs = NaN` made the polling loop never time out; `+Infinity` hung `setTimeout` until CI's outer timeout. `withRetryBudget` with `maxAttempts = NaN` made the for-loop never execute and threw `RetryBudgetExhaustedError(NaN, undefined)`; with NaN backoffs poisoned `Math.pow` into NaN, then `setTimeout(NaN)` coerced to 0 and silently abandoned the schedule. Also `maxAttempts = 2.5` was accepted and silently rounded by the integer attempt counter.
+- Tightened each callsite to require `Number.isFinite` (plus `Number.isInteger` for `maxAttempts`). Error messages updated from "must be >= 0" / "in [0, 1]" to "must be a finite number ..." so callers can grep the new contract. Public surface unchanged for valid inputs — every prior accepted value remains accepted.
+- 19 new tests in `test/support.test.ts` under an issue-`#24` block: `test.each` over per-field bad-value tables (NaN, +Infinity, -Infinity, fractional for `maxAttempts`); boundary acceptance regressions per validator. Full suite 103/103 (was 84). Typecheck + ESLint clean.
+
+**Why this work, this session:** Fifth (and final unvisited-tonight) Phase B+C target in the 360-min night session. All five repos that hadn't received attention earlier today now have a contract-tightening PR. Follow-up to #22 which added the sign-only validation; extending to finiteness is the natural next move and lines up with eleven sister PRs across the portfolio.
+
+**Open questions / blockers:** none — PR ready for review.
+
+**Next session:** All five originally-unvisited-tonight repos closed; the loop can now deepen on already-touched repos (each picked up one issue tonight) for more contract-tightening or pivot to a different harm class. Many candidates remain — cassette layer numerics, fetch-recorder limits, eslint rule add for "no sign-only finite checks."
