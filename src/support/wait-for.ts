@@ -59,11 +59,19 @@ export async function waitFor<T>(
   predicate: () => T | Promise<T>,
   options: WaitForOptions<T>,
 ): Promise<Awaited<T>> {
-  if (options.timeoutMs < 0) {
-    throw new RangeError(`timeoutMs must be >= 0, got ${options.timeoutMs}`);
+  // Finiteness guards reject NaN and +/-Infinity (which the sign-only checks
+  // silently let through pre-#24). NaN makes every comparison false so the
+  // polling loop never times out; +Infinity hangs setTimeout until CI's outer
+  // timeout fires. Both failure modes were absorbed without diagnostic.
+  if (!Number.isFinite(options.timeoutMs) || options.timeoutMs < 0) {
+    throw new RangeError(
+      `timeoutMs must be a finite number >= 0, got ${options.timeoutMs}`,
+    );
   }
-  if (options.intervalMs <= 0) {
-    throw new RangeError(`intervalMs must be > 0, got ${options.intervalMs}`);
+  if (!Number.isFinite(options.intervalMs) || options.intervalMs <= 0) {
+    throw new RangeError(
+      `intervalMs must be a finite number > 0, got ${options.intervalMs}`,
+    );
   }
   const sleep = options.sleep ?? defaultSleep;
   const now = options.now ?? Date.now;

@@ -97,8 +97,13 @@ export function expectSemanticallySimilar(
   opts?: SemanticAssertOptions,
 ): number {
   const threshold = opts?.threshold ?? DEFAULT_THRESHOLD;
-  if (threshold < 0 || threshold > 1) {
-    throw new RangeError(`threshold must be in [0, 1], got ${threshold}`);
+  // Finiteness guard. Pre-#24 the sign-range check `< 0 || > 1` was both
+  // false for NaN — NaN comparisons are always false — so threshold = NaN
+  // was accepted. Then `similarity < NaN` is also false, so the assertion
+  // *always passed regardless of input* — silently vacuous, the worst kind
+  // of degraded test guarantee.
+  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
+    throw new RangeError(`threshold must be a finite number in [0, 1], got ${threshold}`);
   }
   const tokensA = tokenize(actual, opts?.stopwords);
   const tokensB = tokenize(expected, opts?.stopwords);

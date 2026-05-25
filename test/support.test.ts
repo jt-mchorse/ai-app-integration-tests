@@ -395,3 +395,98 @@ describe("expectSemanticallySimilar", () => {
     expect(jaccardSimilarity(["a", "b", "c"], ["b", "c", "d"])).toBeCloseTo(0.5, 6);
   });
 });
+
+// Issue #24: existing range validators in src/support/ were sign-only;
+// NaN and +/-Infinity slipped past every guard and silently degraded test
+// guarantees (vacuous semantic asserts, never-firing waits, abandoned
+// retry backoffs). Finiteness guards added at each callsite.
+describe("support — finiteness validation (issue #24)", () => {
+  describe("waitFor", () => {
+    test.each([
+      { value: Number.NaN, label: "NaN" },
+      { value: Number.POSITIVE_INFINITY, label: "+Infinity" },
+      { value: Number.NEGATIVE_INFINITY, label: "-Infinity" },
+    ])("rejects timeoutMs = $label", async ({ value }) => {
+      await expect(
+        waitFor(() => true, { timeoutMs: value, intervalMs: 10 }),
+      ).rejects.toBeInstanceOf(RangeError);
+      await expect(
+        waitFor(() => true, { timeoutMs: value, intervalMs: 10 }),
+      ).rejects.toThrow(/timeoutMs must be a finite number/);
+    });
+
+    test.each([
+      { value: Number.NaN, label: "NaN" },
+      { value: Number.POSITIVE_INFINITY, label: "+Infinity" },
+      { value: Number.NEGATIVE_INFINITY, label: "-Infinity" },
+    ])("rejects intervalMs = $label", async ({ value }) => {
+      await expect(
+        waitFor(() => true, { timeoutMs: 100, intervalMs: value }),
+      ).rejects.toThrow(/intervalMs must be a finite number/);
+    });
+
+    test("accepts timeoutMs = 0 (regression — boundary stayed valid)", async () => {
+      // First poll happens before any sleep, so a truthy predicate resolves
+      // even with timeoutMs = 0.
+      await expect(
+        waitFor(() => true, { timeoutMs: 0, intervalMs: 1 }),
+      ).resolves.toBe(true);
+    });
+  });
+
+  describe("withRetryBudget", () => {
+    const okFn = async () => "ok";
+
+    test.each([
+      { value: Number.NaN, label: "NaN" },
+      { value: Number.POSITIVE_INFINITY, label: "+Infinity" },
+      { value: 2.5, label: "fractional" },
+    ])("rejects maxAttempts = $label", async ({ value }) => {
+      await expect(
+        withRetryBudget(okFn, { maxAttempts: value, backoffMs: 0 }),
+      ).rejects.toThrow(/maxAttempts must be an integer/);
+    });
+
+    test.each([
+      { value: Number.NaN, label: "NaN" },
+      { value: Number.POSITIVE_INFINITY, label: "+Infinity" },
+    ])("rejects backoffMs = $label", async ({ value }) => {
+      await expect(
+        withRetryBudget(okFn, { maxAttempts: 3, backoffMs: value }),
+      ).rejects.toThrow(/backoffMs must be a finite number/);
+    });
+
+    test.each([
+      { value: Number.NaN, label: "NaN" },
+      { value: Number.POSITIVE_INFINITY, label: "+Infinity" },
+    ])("rejects backoffMultiplier = $label", async ({ value }) => {
+      await expect(
+        withRetryBudget(okFn, { maxAttempts: 3, backoffMs: 0, backoffMultiplier: value }),
+      ).rejects.toThrow(/backoffMultiplier must be a finite number/);
+    });
+
+    test("regression — integer maxAttempts and finite backoffs still accepted", async () => {
+      await expect(
+        withRetryBudget(okFn, { maxAttempts: 1, backoffMs: 0, backoffMultiplier: 0.5 }),
+      ).resolves.toBe("ok");
+    });
+  });
+
+  describe("expectSemanticallySimilar threshold", () => {
+    test.each([
+      { value: Number.NaN, label: "NaN (would silently make assertion vacuous)" },
+      { value: Number.POSITIVE_INFINITY, label: "+Infinity" },
+      { value: Number.NEGATIVE_INFINITY, label: "-Infinity" },
+    ])("rejects threshold = $label", ({ value }) => {
+      expect(() =>
+        expectSemanticallySimilar("a b c", "a b c", { threshold: value }),
+      ).toThrow(/threshold must be a finite number/);
+    });
+
+    test("regression — finite threshold in [0, 1] still accepted", () => {
+      expect(() => expectSemanticallySimilar("a b c", "a b c", { threshold: 0.5 })).not.toThrow();
+      expect(() => expectSemanticallySimilar("a b c", "a b c", { threshold: 0 })).not.toThrow();
+      expect(() => expectSemanticallySimilar("a b c", "a b c", { threshold: 1 })).not.toThrow();
+    });
+  });
+});

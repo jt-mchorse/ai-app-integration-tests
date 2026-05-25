@@ -86,20 +86,36 @@ export async function withRetryBudget<T>(
   fn: () => Promise<T>,
   policy: RetryPolicy,
 ): Promise<T> {
-  if (policy.maxAttempts < 1) {
-    throw new RangeError(`maxAttempts must be >= 1, got ${policy.maxAttempts}`);
+  // Integer-and-finite guard. Pre-#24 the `< 1` check accepted NaN (NaN < 1
+  // is false), so the for-loop `attempt <= NaN` was always false → loop
+  // never ran → RetryBudgetExhaustedError(NaN, undefined). Also accepted
+  // fractional `maxAttempts` which silently truncated via the integer
+  // attempt counter.
+  if (!Number.isInteger(policy.maxAttempts) || policy.maxAttempts < 1) {
+    throw new RangeError(
+      `maxAttempts must be an integer >= 1, got ${policy.maxAttempts}`,
+    );
   }
-  if (policy.backoffMs < 0) {
-    throw new RangeError(`backoffMs must be >= 0, got ${policy.backoffMs}`);
+  // Finiteness guard. Pre-#24 NaN and Infinity passed: NaN → Math.pow(NaN,…)
+  // = NaN → setTimeout(NaN) coerces to 0 (silent abandonment of the backoff
+  // schedule); Infinity → setTimeout(Infinity) hangs the test.
+  if (!Number.isFinite(policy.backoffMs) || policy.backoffMs < 0) {
+    throw new RangeError(
+      `backoffMs must be a finite number >= 0, got ${policy.backoffMs}`,
+    );
   }
   // Only validate user-supplied values — undefined still resolves to the
   // 2.0 default below. A non-positive multiplier produces 0 or alternating-
   // sign / NaN backoffs (Math.pow with a non-positive base on a fractional
-  // exponent is NaN), which then poison the sleep() call. Catching it here
-  // surfaces the bug at the boundary instead of mid-loop.
-  if (policy.backoffMultiplier !== undefined && policy.backoffMultiplier <= 0) {
+  // exponent is NaN), which then poison the sleep() call. NaN and +Infinity
+  // poison Math.pow the same way and were silently accepted pre-#24.
+  // Catching it here surfaces the bug at the boundary instead of mid-loop.
+  if (
+    policy.backoffMultiplier !== undefined &&
+    (!Number.isFinite(policy.backoffMultiplier) || policy.backoffMultiplier <= 0)
+  ) {
     throw new RangeError(
-      `backoffMultiplier must be > 0, got ${policy.backoffMultiplier}`,
+      `backoffMultiplier must be a finite number > 0, got ${policy.backoffMultiplier}`,
     );
   }
   const classify = policy.classify ?? defaultClassify;
