@@ -235,3 +235,14 @@ Three new tests: two on the multiplier guard (zero/negative reject; sub-1.0 vali
 **Open questions / blockers:** none — PR ready for review.
 
 **Next session:** Atomicity arc now spans six repos (four Python, two TypeScript). Two TypeScript repos with plausible candidates remain — `agent-orchestration-platform` (trace artifacts to disk if any) and `nextjs-streaming-ai-patterns` (probably no writes, SSR-only). Worth a quick survey to determine if they're actually candidates before committing to a 7th PR. Otherwise pivot to a different harm class.
+
+## 2026-05-26 — Issue #30: README decision-range upper-bound lock (final)
+**Duration:** ~6 min · **Branch:** `session/2026-05-26-2341-issue-30`
+
+- Added `test/readme-decision-range.test.ts`.
+- Added `D-002…D-011` citation under `## Architecture`.
+
+**Why this work, this session:** Completes the portfolio at 12 of 12 repos — the drift class that surfaced in python-async-llm-pipelines PR #39 (D-011 landed without README range bump) can no longer recur silently anywhere.
+
+**Open questions / blockers:** none.
+**Next session:** Portfolio invariants saturated again; pivot.
