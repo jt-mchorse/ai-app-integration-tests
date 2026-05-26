@@ -13,6 +13,31 @@ export interface InstallOptions {
 
 const DEFAULT_HOSTS = ["api.anthropic.com"];
 
+/**
+ * Validate `opts.hosts` at the install-function entry (#26).
+ *
+ * Same harm class as D-005 (`missing-cassette-is-fatal`) but at the
+ * layer above: `installRecorder({ hosts: [] })` silently degraded to
+ * pass-through because `?? DEFAULT_HOSTS` only handles `undefined`,
+ * not empty arrays. Every "intercepted" call then hit the real upstream
+ * — tests pass green but were actually hitting live APIs.
+ */
+function validateHosts(hosts: string[] | undefined, fnName: string): void {
+  if (hosts === undefined) return; // default DEFAULT_HOSTS applies
+  if (hosts.length === 0) {
+    throw new Error(
+      `${fnName}: hosts must be a non-empty array; got []. Pass at least one hostname or omit the field to use the default ["api.anthropic.com"].`,
+    );
+  }
+  for (const [i, h] of hosts.entries()) {
+    if (typeof h !== "string" || h.length === 0) {
+      throw new Error(
+        `${fnName}: hosts[${i}] must be a non-empty string; got ${JSON.stringify(h)}`,
+      );
+    }
+  }
+}
+
 let originalFetch: typeof fetch | null = null;
 
 /**
@@ -30,6 +55,7 @@ let originalFetch: typeof fetch | null = null;
  * ```
  */
 export function installRecorder(opts: InstallOptions = {}): void {
+  validateHosts(opts.hosts, "installRecorder");
   if (originalFetch !== null) {
     throw new Error("an interceptor is already installed; call uninstall() first");
   }
@@ -46,6 +72,7 @@ export function installRecorder(opts: InstallOptions = {}): void {
  * by request hash; missing cassette throws.
  */
 export function installReplayer(opts: InstallOptions = {}): void {
+  validateHosts(opts.hosts, "installReplayer");
   if (originalFetch !== null) {
     throw new Error("an interceptor is already installed; call uninstall() first");
   }
