@@ -207,3 +207,17 @@ Three new tests: two on the multiplier guard (zero/negative reject; sub-1.0 vali
 **Open questions / blockers:** none — PR ready for review.
 
 **Next session:** All five originally-unvisited-tonight repos closed; the loop can now deepen on already-touched repos (each picked up one issue tonight) for more contract-tightening or pivot to a different harm class. Many candidates remain — cassette layer numerics, fetch-recorder limits, eslint rule add for "no sign-only finite checks."
+
+## 2026-05-26 — Issue #26: installRecorder/installReplayer hosts validation closes the install-layer silent-degradation gap
+**Duration:** ~25 min · **Branch:** `session/2026-05-26-0020-issue-26`
+
+- `installRecorder({ hosts: [] })` and `installReplayer({ hosts: [] })` previously silently degraded to pass-through. `?? DEFAULT_HOSTS` short-circuits only on `undefined`, not on empty arrays. The resulting `new Set([])` had no entries; `shouldIntercept` returned `false` for every URL; **every fetch fell through to the real upstream**. Tests pass green while actually hitting live APIs in CI. Same harm class as D-005 (missing-cassette-is-fatal) but at the install layer above.
+- Added a `validateHosts(hosts, fnName)` helper to `src/install.ts`. Skips when `hosts === undefined` (default path preserved). Throws with the function name on `length === 0`; throws with the function name + element index on any element that isn't a non-empty string. Element validation closes the TypeScript-escape cases — `[null]`, `[42]`, `["api.x.com", ""]` etc.
+- `installRecorder` and `installReplayer` call `validateHosts` as their **first** statement, before the `originalFetch` capture. The ordering matters: rejection must not leave `globalThis.fetch` in a broken state. An explicit ordering pin in tests asserts `globalThis.fetch` is unchanged after a rejected install.
+- New `test/install.test.ts` (23 tests): symmetric reject/accept matrices for both install functions (covering `[]`, `[""]`, `["...", ""]`, `[null]`, `[42]`, `[true]`, `[undefined]`; acceptance over 1-3 valid hosts; undefined-default preservation; explicit-undefined preservation), plus the ordering pin block. Full suite 103 → 126. Typecheck clean.
+
+**Why this work, this session:** Ninth Phase B+C target in the 360-min night session. Different harm class than the #24 finiteness sweep on this repo — closes an install-layer silent-degradation path. Picked via build-sequence #12 (the last repo); completes the validation-sweep loop — every portfolio repo now has either a Phase A merge (4) or a Phase B+C PR (8) tonight.
+
+**Open questions / blockers:** none — PR ready for review.
+
+**Next session:** The validation-sweep arc has comprehensively touched all 12 repos this night session. Next-session candidates: a portfolio-ops MEMORY update reflecting this session's scope, or a pivot away from validation (the prior session memory called this out as the next direction).
