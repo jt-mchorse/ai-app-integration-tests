@@ -40,7 +40,8 @@ retry budgets, time-bounded waits, and semantic equality.
 ## Architecture
 
 See [`docs/architecture.md`](docs/architecture.md) for the full
-breakdown. Quick diagram:
+breakdown and the design decisions behind each layer (D-002…D-011).
+Quick diagram:
 
 ```mermaid
 flowchart LR
