@@ -221,3 +221,17 @@ Three new tests: two on the multiplier guard (zero/negative reject; sub-1.0 vali
 **Open questions / blockers:** none — PR ready for review.
 
 **Next session:** The validation-sweep arc has comprehensively touched all 12 repos this night session. Next-session candidates: a portfolio-ops MEMORY update reflecting this session's scope, or a pivot away from validation (the prior session memory called this out as the next direction).
+
+## 2026-05-26 — Issue #28: Atomic CassetteStore.write closes the cassette-corruption blind spot
+**Duration:** ~20 min · **Branch:** `session/2026-05-26-1537-issue-28`
+
+- `CassetteStore.write` (src/io.ts:18) used `fs.promises.writeFile` directly. A SIGINT/OOM/disk-full mid-record leaves the cassette JSON zero-length or partial. The harm class extends D-005 (`missing-cassette-is-fatal`): the existing replay guard catches filename-vs-contents mismatches, but a partial-write where the truncation lands *after* `schema_version` and `request_hash` were already written will parse, return a partial object with missing message bodies, and **silently serve garbage** at replay time. That mode escapes the existing integrity check.
+- Added a private `atomicWriteFile(target, data)` helper at the bottom of `src/io.ts` — same shape as `mcp-server-cookbook/servers/filesystem-sandbox/src/atomic_write.ts` (#36) and the four Python helpers landed earlier this session. Private placement keeps the public surface tight.
+- Routed `CassetteStore.write` through it. Dropped the now-redundant `fs.mkdir(opts.dir, ...)` — the helper handles parent dir creation.
+- 6 new tests in `test/atomic_cassette_write.test.ts`. The load-bearing one is `rename failure during overwrite preserves the pre-existing cassette bitwise`: write a cassette, capture bytes, simulate `fs.rename` failure on a re-record, assert (a) on-disk content is bitwise identical via `Buffer.equals` and (b) `store.read` returns the ORIGINAL response body (not the MUTATED). Two independent checks proving the same property — corrupting an old cassette during a re-record (the natural operator Ctrl+C path) cannot lose test coverage silently. Full vitest suite 126 → 132 passing. Typecheck clean. ESLint clean.
+
+**Why this work, this session:** Sixth Phase B+C target in today's 180-min DAY session, second TypeScript implementation in the atomicity arc. Cassettes are the test repo's analogue of the cost-bench artifacts / eval JSONs / snapshot YAMLs that the four Python PRs closed earlier — same harm class, same fix shape.
+
+**Open questions / blockers:** none — PR ready for review.
+
+**Next session:** Atomicity arc now spans six repos (four Python, two TypeScript). Two TypeScript repos with plausible candidates remain — `agent-orchestration-platform` (trace artifacts to disk if any) and `nextjs-streaming-ai-patterns` (probably no writes, SSR-only). Worth a quick survey to determine if they're actually candidates before committing to a 7th PR. Otherwise pivot to a different harm class.
