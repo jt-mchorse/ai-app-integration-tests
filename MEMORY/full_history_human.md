@@ -246,3 +246,14 @@ Three new tests: two on the multiplier guard (zero/negative reject; sub-1.0 vali
 
 **Open questions / blockers:** none.
 **Next session:** Portfolio invariants saturated again; pivot.
+
+## 2026-05-27 — Issue #32: CONTRIBUTING.md cadence-wording propagation
+**Duration:** ~3 min · **PR:** #33
+
+- Replaced pre-D-008 `~60-minute session cap` line with D-008 (180/360 min, multi-issue loop) and D-004 (Phase A PR auto-merge) wording, matching the bootstrap template post-portfolio-ops#3.
+
+**Why this work, this session:** Iteration in the autonomous NIGHT session propagation arc for portfolio-ops#3.
+
+**Open questions / blockers:** none.
+
+**Next session:** continue portfolio propagation.
