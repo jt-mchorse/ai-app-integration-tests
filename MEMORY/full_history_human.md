@@ -257,3 +257,18 @@ Three new tests: two on the multiplier guard (zero/negative reject; sub-1.0 vali
 **Open questions / blockers:** none.
 
 **Next session:** continue portfolio propagation.
+
+## 2026-06-02 — Issue #34: validateRecorderOptions + validateReplayerOptions (factory-layer parity)
+**Duration:** ~22 min · **Branch:** `session/2026-06-02-0342-issue-34`
+
+- Added `validateRecorderOptions(opts)` and `validateReplayerOptions(opts)` in `src/fetch-recorder.ts`, invoked at the top of `createRecorderFetch` / `createReplayerFetch`. Mirrors the installer-layer `validateHosts` shipped in #26 — extends the silent-pass-through harm-class closure one layer down to the factories that direct callers (custom embed, alternative install paths) reach. The harm class: `createRecorderFetch({ store, hosts: new Set() })` silently makes every fetch pass through to upstream because `shouldIntercept` returns false on an empty Set — **no cassettes are ever written, tests pass green while actually hitting live APIs**. Worst shape for the repo's purpose. The error message names the harm directly so operators reading the throw understand the *why*.
+- Store check is duck-typed (`isStoreLike` checks `read` + `write` are functions) so the factory doesn't have to import `CassetteStore` for an `instanceof` — keeps the factory's concrete-class footprint at zero and lets test fakes satisfy the contract without subclassing.
+- Layered defense: the installer-layer #26 gate fires first on the `installRecorder({ hosts: [] })` path with its own message; the factory-layer #34 gate is the backstop. Tests explicitly assert the installer-layer error message is still seen on the installer path, so the two layers don't collide on the same call site.
+- 20 new vitest cases in `test/fetch-recorder-validation.test.ts`: 4 store checks (recorder), 6 hosts checks (recorder), 3 replayer reuses (covers the same per-field surface as a sanity check that the second factory has identical posture), 2 construction-time gates (recorder + replayer), 3 installer round-trip acceptance regressions. Full suite 153/153 pass (was 133).
+- `docs/architecture.md` "fetch-recorder" paragraph gains a bullet citing #34 and #26 alongside. `KNOWN_SHIPPED_ISSUES` arch-doc pin unchanged at (1,2,3,4,5) because #34 is a parity propagation, not a new core deliverable. No new `D-NNN` — pure extension of the established posture to the layer below.
+
+**Why this work, this session:** Iteration 4 of the night session loop. `ai-app-integration-tests` was the last untouched-since-2026-05-27 candidate (position 12 in build sequence). The #26 silent-pass-through closure is one of the load-bearing safety invariants in this repo — its factory-layer counterpart was the only direct-caller surface that could still produce the harm. Closing it saturates the protection.
+
+**Open questions / blockers:** none — ready for review.
+
+**Next session:** All four untouched-since-2026-05-27 repos (vector-search-at-scale, mcp-server-cookbook, nextjs-streaming-ai-patterns, ai-app-integration-tests) closed this run. Future iterations: pivot back to the recently-touched repos for any next-tier parity opportunities, or pick from the existing low-priority demo-capture issues if operator unblocks them.
