@@ -142,6 +142,17 @@ If a second provider lands, swapping to MSW is a one-file change inside
 `fetch-recorder.ts` — the public API (`installRecorder` /
 `installReplayer` / `installFromEnv` / `uninstall`) doesn't change.
 
+`createRecorderFetch` / `createReplayerFetch` carry factory-layer
+entry validation (#34) that mirrors `installRecorder`'s installer-
+layer `validateHosts` (#26). Direct factory-layer callers (custom
+embed, alternative install paths) get the same loud failure on bad
+options — empty hosts Set, missing store, empty-string host entries —
+that the installer-layer caller already got. The harm class being
+closed is the silent pass-through where `hosts: new Set()` degraded
+the recorder to "every fetch hits upstream, no cassette written" —
+tests pass green while actually hitting live APIs, the worst shape
+for this repo's purpose.
+
 ## Example app under test (#4)
 
 `example-app/` is a peer Next.js 15 (app router, React 19, **D-007**)

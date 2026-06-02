@@ -113,10 +113,86 @@ function shouldIntercept(url: string, hosts: ReadonlySet<string>): boolean {
 }
 
 /* ------------------------------------------------------------------ */
+/* Factory-layer entry validation (#34)                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Duck-typed shape check: anything carrying `read` + `write` functions
+ * satisfies the factory's contract with `CassetteStore`. We don't
+ * `instanceof CassetteStore` because doing so would force the factory
+ * to import the concrete class, which is otherwise opaque here.
+ */
+function isStoreLike(store: unknown): boolean {
+  if (store === null || typeof store !== "object") return false;
+  const s = store as { read?: unknown; write?: unknown };
+  return typeof s.read === "function" && typeof s.write === "function";
+}
+
+function validateHosts(hosts: ReadonlySet<string> | undefined, fnName: string): void {
+  if (!(hosts instanceof Set)) {
+    throw new Error(
+      `${fnName}: hosts must be a Set of hostnames; got ${
+        hosts === undefined ? "undefined" : typeof hosts
+      }`,
+    );
+  }
+  if (hosts.size === 0) {
+    throw new Error(
+      `${fnName}: hosts must be a non-empty Set; got an empty Set. ` +
+        `An empty hosts Set silently degrades the recorder to pass-through ` +
+        `(every fetch hits upstream, no cassette is written) — the worst shape ` +
+        `for this repo's purpose. Pass at least one hostname, or use the ` +
+        `higher-level installRecorder/installReplayer which defaults to ` +
+        `["api.anthropic.com"].`,
+    );
+  }
+  let i = 0;
+  for (const h of hosts) {
+    if (typeof h !== "string" || h.length === 0) {
+      throw new Error(
+        `${fnName}: hosts entry #${i} must be a non-empty string; got ${JSON.stringify(h)}`,
+      );
+    }
+    i++;
+  }
+}
+
+/**
+ * Validate `opts` at the entry of `createRecorderFetch` (#34).
+ *
+ * Sibling to `validateHosts` in `src/install.ts` (#26) — that gate
+ * lives at the installer layer; this one closes the same silent-
+ * pass-through harm class at the factory layer below, where a direct
+ * caller (custom embed, alt install path) bypasses the installer
+ * entry.
+ */
+export function validateRecorderOptions(opts: RecorderOptions): void {
+  if (!isStoreLike(opts.store)) {
+    throw new Error(
+      "createRecorderFetch: opts.store must be a CassetteStore-like " +
+        "object with read() and write() methods",
+    );
+  }
+  validateHosts(opts.hosts, "createRecorderFetch");
+}
+
+/** Sibling of `validateRecorderOptions` for the replayer factory (#34). */
+export function validateReplayerOptions(opts: ReplayerOptions): void {
+  if (!isStoreLike(opts.store)) {
+    throw new Error(
+      "createReplayerFetch: opts.store must be a CassetteStore-like " +
+        "object with read() and write() methods",
+    );
+  }
+  validateHosts(opts.hosts, "createReplayerFetch");
+}
+
+/* ------------------------------------------------------------------ */
 /* Recorder                                                            */
 /* ------------------------------------------------------------------ */
 
 export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
+  validateRecorderOptions(opts);
   const upstream = opts.upstream ?? globalThis.fetch;
 
   return async function recorderFetch(
@@ -237,6 +313,7 @@ export class MissingCassetteError extends Error {
 }
 
 export function createReplayerFetch(opts: ReplayerOptions): typeof fetch {
+  validateReplayerOptions(opts);
   return async function replayerFetch(
     input: RequestInfo | URL,
     init?: RequestInit,
