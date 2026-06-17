@@ -272,3 +272,21 @@ Three new tests: two on the multiplier guard (zero/negative reject; sub-1.0 vali
 **Open questions / blockers:** none — ready for review.
 
 **Next session:** All four untouched-since-2026-05-27 repos (vector-search-at-scale, mcp-server-cookbook, nextjs-streaming-ai-patterns, ai-app-integration-tests) closed this run. Future iterations: pivot back to the recently-touched repos for any next-tier parity opportunities, or pick from the existing low-priority demo-capture issues if operator unblocks them.
+
+## 2026-06-17 — Issue #36: Workflow YAML-parseability lock
+**Duration:** ~6 min · **Branch:** `session/2026-06-17-1934-issue-36`
+
+Added `test/workflows-yaml-parseable.test.ts` (vitest, 3 tests for
+`ci.yml`) and pulled `js-yaml` + `@types/js-yaml` into
+`devDependencies`. Mirrors `agent-orchestration-platform#42` and
+`nextjs-streaming-ai-patterns#34`.
+
+**Why this work, this session:** Twelfth and final hop of the
+`portfolio-ops#30` propagation arc — every portfolio repo now carries
+the lock.
+
+**Open questions / blockers:** none — PR #37 open.
+
+**Next session:** with the propagation arc complete, future sessions
+return to per-repo feature work. The lock test grows naturally as new
+workflow files are added.
