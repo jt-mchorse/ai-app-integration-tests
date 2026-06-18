@@ -302,3 +302,30 @@ workflow files are added.
 **Open questions / blockers:** none.
 
 **Next session:** the last hop — propagate the lock to `portfolio-ops` itself.
+
+## 2026-06-18 — Issue #40: workflows-concurrency lock (final hop, 13/13)
+**Duration:** ~15 min · **Branch:** session/2026-06-18-1917-issue-40
+
+- Added `test/workflows-concurrency.test.ts` mirroring the canonical
+  TS shape from `nextjs-streaming-ai-patterns`: vitest + js-yaml,
+  parametrized over `.github/workflows/*.yml`, three per-file
+  invariants (block exists, `group` is non-empty string,
+  `cancel-in-progress` is the YAML bool `true`), plus a smoke-discovery
+  boundary that fails loudly on an empty fixture set.
+- vitest run: 172 → 176 tests, no regressions.
+
+**Why this work, this session:** This repo's `ci.yml` already had the
+concurrency block from an earlier session, so the runtime behavior was
+correct, but the lock test that would catch removal in a future PR
+was the only gap in the 13/13 portfolio-wide concurrency-lock arc.
+Surfaced during the 2026-06-18 day session's Phase A review pass when
+the 12 propagation PRs from `llm-eval-harness#64` landed across the
+other 12 repos.
+
+**Open questions / blockers:** none. Test count 172 → 176.
+
+**Next session:** the portfolio-wide PR-time silent-rot prevention arc
+is now at 13/13 for all three invariants (yaml-parseable, timeout-
+minutes, concurrency). Future work should pivot away from lock
+propagation onto either real product features in priority-tier repos
+or a new fingerprint shape if one is identified.

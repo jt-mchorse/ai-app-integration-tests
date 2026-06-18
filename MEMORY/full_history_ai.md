@@ -433,3 +433,21 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-06-18T19:17Z
+issue: 40
+focus: concurrency_lock_final_hop_thirteen_of_thirteen
+phase: day_session_phase_b_iteration_2
+duration_min: 15
+delta:
+  files_added: 1   # test/workflows-concurrency.test.ts
+  tests_added: 4   # 1 smoke + 3 per-workflow on ci.yml
+context_for_next_session:
+  - final_hop_of_concurrency_lock_propagation_arc_other_twelve_landed_in_2026_06_18_day_session_this_repo_was_the_gap_because_it_already_had_ci_yml_concurrency_block_from_earlier_session_but_no_lock_test_to_catch_removal
+  - mirrors_canonical_ts_shape_from_nextjs_streaming_ai_patterns_workflows_concurrency_test_ts_vitest_plus_js_yaml_parametrized_over_workflows_glob_three_per_file_invariants_block_exists_group_non_empty_string_cancel_in_progress_yaml_bool_true_plus_smoke_discovery_boundary
+  - vitest_172_to_176_no_regressions_full_run_clean
+  - portfolio_silent_rot_arc_pr_time_inverse_safety_nets_now_at_thirteen_of_thirteen_for_all_three_invariants_yaml_parseable_timeout_minutes_concurrency
+decisions_made: []
+followups: []
+---
