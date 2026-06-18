@@ -414,3 +414,22 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-06-18T03:39Z
+duration_min: 15
+issue: 38
+focus: workflow_timeout_minutes_lock_propagation_hop_10_fourth_vitest_hop
+phase: night_session_phase_b_iteration_9
+delta:
+  files_added: 1   # test/workflows-timeout-minutes.test.ts
+  files_changed: 1 # .github/workflows/ci.yml
+  tests_added: 16  # 1 smoke + 5 jobs * 3 invariants
+context_for_next_session:
+  - tenth_propagation_hop_fourth_vitest_hop_after_nextjs_streaming_aop_msc_node_test
+  - five_jobs_with_per_job_ceilings_toolkit_15_example_app_20_playwright_25_no_leaked_secrets_15_memory_check_15_playwright_is_the_heaviest_chromium_install_plus_next_build_plus_e2e
+  - audit_phase_a_py_will_drop_ai_app_integration_tests_from_missing_timeout_finding_set_after_this_pr_merges
+  - only_portfolio_ops_itself_remains_in_the_missing_timeout_finding_set_after_this_lands
+decisions_made: []
+followups: []
+---

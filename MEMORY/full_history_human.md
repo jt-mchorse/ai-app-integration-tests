@@ -290,3 +290,15 @@ the lock.
 **Next session:** with the propagation arc complete, future sessions
 return to per-repo feature work. The lock test grows naturally as new
 workflow files are added.
+
+## 2026-06-18 — Issue #38: timeout-minutes guard + lock test
+**Duration:** ~15 min · **Branch:** `session/2026-06-18-0339-issue-38`
+
+- Added `timeout-minutes` to every job in `ci.yml`: `toolkit` 15, `example-app` 20, `playwright` 25, `no-leaked-secrets` 15, `memory-check` 15. `playwright` is the heaviest (Chromium install + production Next.js build + multi-test e2e).
+- Added `test/workflows-timeout-minutes.test.ts` — 16 new tests (1 smoke + 5 jobs × 3 invariants).
+
+**Why this work, this session:** tenth hop in the portfolio-wide timeout-minutes propagation arc; fourth Vitest hop. After this lands, only `portfolio-ops` itself remains.
+
+**Open questions / blockers:** none.
+
+**Next session:** the last hop — propagate the lock to `portfolio-ops` itself.
