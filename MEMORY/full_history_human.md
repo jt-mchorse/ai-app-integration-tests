@@ -329,3 +329,15 @@ is now at 13/13 for all three invariants (yaml-parseable, timeout-
 minutes, concurrency). Future work should pivot away from lock
 propagation onto either real product features in priority-tier repos
 or a new fingerprint shape if one is identified.
+
+## 2026-06-22 — Issue #42: normalizeUrl — canonicalize repeated same-key query params
+**Duration:** ~25 min · **Branch:** `session/2026-06-22-1931-issue-42`
+
+- Found via a Phase A Explore-subagent sweep over the toolkit (cassette/fetch-recorder/io/install/retry-budget/semantic-assert/wait-for) — the only open issue (#16) is a `priority:low` demo-capture binary not doable headless, so the dogfood pattern surfaced real work instead. `normalizeUrl` sorted query params by key only; since JS sort is stable, repeated same-key params (`?tag=a&tag=b`) kept their input order, so that and `?tag=b&tag=a` normalized and hashed differently — a replay miss that throws `MissingCassetteError` under D-005 (no silent fallback), violating the canonicalization contract on `NormalizedRequest.url`.
+- Fix: break the key-sort tie by value, consistent with the existing by-key sort and `canonicalize`'s recursive body-key sort. The existing "preserves repeated query params" test only checked value *presence*, not order — so the gap was unguarded. Tightened it to assert canonical order and added `normalizeUrl` order-equivalence + `hashRequest` hash-equality tests across the two orderings. Both fail pre-fix. Suite 176 → 178, tsc + eslint clean. PR #43 ready.
+
+**Why this work, this session:** the repo's only open issue is a headless-impossible demo capture; a dogfood sweep found a real replay-correctness bug in the cassette matching contract — strictly higher value than no work.
+
+**Open questions / blockers:** none.
+
+**Next session:** the URL canonicalization is now order-complete for both cross-key and same-key params. No further `normalizeUrl` lead; broader URL canonicalization (trailing-slash, default-port, percent-encoding case) is not a known failure mode and was deliberately deferred.
