@@ -45,6 +45,13 @@ describe("normalizeUrl", () => {
     expect(u).toContain("tag=a");
     expect(u).toContain("tag=b");
   });
+
+  it("canonicalizes repeated same-key params to a stable order regardless of input order (#42)", () => {
+    // Both orderings must normalize to the same string, not just contain the
+    // same values — otherwise reordering causes a replay miss.
+    expect(normalizeUrl("https://x/y?tag=b&tag=a")).toBe(normalizeUrl("https://x/y?tag=a&tag=b"));
+    expect(normalizeUrl("https://x/y?tag=b&tag=a")).toBe("https://x/y?tag=a&tag=b");
+  });
 });
 
 describe("hashRequest", () => {
@@ -89,6 +96,25 @@ describe("hashRequest", () => {
   it("ignores headers (header values vary across runs)", () => {
     const a = hashRequest({ method: "GET", url: "https://x/a", headers: { x: "1" }, body: null });
     const b = hashRequest({ method: "GET", url: "https://x/a", headers: { y: "2" }, body: null });
+    expect(a).toBe(b);
+  });
+
+  it("is stable across repeated same-key query-param reordering (#42)", () => {
+    // The replay-miss the bug caused: record with one ordering, replay with the
+    // other. Both go through normalizeUrl first (as the recorder does), so the
+    // hashes must match or replay throws MissingCassetteError (D-005).
+    const a = hashRequest({
+      method: "GET",
+      url: normalizeUrl("https://x/y?tag=a&tag=b"),
+      headers: {},
+      body: null,
+    });
+    const b = hashRequest({
+      method: "GET",
+      url: normalizeUrl("https://x/y?tag=b&tag=a"),
+      headers: {},
+      body: null,
+    });
     expect(a).toBe(b);
   });
 });

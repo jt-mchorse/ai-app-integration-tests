@@ -69,7 +69,14 @@ export function canonicalize(value: unknown): unknown {
 
 export function normalizeUrl(url: string): string {
   const u = new URL(url);
-  const params = [...u.searchParams.entries()].sort(([a], [b]) => a.localeCompare(b));
+  // Sort by key, then break ties by value. Comparing keys only left repeated
+  // same-key params (`?tag=a&tag=b`) in input order — JS sort is stable — so
+  // `?tag=a&tag=b` and `?tag=b&tag=a` produced different hashes and a replay
+  // miss (D-005 throws, no silent fallback). Tie-breaking by value canonicalizes
+  // them, consistent with the by-key sort and `canonicalize`'s body-key sort.
+  const params = [...u.searchParams.entries()].sort(
+    ([ka, va], [kb, vb]) => ka.localeCompare(kb) || va.localeCompare(vb),
+  );
   u.search = "";
   for (const [k, v] of params) u.searchParams.append(k, v);
   return u.toString();
