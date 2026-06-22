@@ -289,6 +289,11 @@ async function captureSse(r: Response): Promise<{ frames: string[]; replayBody: 
       frames.push(frame);
     }
   }
+  // Flush the decoder: with `stream: true` an incomplete trailing multibyte
+  // UTF-8 sequence stays buffered inside it. Without this final `decode()` it
+  // would be silently dropped from the recorded body; flushing emits the
+  // standard U+FFFD replacement char so a truncated stream isn't lost.
+  buf += decoder.decode();
   if (buf.length > 0) frames.push(buf);
 
   const replayBody = frames.join("");

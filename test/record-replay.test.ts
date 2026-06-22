@@ -113,6 +113,47 @@ describe("record then replay (SSE streaming)", () => {
     const out = await replayed.text();
     expect(out).toBe(frames.join(""));
   });
+
+  it("preserves a truncated trailing UTF-8 sequence instead of silently dropping it", async () => {
+    // A stream that ends mid-multibyte-character (a truncated/aborted recording)
+    // leaves an incomplete sequence buffered in the streaming TextDecoder. Without
+    // the final flush those bytes vanish from the recorded body; the flush emits
+    // the standard U+FFFD replacement char so nothing is silently lost.
+    const completeFrame = 'data: {"text":"hi"}\n\n';
+    const upstream: typeof fetch = async () => {
+      const encoder = new TextEncoder();
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode(completeFrame));
+          // First two bytes of "✓" (E2 9C 93) — the third byte never arrives.
+          controller.enqueue(new Uint8Array([0xe2, 0x9c]));
+          controller.close();
+        },
+      });
+      return new Response(body, {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      });
+    };
+
+    const recorder = createRecorderFetch({ upstream, store, hosts: HOSTS });
+    const recorded = await recorder("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": "sk-ant-stream-secret-1234567890abcdefghij" },
+      body: JSON.stringify({ model: "x", stream: true }),
+    });
+    // The replacement char must be present — pre-fix the bytes were dropped and
+    // the body equaled `completeFrame` exactly.
+    expect(await recorded.text()).toBe(`${completeFrame}�`);
+
+    const replayer = createReplayerFetch({ store, hosts: HOSTS });
+    const replayed = await replayer("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {},
+      body: JSON.stringify({ stream: true, model: "x" }),
+    });
+    expect(await replayed.text()).toBe(`${completeFrame}�`);
+  });
 });
 
 describe("missing cassette in replay mode", () => {
