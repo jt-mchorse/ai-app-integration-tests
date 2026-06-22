@@ -341,3 +341,15 @@ or a new fingerprint shape if one is identified.
 **Open questions / blockers:** none.
 
 **Next session:** the URL canonicalization is now order-complete for both cross-key and same-key params. No further `normalizeUrl` lead; broader URL canonicalization (trailing-slash, default-port, percent-encoding case) is not a known failure mode and was deliberately deferred.
+
+## 2026-06-22 — Issue #44: fetch-recorder — captureSse never flushed the streaming TextDecoder
+**Duration:** ~15 min · **Branch:** `session/2026-06-22-2343-issue-44`
+
+- Found via a Phase A dogfood Explore agent over the cassette layer, then verified with a Node TextDecoder repro. `captureSse` decoded the SSE body with `decoder.decode(value, { stream: true })` in the read loop but never called the final `decoder.decode()` flush. With `stream: true`, an incomplete trailing multibyte UTF-8 sequence stays buffered inside the decoder; without the flush it was silently dropped from the recorded body when a stream ended mid-character (a truncated/aborted recording). Cross-chunk multibyte splits were already handled; only the end-of-stream case lost bytes.
+- Fix: add the standard final `buf += decoder.decode()` flush after the loop so buffered bytes surface as U+FFFD instead of vanishing. Regression test ends an SSE stream on an incomplete multibyte chunk and asserts the recorded + replayed body preserve the replacement char; it fails pre-fix. Suite 178 → 179, tsc + eslint clean. PR #45 ready.
+
+**Why this work, this session:** the portfolio is saturated; a dogfood sweep of the cassette recorder surfaced a real silent-data-loss gap (the textbook streaming-decoder flush omission). Low reachability (only a truncated stream ends mid-character) so filed priority:low, but a genuine correctness fix with a clean standard-pattern resolution.
+
+**Open questions / blockers:** none.
+
+**Next session:** no further `fetch-recorder` lead; the decoder is now flushed at end-of-stream. URL canonicalization (from #42) and the demo-capture binary (#16) remain the only open items.
