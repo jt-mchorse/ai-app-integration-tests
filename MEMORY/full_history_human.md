@@ -353,3 +353,15 @@ or a new fingerprint shape if one is identified.
 **Open questions / blockers:** none.
 
 **Next session:** no further `fetch-recorder` lead; the decoder is now flushed at end-of-stream. URL canonicalization (from #42) and the demo-capture binary (#16) remain the only open items.
+
+## 2026-06-23 — Issue #46: secret scanner missed Google (AIza…) API keys
+**Duration:** ~15 min · **Branch:** `session/2026-06-23-0401-issue-46`
+
+- Closed a consistency gap in `assertNoLeakedSecrets`. It scans the whole serialized cassette but only knew the `sk-`/`sk-ant-`/`Bearer` shapes. Issue #22 had already brought Google keys into the redaction scope (`x-goog-api-key`), yet a Gemini/Vertex key (`AIza…`) leaking through a non-redacted channel — e.g. a 400 error body echoing the submitted key — passed the scanner and would be committed into a cassette.
+- Added the `AIza…` pattern (open-ended length, matching the `sk-…{32,}` style). Added a response-body leak test mirroring the existing `sk-ant` one. Red pre-fix, green post-fix. Suite 179 → 180, tsc + eslint clean.
+
+**Why this work, this session:** found by a different-angle second pass in the night session's Phase A dogfood wave (first pass on this repo was clean). A real silent secret-leak-into-VCS gap on a security-critical guard.
+
+**Open questions / blockers:** none.
+
+**Next session:** trailing-dot FQDN gap in `shouldIntercept` is too low-reachability (no SDK emits trailing dots, fails loudly in replay) to file.
