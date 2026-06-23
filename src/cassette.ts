@@ -143,6 +143,12 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   /\bsk-[A-Za-z0-9_-]{32,}\b/,
   /\bsk-ant-[A-Za-z0-9_-]{32,}\b/,
   /\bBearer\s+[A-Za-z0-9_.\-/+=]{20,}\b/,
+  // Google / Gemini / Vertex AI keys (`AIza` + 35+ url-safe chars; real keys
+  // are 39 chars total). The `x-goog-api-key` header is already redacted (#22);
+  // this catches the same key class leaking through an un-redacted channel —
+  // e.g. an upstream 400 error body that echoes the submitted key. Open-ended
+  // length matches the `sk-…{32,}` style above and avoids brittleness.
+  /\bAIza[A-Za-z0-9_-]{35,}\b/,
 ];
 
 export function assertNoLeakedSecrets(cassette: CassetteV1): void {

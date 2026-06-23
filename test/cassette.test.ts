@@ -180,6 +180,21 @@ describe("assertNoLeakedSecrets", () => {
     expect(() => assertNoLeakedSecrets(c)).toThrow(/unredacted secret/);
   });
 
+  it("throws when a Google API key (AIza…) leaks in the response body (#22 parity)", () => {
+    // Google's 400 responses historically echo the submitted key. The
+    // x-goog-api-key header is redacted (#22); the scanner must also catch
+    // the same key class leaking through a non-redacted channel.
+    const c = baseCassette({
+      response: {
+        kind: "non_streaming",
+        status: 400,
+        headers: {},
+        body: '{"error":"API key not valid: AIzaSyD-1a2B3c4D5e6F7g8H9i0J1k2L3m4N5o6P"}',
+      },
+    });
+    expect(() => assertNoLeakedSecrets(c)).toThrow(/unredacted secret/);
+  });
+
   it("throws when a Bearer token leaks", () => {
     const c = baseCassette({
       request: {
