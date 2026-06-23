@@ -112,6 +112,19 @@ function shouldIntercept(url: string, hosts: ReadonlySet<string>): boolean {
   }
 }
 
+/**
+ * Lower-case every host so matching is case-insensitive. `URL.hostname` is
+ * always lower-cased by the WHATWG parser and hostnames are case-insensitive
+ * (RFC 3986 §3.2.2), but caller-supplied hosts are taken verbatim — a
+ * mixed-/upper-case entry like `API.ANTHROPIC.COM` would never match the
+ * lower-cased `u.hostname` and silently degrade the recorder to pass-through.
+ * Built once per factory so the per-request `shouldIntercept` stays a plain
+ * Set lookup.
+ */
+function normalizeHosts(hosts: ReadonlySet<string>): ReadonlySet<string> {
+  return new Set([...hosts].map((h) => h.toLowerCase()));
+}
+
 /* ------------------------------------------------------------------ */
 /* Factory-layer entry validation (#34)                                */
 /* ------------------------------------------------------------------ */
@@ -194,13 +207,14 @@ export function validateReplayerOptions(opts: ReplayerOptions): void {
 export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
   validateRecorderOptions(opts);
   const upstream = opts.upstream ?? globalThis.fetch;
+  const hosts = normalizeHosts(opts.hosts);
 
   return async function recorderFetch(
     input: RequestInfo | URL,
     init?: RequestInit,
   ): Promise<Response> {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-    if (!shouldIntercept(url, opts.hosts)) {
+    if (!shouldIntercept(url, hosts)) {
       return upstream(input, init);
     }
 
@@ -319,12 +333,13 @@ export class MissingCassetteError extends Error {
 
 export function createReplayerFetch(opts: ReplayerOptions): typeof fetch {
   validateReplayerOptions(opts);
+  const hosts = normalizeHosts(opts.hosts);
   return async function replayerFetch(
     input: RequestInfo | URL,
     init?: RequestInit,
   ): Promise<Response> {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-    if (!shouldIntercept(url, opts.hosts)) {
+    if (!shouldIntercept(url, hosts)) {
       // Pass-through to a noop is dangerous in replay mode — we don't want
       // tests accidentally hitting non-intercepted hosts. Throw loudly.
       throw new Error(
