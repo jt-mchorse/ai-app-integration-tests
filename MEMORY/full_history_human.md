@@ -365,3 +365,15 @@ or a new fingerprint shape if one is identified.
 **Open questions / blockers:** none.
 
 **Next session:** trailing-dot FQDN gap in `shouldIntercept` is too low-reachability (no SDK emits trailing dots, fails loudly in replay) to file.
+
+## 2026-06-23 — Issue #48: fetch-recorder host matching was case-sensitive
+**Duration:** ~20 min · **Branch:** `session/2026-06-23-1950-issue-48`
+
+- A Phase A dogfood sweep of the fetch-recorder path found that `shouldIntercept` compared the always-lower-cased `URL.hostname` against a hosts Set taken verbatim from the caller. A mixed-/upper-case host entry never matched, so the recorder silently degraded to pass-through (tests green, live API hit, no cassette) — the same harm class the existing `validateHosts` guards prevent.
+- Added a `normalizeHosts` helper and lower-cased the host set once in each factory (`createRecorderFetch`/`createReplayerFetch`), covering both the install helpers and direct callers. Added recorder + replayer tests with mixed-case hosts. Suite 180 → 182, eslint + tsc clean.
+
+**Why this work, this session:** sixth dogfood find of the DAY session, on a TypeScript repo whose surface the night-session Python waves hadn't deeply probed.
+
+**Open questions / blockers:** none.
+
+**Next session:** none specific to this issue.
