@@ -377,3 +377,16 @@ or a new fingerprint shape if one is identified.
 **Open questions / blockers:** none.
 
 **Next session:** none specific to this issue.
+
+---
+## 2026-06-25 — Issue #50: query-param sort used localeCompare → non-reproducible cassette hash
+**Duration:** ~25 min · **Branch:** `session/2026-06-25-1525-issue-50`
+
+- `normalizeUrl` (in `src/cassette.ts`) sorted query parameters with `String.prototype.localeCompare`, whose ordering depends on the runtime's default ICU locale. The request hash (`hashRequest` over `{method,url,body}`) was therefore not stable across environments — a cassette recorded under one locale could normalize the same URL to a different param order under another, hash differently, and fail replay with `MissingCassetteError`. It also diverged from `canonicalize`, which sorts body keys with the default code-unit `.sort()`.
+- Replaced `localeCompare` with a locale-independent `compareCodeUnits` helper for both the key sort and the same-key value tie-break, matching `canonicalize`'s ordering. Existing `normalizeUrl` tests used only lowercase ASCII keys (where the two orderings agree), so the bug was invisible — added two mixed-case regression tests (exact code-unit output; param order equals `canonicalize` body-key order). Red-without / green-with on this en-US runtime; suite 182 → 184, eslint + tsc clean.
+
+**Why this work, this session:** ai-app-integration-tests was the earliest repo in build sequence among those >36h stale (priority tier all <18h fresh after this run's earlier work; mcp-server-cookbook #54/#55 human-blocked decision-revisit, skipped per D-007; this repo's only open issue #16 is a human-blocked demo-binary capture). The recorder's determinism is the repo's core promise, and this was a real cross-locale hash-stability gap in it.
+
+**Open questions / blockers:** none.
+
+**Next session:** URL fragment / default-port / non-JSON-body (`URLSearchParams`) normalization are separate, lower-value matching edge cases if the recorder's matching surface is revisited.
