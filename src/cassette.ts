@@ -49,6 +49,18 @@ export type RecordedResponse =
 /* ------------------------------------------------------------------ */
 
 /**
+ * Locale-independent, code-unit string comparison. Mirrors the ordering of
+ * the default `Array.prototype.sort()` (used by `canonicalize` on body keys),
+ * so URL params and body keys canonicalize identically. Must NOT use
+ * `localeCompare` — its result depends on the runtime's default ICU locale,
+ * which differs across dev machines and CI runners and would make the request
+ * hash non-reproducible across environments (silent replay miss). See #50.
+ */
+function compareCodeUnits(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
  * Recursively sort object keys so two semantically-equivalent JSON bodies
  * produce identical bytes. Arrays preserve order (sequence matters in
  * `messages: [...]`); only object keys are sorted.
@@ -74,8 +86,15 @@ export function normalizeUrl(url: string): string {
   // `?tag=a&tag=b` and `?tag=b&tag=a` produced different hashes and a replay
   // miss (D-005 throws, no silent fallback). Tie-breaking by value canonicalizes
   // them, consistent with the by-key sort and `canonicalize`'s body-key sort.
+  //
+  // Code-unit comparison, NOT localeCompare (#50): localeCompare's ordering is
+  // locale-dependent, so a cassette recorded under one ICU locale would hash a
+  // different param order than the same request normalized under another —
+  // breaking cross-environment replay and diverging from `canonicalize`'s
+  // default `.sort()` on body keys. `compareCodeUnits` is locale-independent
+  // and matches that body-key ordering exactly.
   const params = [...u.searchParams.entries()].sort(
-    ([ka, va], [kb, vb]) => ka.localeCompare(kb) || va.localeCompare(vb),
+    ([ka, va], [kb, vb]) => compareCodeUnits(ka, kb) || compareCodeUnits(va, vb),
   );
   u.search = "";
   for (const [k, v] of params) u.searchParams.append(k, v);

@@ -52,6 +52,30 @@ describe("normalizeUrl", () => {
     expect(normalizeUrl("https://x/y?tag=b&tag=a")).toBe(normalizeUrl("https://x/y?tag=a&tag=b"));
     expect(normalizeUrl("https://x/y?tag=b&tag=a")).toBe("https://x/y?tag=a&tag=b");
   });
+
+  it("sorts param keys by code unit, not by locale (#50)", () => {
+    // localeCompare orders these as a, Beta, model, Z (case-insensitive,
+    // lowercase-first) and the ordering depends on the runtime's ICU locale;
+    // the deterministic code-unit order puts all uppercase (U+0041–5A) before
+    // lowercase (U+0061–7A): Beta, Z, a, model. Locking the exact string makes
+    // the hash reproducible across environments and consistent with how
+    // `canonicalize` sorts body keys.
+    expect(normalizeUrl("https://x/y?model=4&a=1&Z=3&Beta=2")).toBe(
+      "https://x/y?Beta=2&Z=3&a=1&model=4",
+    );
+  });
+
+  it("orders params identically to canonicalize's body-key sort (#50)", () => {
+    // The same set of mixed-case keys must come out in the same order whether
+    // they are URL params or object keys — one locale-independent convention.
+    const keys = ["model", "a", "Z", "Beta"];
+    const query = keys.map((k) => `${k}=1`).join("&");
+    const paramOrder = [...new URL(normalizeUrl(`https://x/y?${query}`)).searchParams.keys()];
+    const bodyOrder = Object.keys(
+      canonicalize(Object.fromEntries(keys.map((k) => [k, 1]))) as Record<string, unknown>,
+    );
+    expect(paramOrder).toEqual(bodyOrder);
+  });
 });
 
 describe("hashRequest", () => {
