@@ -65,6 +65,43 @@ describe("record then replay (non-streaming)", () => {
     expect(onDisk).not.toContain("sk-ant-do-not-leak");
     expect(onDisk).toContain("[REDACTED]");
   });
+
+  it("coerces a non-string array-of-tuples header value to a string in the cassette (#52)", async () => {
+    const upstream: typeof fetch = async () =>
+      new Response("ok", { status: 200, headers: { "content-type": "text/plain" } });
+
+    const recorder = createRecorderFetch({ upstream, store, hosts: HOSTS });
+    await recorder("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      // Array-of-tuples HeadersInit with a non-string value (untyped JS caller).
+      // The object path already String()-coerces; the array path must too, or
+      // the cassette stores a raw number — contract violation + spurious miss.
+      headers: [["x-count", 5 as unknown as string]],
+      body: JSON.stringify({ model: "x", messages: [] }),
+    });
+
+    const files = await fs.readdir(dir);
+    expect(files).toHaveLength(1);
+    const cassette = JSON.parse(await fs.readFile(path.join(dir, files[0]), "utf8"));
+    expect(cassette.request.headers["x-count"]).toBe("5");
+    expect(typeof cassette.request.headers["x-count"]).toBe("string");
+  });
+
+  it("leaves a string array-of-tuples header value unchanged", async () => {
+    const upstream: typeof fetch = async () =>
+      new Response("ok", { status: 200, headers: { "content-type": "text/plain" } });
+
+    const recorder = createRecorderFetch({ upstream, store, hosts: HOSTS });
+    await recorder("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: [["x-trace", "abc"]],
+      body: JSON.stringify({ model: "x", messages: [] }),
+    });
+
+    const files = await fs.readdir(dir);
+    const cassette = JSON.parse(await fs.readFile(path.join(dir, files[0]), "utf8"));
+    expect(cassette.request.headers["x-trace"]).toBe("abc");
+  });
 });
 
 describe("record then replay (SSE streaming)", () => {

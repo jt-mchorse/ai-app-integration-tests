@@ -71,7 +71,13 @@ function collectHeaders(headers: HeadersInit | undefined, input: RequestInfo | U
         out[k.toLowerCase()] = v;
       });
     } else if (Array.isArray(headers)) {
-      for (const [k, v] of headers) out[k.toLowerCase()] = v;
+      // Coerce to string like the object path below: an untyped (JS) caller can
+      // pass a non-string value (e.g. `[["x-count", 5]]`), and the
+      // `Record<string, string>` return type — plus cassette JSON round-trip and
+      // request hashing — require a string. Without this the array path stored a
+      // raw number, corrupting `request.headers` and causing a spurious cassette
+      // miss vs a string-valued match. (#52)
+      for (const [k, v] of headers) out[k.toLowerCase()] = String(v);
     } else {
       for (const [k, v] of Object.entries(headers)) {
         out[k.toLowerCase()] = String(v);
