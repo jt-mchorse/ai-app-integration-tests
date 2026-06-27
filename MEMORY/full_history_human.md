@@ -414,3 +414,16 @@ or a new fingerprint shape if one is identified.
 **Open questions / blockers:** none.
 
 **Next session:** request normalization now ignores the fragment; the `__raw_body__` sentinel collision (#57) remains open as low-priority.
+
+## 2026-06-27 — Issue #57: raw-body vs JSON-body cassette hash collision
+**Duration:** ~25 min · **Branch:** `session/2026-06-27-2312-issue-57`
+
+- A non-JSON request body was wrapped as `{"__raw_body__": <text>}` before canonicalization, so a raw `foo` hashed the same as a real JSON `{"__raw_body__":"foo"}` — the second recording overwrote the first and replay served the wrong response.
+- Fixed by storing raw bodies as plain text and adding a `bodyEncoding: "json" | "raw"` discriminator on `NormalizedRequest`, a sibling field no caller JSON can forge. `hashRequest` folds it in only for raw bodies, so existing JSON/no-body cassette hashes are unchanged (no re-record needed).
+- Added 3 tests (hash split + hash stability + record→replay two-cassette round trip). Suite 191 → 194, typecheck + lint clean.
+
+**Why this work, this session:** It was the only pre-triaged, autonomously-fixable bug — all `priority:high` issues across the portfolio are `decision-revisit` items needing JT input, and the demo issues need video capture.
+
+**Open questions / blockers:** none for this issue. The literal-`null`-body edge is deferred (pre-existing, more contrived).
+
+**Next session:** Portfolio is saturated for autonomous high-priority work; continue dogfood→file→fix on priority-tier repos.
