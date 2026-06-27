@@ -390,3 +390,15 @@ or a new fingerprint shape if one is identified.
 **Open questions / blockers:** none.
 
 **Next session:** URL fragment / default-port / non-JSON-body (`URLSearchParams`) normalization are separate, lower-value matching edge cases if the recorder's matching surface is revisited.
+
+## 2026-06-27 — Issue #54: proxy-authorization / api-key credentials leak into cassettes
+**Duration:** ~20 min · **Branch:** `session/2026-06-27-0026-issue-54`
+
+- `SENSITIVE_HEADER_NAMES` redacted `authorization` but not `proxy-authorization` (RFC 7235 proxy creds, typically a prefix-less `Basic …` value) or the bare `api-key` header (Azure OpenAI's prefix-less 32-hex key). `redactHeaders` redacts by exact name and the `assertNoLeakedSecrets` scanner only matches prefixed shapes (sk-/Bearer/AIza), so a Basic proxy credential or an Azure key passed through **both** layers and was written verbatim to a committed cassette — defeating D-004 (committed cassettes never carry credentials). Reproduced through both layers.
+- Fixed by adding `proxy-authorization` and `api-key` to `SENSITIVE_HEADER_NAMES`, plus a prefix-less `Basic` pattern to `API_KEY_PATTERNS` so a Basic credential leaking through any un-redacted channel (e.g. an echoed proxy-407 error body) still trips the scanner. 3 regression tests; suite 186 → 189, typecheck + eslint clean.
+
+**Why this work, this session:** eighth issue of a multi-issue DAY run. The three preceding non-tier dogfoods (embedding-model-shootout, python-async-llm-pipelines, agent-orchestration-platform) all came back clean — healthy, mature repos with no fabricated work — so this real, security-relevant finding in ai-app-integration-tests was the payoff of the final pass.
+
+**Open questions / blockers:** none. Saturation signal — 3 of 4 non-tier repos dogfooded this run were clean; the non-tier set is mature and marginal bug yield is dropping.
+
+**Next session:** mcp-server-cookbook #54/#55 remain JT-decision-blocked (D-007); broader prefix-less-key scanning (generic 32+ hex) was deliberately deferred here for false-positive risk.
