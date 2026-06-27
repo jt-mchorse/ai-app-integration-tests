@@ -48,6 +48,32 @@ describe("record then replay (non-streaming)", () => {
     expect(await replayed.text()).toBe(JSON.stringify({ ok: true, value: 7 }));
   });
 
+  it("replays a request recorded with a URL fragment when replayed without one (#56)", async () => {
+    // The fragment never reaches the server, so a request recorded with `#...`
+    // and replayed without it is wire-identical and must hit the cassette.
+    const upstream: typeof fetch = async () =>
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+    const recorder = createRecorderFetch({ upstream, store, hosts: HOSTS });
+    await recorder("https://api.anthropic.com/v1/messages?model=x#section-2", {
+      method: "POST",
+      headers: { "x-api-key": "sk-ant-must-not-leak-1234567890abcdefghij" },
+      body: JSON.stringify({ model: "x", messages: [] }),
+    });
+
+    const replayer = createReplayerFetch({ store, hosts: HOSTS });
+    const replayed = await replayer("https://api.anthropic.com/v1/messages?model=x", {
+      method: "POST",
+      headers: { "x-api-key": "different-but-hash-stable" },
+      body: JSON.stringify({ model: "x", messages: [] }),
+    });
+    expect(replayed.status).toBe(200);
+    expect(await replayed.text()).toBe(JSON.stringify({ ok: true }));
+  });
+
   it("redacts api keys before writing the cassette to disk", async () => {
     const upstream: typeof fetch = async () =>
       new Response("ok", { status: 200, headers: { "content-type": "text/plain" } });

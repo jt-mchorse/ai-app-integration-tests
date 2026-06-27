@@ -97,6 +97,13 @@ export function normalizeUrl(url: string): string {
     ([ka, va], [kb, vb]) => compareCodeUnits(ka, kb) || compareCodeUnits(va, vb),
   );
   u.search = "";
+  // Drop the fragment: per RFC 3986 §3.5 / the WHATWG fetch spec it is a
+  // client-side-only construct never sent to the server, so two requests that
+  // differ only by `#...` are wire-identical and must hash the same. Leaving it
+  // in produced a replay miss (MissingCassetteError) for a request recorded
+  // with a fragment and replayed without one — the same canonicalization class
+  // as the query-param ordering fix (#42/#51), one field over. See #56.
+  u.hash = "";
   for (const [k, v] of params) u.searchParams.append(k, v);
   return u.toString();
 }

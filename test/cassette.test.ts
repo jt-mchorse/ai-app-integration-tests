@@ -46,6 +46,17 @@ describe("normalizeUrl", () => {
     expect(u).toContain("tag=b");
   });
 
+  it("strips the URL fragment so wire-identical requests match (#56)", () => {
+    // The fragment is never sent to the server (RFC 3986 §3.5), so two requests
+    // differing only by `#...` must normalize identically — otherwise a cassette
+    // recorded with a fragment misses on replay.
+    expect(normalizeUrl("https://api.anthropic.com/v1/messages?model=x#section-2")).toBe(
+      "https://api.anthropic.com/v1/messages?model=x",
+    );
+    expect(normalizeUrl("https://x/y?a=1#frag")).toBe(normalizeUrl("https://x/y?a=1"));
+    expect(normalizeUrl("https://x/y#one")).toBe(normalizeUrl("https://x/y#two"));
+  });
+
   it("canonicalizes repeated same-key params to a stable order regardless of input order (#42)", () => {
     // Both orderings must normalize to the same string, not just contain the
     // same values — otherwise reordering causes a replay miss.
