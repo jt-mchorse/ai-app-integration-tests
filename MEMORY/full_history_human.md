@@ -402,3 +402,15 @@ or a new fingerprint shape if one is identified.
 **Open questions / blockers:** none. Saturation signal — 3 of 4 non-tier repos dogfooded this run were clean; the non-tier set is mature and marginal bug yield is dropping.
 
 **Next session:** mcp-server-cookbook #54/#55 remain JT-decision-blocked (D-007); broader prefix-less-key scanning (generic 32+ hex) was deliberately deferred here for false-positive risk.
+
+## 2026-06-27 — Issue #56: normalizeUrl leaks the URL fragment into the request key
+**Duration:** ~20 min · **Branch:** `session/2026-06-27-0352-issue-56`
+
+- `normalizeUrl` canonicalized query-param order but left the URL fragment (`#...`) in the returned string, which feeds `hashRequest`. The fragment is never sent to the server (RFC 3986 §3.5 / WHATWG fetch), so two requests differing only by fragment are wire-identical yet hashed differently — a cassette recorded with a fragment misses on replay (`MissingCassetteError`, D-005 throws). Same canonicalization class as the query-param ordering fix (#42/#51), one field over.
+- Fixed by adding `u.hash = ""` next to the existing `u.search = ""` (one line). Added a normalizeUrl unit test and a record-with-fragment / replay-without round-trip test. npm test 189 → 191, tsc + eslint clean. Filed the secondary `__raw_body__` sentinel-collision finding as low-priority #57 (file-and-defer).
+
+**Why this work, this session:** eighth issue of a multi-issue NIGHT run; a clean one-line request-keying fix surfaced by a parallel dogfood agent.
+
+**Open questions / blockers:** none.
+
+**Next session:** request normalization now ignores the fragment; the `__raw_body__` sentinel collision (#57) remains open as low-priority.
