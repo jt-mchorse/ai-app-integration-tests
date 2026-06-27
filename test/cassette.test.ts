@@ -152,6 +152,54 @@ describe("hashRequest", () => {
     });
     expect(a).toBe(b);
   });
+
+  it("distinguishes a raw body from a JSON body of the same shape (#57)", () => {
+    // The recorder stores a raw (non-JSON) `foo` as the plain text `"foo"` with
+    // bodyEncoding:"raw", and a JSON `"foo"` as `"foo"` with no/`"json"`
+    // encoding. Without the discriminator both canonicalize to the same `body`
+    // and collide — the second recording overwrites the first and replay serves
+    // the wrong response. The raw tag must split them.
+    const raw = hashRequest({
+      method: "POST",
+      url: "https://api.anthropic.com/v1/messages",
+      headers: {},
+      body: "foo",
+      bodyEncoding: "raw",
+    });
+    const json = hashRequest({
+      method: "POST",
+      url: "https://api.anthropic.com/v1/messages",
+      headers: {},
+      body: "foo",
+      bodyEncoding: "json",
+    });
+    expect(raw).not.toBe(json);
+  });
+
+  it("keeps JSON-body and no-body hashes byte-identical to the untagged form (#57)", () => {
+    // The #57 fix must not invalidate already-recorded cassettes: only the raw
+    // case is folded into the hash, so a "json"-tagged or untagged body hashes
+    // exactly as it did before bodyEncoding existed.
+    const jsonBody = canonicalize({ model: "x", messages: [{ role: "user", content: "hi" }] });
+    const tagged = hashRequest({
+      method: "POST",
+      url: "https://api.anthropic.com/v1/messages",
+      headers: {},
+      body: jsonBody,
+      bodyEncoding: "json",
+    });
+    const untagged = hashRequest({
+      method: "POST",
+      url: "https://api.anthropic.com/v1/messages",
+      headers: {},
+      body: jsonBody,
+    });
+    expect(tagged).toBe(untagged);
+
+    const noBodyTagged = hashRequest({ method: "GET", url: "https://x/a", headers: {}, body: null });
+    const noBodyUntagged = hashRequest({ method: "GET", url: "https://x/a", headers: {}, body: null });
+    expect(noBodyTagged).toBe(noBodyUntagged);
+  });
 });
 
 describe("redactHeaders", () => {

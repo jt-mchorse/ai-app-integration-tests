@@ -128,6 +128,51 @@ describe("record then replay (non-streaming)", () => {
     const cassette = JSON.parse(await fs.readFile(path.join(dir, files[0]), "utf8"));
     expect(cassette.request.headers["x-trace"]).toBe("abc");
   });
+
+  it("does not collide a raw body with a JSON body of the same shape (#57)", async () => {
+    // A raw (non-JSON) body `foo` and a literal JSON body `{"__raw_body__":"foo"}`
+    // used to canonicalize to the same `body` and hash equal — the second
+    // recording silently overwrote the first, and replay served the wrong
+    // response. They must now record as two distinct cassettes, each replaying
+    // its own body.
+    const rawUpstream: typeof fetch = async () =>
+      new Response("raw-response", { status: 200, headers: { "content-type": "text/plain" } });
+    const jsonUpstream: typeof fetch = async () =>
+      new Response("json-response", { status: 200, headers: { "content-type": "text/plain" } });
+
+    const rawRecorder = createRecorderFetch({ upstream: rawUpstream, store, hosts: HOSTS });
+    await rawRecorder("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "text/plain" },
+      body: "foo", // not valid JSON -> raw
+    });
+
+    const jsonRecorder = createRecorderFetch({ upstream: jsonUpstream, store, hosts: HOSTS });
+    await jsonRecorder("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ __raw_body__: "foo" }), // valid JSON of the old wrapper shape
+    });
+
+    // Two distinct recordings, not one overwritten file.
+    const files = await fs.readdir(dir);
+    expect(files).toHaveLength(2);
+
+    const replayer = createReplayerFetch({ store, hosts: HOSTS });
+    const rawReplay = await replayer("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {},
+      body: "foo",
+    });
+    expect(await rawReplay.text()).toBe("raw-response");
+
+    const jsonReplay = await replayer("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {},
+      body: JSON.stringify({ __raw_body__: "foo" }),
+    });
+    expect(await jsonReplay.text()).toBe("json-response");
+  });
 });
 
 describe("record then replay (SSE streaming)", () => {

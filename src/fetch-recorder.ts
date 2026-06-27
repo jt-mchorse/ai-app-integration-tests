@@ -39,12 +39,20 @@ async function normalizeRequest(
   const bodyText = await readBodyAsText(init?.body, input);
 
   let parsedBody: unknown = null;
+  let bodyEncoding: "json" | "raw" | undefined;
   if (bodyText !== null && bodyText.length > 0) {
     try {
       parsedBody = JSON.parse(bodyText);
+      bodyEncoding = "json";
     } catch {
-      // Non-JSON body: hash on the raw bytes by storing as a string.
-      parsedBody = { __raw_body__: bodyText };
+      // Non-JSON body: hash on the raw text directly, tagged bodyEncoding:"raw"
+      // so it can never collide with a JSON body of the same canonical shape
+      // (#57). The old `{ __raw_body__: bodyText }` wrapper collided with a
+      // literal JSON `{"__raw_body__": bodyText}` once canonicalized; storing
+      // the plain text plus the out-of-body discriminator removes the whole
+      // collision class.
+      parsedBody = bodyText;
+      bodyEncoding = "raw";
     }
   }
 
@@ -53,6 +61,7 @@ async function normalizeRequest(
     url: normalizeUrl(url),
     headers: redactHeaders(rawHeaders),
     body: canonicalize(parsedBody),
+    ...(bodyEncoding ? { bodyEncoding } : {}),
   };
 
   return { normalized, rawHeaders, bodyText };

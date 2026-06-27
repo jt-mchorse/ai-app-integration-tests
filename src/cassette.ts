@@ -24,6 +24,19 @@ export interface NormalizedRequest {
   headers: Record<string, string>;
   /** Body AFTER normalization (sorted keys recursively). null for GET/HEAD. */
   body: unknown;
+  /**
+   * How `body` was derived from the wire bytes (#57). A JSON body is stored as
+   * its parsed+canonicalized value; a non-JSON body is stored as its plain
+   * text. Those two value spaces overlap — a raw body `foo` and a JSON string
+   * `"foo"`, or (under the old `{__raw_body__: text}` wrapper) a raw `foo` and a
+   * literal JSON `{"__raw_body__":"foo"}`, canonicalize to identical `body` and
+   * so hash-collide. This sibling discriminator lives OUTSIDE `body`, so no
+   * caller-supplied JSON can forge it. Omitted when there is no body. "json" is
+   * informational; only "raw" is folded into the request hash (see
+   * `hashRequest`) so existing JSON-body and no-body cassette hashes are
+   * unchanged.
+   */
+  bodyEncoding?: "json" | "raw";
 }
 
 export type RecordedResponse =
@@ -109,10 +122,17 @@ export function normalizeUrl(url: string): string {
 }
 
 export function hashRequest(req: NormalizedRequest): string {
+  // Fold `bodyEncoding` into the hash ONLY for raw bodies (#57). A raw body is
+  // stored as its plain text, which is indistinguishable from a JSON value of
+  // the same canonical shape once normalized — the collision between raw `foo`
+  // and JSON `{"__raw_body__":"foo"}` (old wrapper), or raw `foo` and JSON
+  // `"foo"`. Tagging only the raw case keeps every existing JSON-body and
+  // no-body hash byte-identical, so already-recorded cassettes still replay.
   const payload = JSON.stringify({
     method: req.method,
     url: req.url,
     body: req.body,
+    ...(req.bodyEncoding === "raw" ? { bodyEncoding: "raw" } : {}),
   });
   return createHash("sha256").update(payload).digest("hex").slice(0, 32);
 }
