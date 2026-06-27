@@ -121,7 +121,16 @@ export function hashRequest(req: NormalizedRequest): string {
  */
 const SENSITIVE_HEADER_NAMES = new Set([
   "authorization",
+  // `proxy-authorization` (RFC 7235) carries proxy credentials — typically a
+  // `Basic …` value the prefix-based scanner below does not catch. Without this
+  // entry a cassette recorded through an authenticating proxy committed the
+  // credential verbatim (#54).
+  "proxy-authorization",
   "x-api-key",
+  // Azure OpenAI authenticates with a bare `api-key` header whose value is a
+  // prefix-less 32-hex string — invisible to the `sk-`/`Bearer`/`AIza`
+  // patterns below, so redaction-by-name is the only thing that catches it (#54).
+  "api-key",
   "anthropic-api-key",
   "openai-api-key",
   // `x-goog-api-key` is the canonical header for Google Gemini / Vertex AI
@@ -168,6 +177,12 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   // e.g. an upstream 400 error body that echoes the submitted key. Open-ended
   // length matches the `sk-…{32,}` style above and avoids brittleness.
   /\bAIza[A-Za-z0-9_-]{35,}\b/,
+  // HTTP Basic credentials (`Basic ` + base64). `proxy-authorization` is now
+  // redacted by name (#54), but a Basic value can still surface through an
+  // un-redacted channel (an echoed error body, a custom auth header), and the
+  // prefix-based patterns above would miss it. 16+ base64 chars ≈ an 8+ byte
+  // `user:pass`, well clear of incidental short tokens.
+  /\bBasic\s+[A-Za-z0-9+/=]{16,}\b/,
 ];
 
 export function assertNoLeakedSecrets(cassette: CassetteV1): void {

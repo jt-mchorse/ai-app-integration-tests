@@ -171,6 +171,20 @@ describe("redactHeaders", () => {
     const r = redactHeaders({ "X-Goog-Api-Key": "AIzaSy_some_key_value" });
     expect(r["x-goog-api-key"]).toBe("[REDACTED]");
   });
+
+  it("redacts proxy-authorization (#54)", () => {
+    // RFC 7235 proxy credentials, typically a `Basic …` value the prefix-based
+    // scanner would not catch. Mixed-case re-proves the case-insensitive branch.
+    const r = redactHeaders({ "Proxy-Authorization": "Basic dXNlcjpzdXBlcnNlY3JldA==" });
+    expect(r["proxy-authorization"]).toBe("[REDACTED]");
+  });
+
+  it("redacts a bare api-key header (Azure OpenAI) (#54)", () => {
+    // Azure OpenAI's key is a prefix-less 32-hex string, invisible to the
+    // sk-/Bearer/AIza scanner patterns — redaction-by-name is the only catch.
+    const r = redactHeaders({ "api-key": "0123456789abcdef0123456789abcdef" });
+    expect(r["api-key"]).toBe("[REDACTED]");
+  });
 });
 
 describe("assertNoLeakedSecrets", () => {
@@ -214,6 +228,21 @@ describe("assertNoLeakedSecrets", () => {
         status: 400,
         headers: {},
         body: '{"error":"API key not valid: AIzaSyD-1a2B3c4D5e6F7g8H9i0J1k2L3m4N5o6P"}',
+      },
+    });
+    expect(() => assertNoLeakedSecrets(c)).toThrow(/unredacted secret/);
+  });
+
+  it("throws when a Basic credential leaks through a non-redacted channel (#54)", () => {
+    // proxy-authorization is redacted by name, but a Basic value can still
+    // surface through an echoed error body or a custom header the name-set
+    // doesn't cover — the scanner must catch it as a belt-and-suspenders.
+    const c = baseCassette({
+      response: {
+        kind: "non_streaming",
+        status: 407,
+        headers: {},
+        body: '{"error":"bad proxy auth: Basic dXNlcjpzdXBlcnNlY3JldHBhc3N3b3Jk"}',
       },
     });
     expect(() => assertNoLeakedSecrets(c)).toThrow(/unredacted secret/);
