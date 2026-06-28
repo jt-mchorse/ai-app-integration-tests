@@ -23,7 +23,20 @@ export class CassetteStore {
     const filePath = this.pathFor(requestHash);
     try {
       const raw = await fs.readFile(filePath, "utf8");
-      const parsed = JSON.parse(raw) as CassetteV1;
+      const decoded: unknown = JSON.parse(raw);
+      // `JSON.parse` succeeds for `null`, arrays, strings, and numbers, but the
+      // integrity guards below dereference `.schema_version`. A top-level `null`
+      // (a plausible partial-write / hand-edit artifact) would throw a cryptic
+      // `TypeError: Cannot read properties of null` instead of the clean,
+      // actionable error the other primitives already get — and must NOT be
+      // confused with the ENOENT `null` return that means "no cassette" (#62).
+      if (decoded === null || typeof decoded !== "object" || Array.isArray(decoded)) {
+        const kind = decoded === null ? "null" : Array.isArray(decoded) ? "array" : typeof decoded;
+        throw new Error(
+          `cassette ${requestHash}.json did not parse to a cassette object (got ${kind}); refusing to use it`,
+        );
+      }
+      const parsed = decoded as CassetteV1;
       if (parsed.schema_version !== "1") {
         throw new Error(
           `cassette ${requestHash} has schema_version ${parsed.schema_version}; this loader only understands "1"`,

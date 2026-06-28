@@ -157,3 +157,34 @@ describe("CassetteStore.write atomicity (#28)", () => {
     expect(isA && isB).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// `CassetteStore.read`: a present-but-malformed cassette must fail loudly with
+// a clean Error, not a cryptic TypeError (#62, failure mode #3 above).
+// ---------------------------------------------------------------------------
+
+describe("CassetteStore.read rejects a non-object cassette cleanly (#62)", () => {
+  it.each([
+    ["null", "null"],
+    ["array", "[1, 2, 3]"],
+    ["string", '"hello"'],
+    ["number", "42"],
+  ])("a top-level %s JSON throws a clean Error, not a TypeError", async (_kind, content) => {
+    const hash = "badparse";
+    await fs.writeFile(path.join(dir, `${hash}.json`), content + "\n", "utf8");
+    const store = new CassetteStore({ dir });
+
+    // It must NOT be swallowed as ENOENT-null ("no cassette"), and must NOT be
+    // a TypeError from dereferencing the non-object.
+    await expect(store.read(hash)).rejects.toThrow(/did not parse to a cassette object/);
+    const err = await store.read(hash).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err).not.toBeInstanceOf(TypeError);
+  });
+
+  it("a valid cassette still round-trips (no regression on the happy path)", async () => {
+    const store = new CassetteStore({ dir });
+    await store.write(fakeCassette("9999aaaa", "ok"));
+    expect((await store.read("9999aaaa"))!.request_hash).toBe("9999aaaa");
+  });
+});
