@@ -427,3 +427,16 @@ or a new fingerprint shape if one is identified.
 **Open questions / blockers:** none for this issue. The literal-`null`-body edge is deferred (pre-existing, more contrived).
 
 **Next session:** Portfolio is saturated for autonomous high-priority work; continue dogfood→file→fix on priority-tier repos.
+
+## 2026-06-28 — Issue #60: secret scanner missed credentials ending in a non-word char
+**Duration:** ~20 min · **Branch:** `session/2026-06-28-0356-issue-60`
+
+- Every `API_KEY_PATTERNS` regex ended in `\b`, but the charclasses can end in non-word chars (`=` base64 padding, `+`/`/`/`-`/`.`). `\b` can't anchor between two non-word chars, so a credential ending in such a char — when short enough that the trailing char is needed to hit `{N,}` — slipped the scanner and leaked into a committed cassette. Reproduced with `Basic YWJjOmRlZmdoaWo=` (base64 of `abc:defghij`): `assertNoLeakedSecrets` did not throw.
+- Fixed by removing the trailing `\b` from all five patterns; leading `\b<prefix>` + `{N,}` still bound the match start/length, and dropping the trailing anchor only widens coverage — the safe direction for the D-004 leak guard. +3 tests; full toolkit (197) green, lint + typecheck clean.
+- Found via the third Phase A dogfood wave (security-relevant; HIGH).
+
+**Why this work, this session:** a HIGH-severity credential-leak gap in the belt-and-suspenders guard whose whole job is to keep secrets out of git.
+
+**Open questions / blockers:** none.
+
+**Next session:** —
