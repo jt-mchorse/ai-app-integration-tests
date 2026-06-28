@@ -318,4 +318,48 @@ describe("assertNoLeakedSecrets", () => {
     });
     expect(() => assertNoLeakedSecrets(c)).toThrow(/unredacted secret/);
   });
+
+  it("throws on a Basic credential with '=' base64 padding (#60 — trailing \\b miss)", () => {
+    // "Basic YWJjOmRlZmdoaWo=" is base64 of "abc:defghij" (15 chars + one '='
+    // pad). The 15 base64 chars are < 16, so the '=' is needed to reach {16,},
+    // but the old trailing `\b` could not anchor between '=' and the serialized
+    // cassette's closing quote — so this real credential silently leaked.
+    const c = baseCassette({
+      response: {
+        kind: "non_streaming",
+        status: 407,
+        headers: {},
+        body: '{"error":"bad proxy auth: Basic YWJjOmRlZmdoaWo="}',
+      },
+    });
+    expect(() => assertNoLeakedSecrets(c)).toThrow(/unredacted secret/);
+  });
+
+  it("throws on a boundary Bearer token ending in '=' (#60)", () => {
+    // A Bearer value whose last char is '=' (base64 padding) at the {20,}
+    // boundary — the same trailing-\b class as the Basic miss.
+    const c = baseCassette({
+      request: {
+        method: "GET",
+        url: "https://x/y",
+        headers: { authorization: "Bearer dXNlcjpzdXBlcnNlY3JldHM=" },
+        body: null,
+      },
+    });
+    expect(() => assertNoLeakedSecrets(c)).toThrow(/unredacted secret/);
+  });
+
+  it("still passes ordinary prose that merely starts with a key prefix word (#60 no false-positive)", () => {
+    // The leading `\bBasic\s+` anchor is unchanged, so prose like "Basic plan"
+    // (no 16+ base64 run after it) must NOT trip the scanner.
+    const c = baseCassette({
+      response: {
+        kind: "non_streaming",
+        status: 200,
+        headers: {},
+        body: '{"text":"The Basic plan includes 5 seats."}',
+      },
+    });
+    expect(() => assertNoLeakedSecrets(c)).not.toThrow();
+  });
 });

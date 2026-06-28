@@ -193,23 +193,31 @@ export function redactHeaders(headers: Record<string, string>): Record<string, s
  * Heuristic: 32+ chars of `[A-Za-z0-9_-]` immediately preceded by `sk-`, `key=`,
  * `Bearer `, etc., in a header VALUE. The `[REDACTED]` placeholder is
  * exempted because it's the redaction marker, not a leaked key.
+ *
+ * NOTE (#60): none of these patterns ends in a trailing `\b`. Each charclass can
+ * end in a NON-word char (`=` base64 padding, `+` `/` `-` `.`), and a `\b` only
+ * anchors at a word↔non-word transition — so a credential ending in such a char
+ * (when it's short enough that the trailing char is needed to satisfy `{N,}`)
+ * would slip the scanner and leak into a committed cassette. The leading
+ * `\b<prefix>` already anchors the start; dropping the trailing anchor only ever
+ * widens what we catch, which is the safe direction for a leak guard (D-004).
  */
 const API_KEY_PATTERNS: Array<RegExp> = [
-  /\bsk-[A-Za-z0-9_-]{32,}\b/,
-  /\bsk-ant-[A-Za-z0-9_-]{32,}\b/,
-  /\bBearer\s+[A-Za-z0-9_.\-/+=]{20,}\b/,
+  /\bsk-[A-Za-z0-9_-]{32,}/,
+  /\bsk-ant-[A-Za-z0-9_-]{32,}/,
+  /\bBearer\s+[A-Za-z0-9_.\-/+=]{20,}/,
   // Google / Gemini / Vertex AI keys (`AIza` + 35+ url-safe chars; real keys
   // are 39 chars total). The `x-goog-api-key` header is already redacted (#22);
   // this catches the same key class leaking through an un-redacted channel —
   // e.g. an upstream 400 error body that echoes the submitted key. Open-ended
   // length matches the `sk-…{32,}` style above and avoids brittleness.
-  /\bAIza[A-Za-z0-9_-]{35,}\b/,
+  /\bAIza[A-Za-z0-9_-]{35,}/,
   // HTTP Basic credentials (`Basic ` + base64). `proxy-authorization` is now
   // redacted by name (#54), but a Basic value can still surface through an
   // un-redacted channel (an echoed error body, a custom auth header), and the
   // prefix-based patterns above would miss it. 16+ base64 chars ≈ an 8+ byte
   // `user:pass`, well clear of incidental short tokens.
-  /\bBasic\s+[A-Za-z0-9+/=]{16,}\b/,
+  /\bBasic\s+[A-Za-z0-9+/=]{16,}/,
 ];
 
 export function assertNoLeakedSecrets(cassette: CassetteV1): void {
