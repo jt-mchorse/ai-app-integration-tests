@@ -440,3 +440,15 @@ or a new fingerprint shape if one is identified.
 **Open questions / blockers:** none.
 
 **Next session:** —
+
+## 2026-06-28 — Issue #62: read() crashed with a TypeError on a null-content cassette
+**Duration:** ~20 min · **Branch:** `session/2026-06-28-1628-issue-62`
+
+- `CassetteStore.read` cast `JSON.parse(raw)` to `CassetteV1` and dereferenced `.schema_version` with no null/object guard. A cassette file whose top-level JSON is `null` (a plausible partial-write/hand-edit artifact) made `JSON.parse` return `null`, so `null.schema_version` threw `TypeError: Cannot read properties of null` — the exact cryptic crash the integrity guards exist to replace. Array/string/number top-levels already got a (misleading) `schema_version undefined` error; only `null` crashed. And since `read` returns `CassetteV1 | null` where `null` means ENOENT ("no cassette"), a corrupt `null` file must fail loudly, not be mistaken for missing.
+- Fixed by guarding the parse result before the integrity checks: `null` / non-object / array now throw a clean `Error` naming the actual kind, which also upgrades the array/string/number cases to the accurate "did not parse to a cassette object" message. Added a parametrized regression test (null/array/string/number → clean Error, not TypeError) plus a happy-path round-trip; the 4 cases were proven to fail pre-fix. Full toolkit 202 passed, typecheck + lint clean.
+
+**Why this work, this session:** seventh substantive issue of a multi-issue DAY run and the final repo dogfooded — completing a sweep of all 13 portfolio repos this session (5 of which yielded a real bug; the rest were verified clean or appropriately deferred). A genuine robustness defect: the load-bearing replay loader crashed cryptically on corruption it was meant to surface cleanly.
+
+**Open questions / blockers:** none.
+
+**Next session:** continue the loop if time remains.
