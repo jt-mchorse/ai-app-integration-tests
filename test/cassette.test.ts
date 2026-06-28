@@ -57,6 +57,19 @@ describe("normalizeUrl", () => {
     expect(normalizeUrl("https://x/y#one")).toBe(normalizeUrl("https://x/y#two"));
   });
 
+  it("strips userinfo credentials so they never reach request.url (#64)", () => {
+    // user:pass@host is a credential carrier (RFC 3986 §3.2.1); leaving it in
+    // the URL committed the password in cleartext, slipping both redaction
+    // layers (the equivalent Authorization: Basic header is redacted).
+    const out = normalizeUrl("https://admin:s3cr3tPassw0rd@api.anthropic.com/v1/m?a=1");
+    expect(out).not.toContain("s3cr3tPassw0rd");
+    expect(out).not.toContain("@");
+    expect(out).toBe("https://api.anthropic.com/v1/m?a=1");
+    // Userinfo is non-wire-distinguishing (the server sees the header), so a
+    // credentialed URL must normalize to its credential-free form for replay.
+    expect(normalizeUrl("https://u:p@x/y?a=1")).toBe(normalizeUrl("https://x/y?a=1"));
+  });
+
   it("canonicalizes repeated same-key params to a stable order regardless of input order (#42)", () => {
     // Both orderings must normalize to the same string, not just contain the
     // same values — otherwise reordering causes a replay miss.
@@ -358,6 +371,36 @@ describe("assertNoLeakedSecrets", () => {
         status: 200,
         headers: {},
         body: '{"text":"The Basic plan includes 5 seats."}',
+      },
+    });
+    expect(() => assertNoLeakedSecrets(c)).not.toThrow();
+  });
+
+  it("throws when URL userinfo credentials leak through a non-redacted channel (#64)", () => {
+    // normalizeUrl now strips userinfo before write, but a scheme://user:pass@
+    // URL can still surface in an echoed error body or a connection string in a
+    // request body — the scanner must catch it as belt-and-suspenders (D-004).
+    const c = baseCassette({
+      response: {
+        kind: "non_streaming",
+        status: 502,
+        headers: {},
+        body: '{"error":"upstream https://admin:s3cr3tPassw0rd@db.internal/health failed"}',
+      },
+    });
+    expect(() => assertNoLeakedSecrets(c)).toThrow(/unredacted secret/);
+  });
+
+  it("does not false-positive on JSON emails or timestamps that contain ':'/'@' (#64)", () => {
+    // The userinfo pattern is anchored on `//` + a `:`-bearing userinfo + `@`,
+    // so an email (`a@b.com`, no preceding `//`) and a time (`12:30`, no `@`)
+    // must NOT trip it — only the scheme://user:pass@ shape does.
+    const c = baseCassette({
+      response: {
+        kind: "non_streaming",
+        status: 200,
+        headers: {},
+        body: '{"user":"alice@example.com","at":"2026-06-28T12:30:00Z","ref":"see // foo:bar later"}',
       },
     });
     expect(() => assertNoLeakedSecrets(c)).not.toThrow();

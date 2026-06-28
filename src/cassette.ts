@@ -117,6 +117,15 @@ export function normalizeUrl(url: string): string {
   // with a fragment and replayed without one — the same canonicalization class
   // as the query-param ordering fix (#42/#51), one field over. See #56.
   u.hash = "";
+  // Drop userinfo (RFC 3986 §3.2.1): a `user:pass@host` credential must never be
+  // committed in cleartext. fetch turns `user:pass@` into an `Authorization:
+  // Basic …` header, which `redactHeaders` already redacts — but as URL userinfo
+  // the same credential slips both layers (no API_KEY_PATTERN matched it). It is
+  // also non-wire-distinguishing for hashing (the server sees the header, not the
+  // URL userinfo), so two requests differing only by credentials hash the same —
+  // the same canonicalization class as the fragment strip above (#56). See #64.
+  u.username = "";
+  u.password = "";
   for (const [k, v] of params) u.searchParams.append(k, v);
   return u.toString();
 }
@@ -218,6 +227,15 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   // prefix-based patterns above would miss it. 16+ base64 chars ≈ an 8+ byte
   // `user:pass`, well clear of incidental short tokens.
   /\bBasic\s+[A-Za-z0-9+/=]{16,}/,
+  // URL userinfo credentials (`scheme://user:pass@host`, RFC 3986 §3.2.1).
+  // `normalizeUrl` now strips userinfo before write (#64), but a userinfo URL
+  // can still surface through an un-redacted channel — an echoed error body, a
+  // request body carrying a connection string. Anchored on `//` + a non-empty
+  // userinfo + `:` + non-empty password + `@` so it matches the `scheme://u:p@`
+  // shape specifically; the `//` and the no-`@`/no-space charclasses keep it off
+  // incidental JSON `:`/`@` (timestamps like `12:30`, emails like `a@b.com`,
+  // which have no preceding `//`). Catches the credential leaking either way (D-004).
+  /\/\/[^/@\s:]+:[^/@\s]+@/,
 ];
 
 export function assertNoLeakedSecrets(cassette: CassetteV1): void {
