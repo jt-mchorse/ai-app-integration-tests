@@ -452,3 +452,15 @@ or a new fingerprint shape if one is identified.
 **Open questions / blockers:** none.
 
 **Next session:** continue the loop if time remains.
+
+## 2026-06-28 — Issue #64: URL userinfo credentials leaked into cassettes in cleartext
+**Duration:** ~22 min · **Branch:** `session/2026-06-28-2344-issue-64`
+
+- `normalizeUrl` stripped the fragment but left URL **userinfo** (`user:pass@host`) intact, so a credentialed request URL was written to the cassette in cleartext and committed to git. The same Basic credential sent as an `Authorization`/`proxy-authorization` header is redacted — but as URL userinfo it slipped both layers (no `API_KEY_PATTERN` matched a `user:pass@` shape), so `assertNoLeakedSecrets` never threw. A direct violation of D-004's two-layer no-leaked-credential guarantee.
+- Fixed primarily by stripping `username`/`password` in `normalizeUrl` (fail closed, mirroring the fragment strip; userinfo is non-wire-distinguishing so replay parity is preserved). Added a tightly-anchored `scheme://user:pass@` pattern to `assertNoLeakedSecrets` as the belt-and-suspenders second layer, anchored on `//` to avoid false-positives on JSON emails/timestamps. 3 tests (strip + replay parity; scanner catch; no false positive). Toolkit 202 → 205, typecheck + lint clean.
+
+**Why this work, this session:** fourth issue of a multi-issue DAY run. With priority-tier autonomous work exhausted, a third non-tier dogfood round found prompt-regression-suite clean and surfaced this credential-leak parity gap in ai-app-integration-tests.
+
+**Open questions / blockers:** none.
+
+**Next session:** continue the loop if time remains. Secondary low-confidence note (not filed): `hashRequest` collides a no-body request with one whose body is the literal JSON `null` — same class as #57, only reachable for the unusual literal-`null` body.
