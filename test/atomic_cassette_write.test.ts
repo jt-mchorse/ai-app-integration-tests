@@ -52,6 +52,7 @@ function fakeCassette(hash: string, bodyValue: string): CassetteV1 {
       body: JSON.stringify({ model: "claude-haiku-4-5", messages: [] }),
     },
     response: {
+      kind: "non_streaming",
       status: 200,
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ok: true, value: bodyValue }),
@@ -186,5 +187,61 @@ describe("CassetteStore.read rejects a non-object cassette cleanly (#62)", () =>
     const store = new CassetteStore({ dir });
     await store.write(fakeCassette("9999aaaa", "ok"));
     expect((await store.read("9999aaaa"))!.request_hash).toBe("9999aaaa");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// `CassetteStore.read`: the NESTED `response` shape must also fail loudly (#77,
+// sibling of #62). The top-level guard only proves `parsed` is an object;
+// `rebuildResponse` then dereferences `response.headers`/`.kind`/`.frames`, so a
+// present-but-wrong-typed response threw a raw TypeError at replay, one seam
+// over from the #62 top-level fix.
+// ---------------------------------------------------------------------------
+
+describe("CassetteStore.read rejects a malformed nested response cleanly (#77)", () => {
+  async function writeRaw(hash: string, response: unknown): Promise<void> {
+    const cassette = {
+      schema_version: "1",
+      request_hash: hash,
+      request: {
+        method: "POST",
+        url: "https://api.anthropic.com/v1/messages",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      },
+      response,
+    };
+    await fs.writeFile(path.join(dir, `${hash}.json`), JSON.stringify(cassette) + "\n", "utf8");
+  }
+
+  it.each([
+    ["response is null", null],
+    ["response.headers is null", { kind: "non_streaming", status: 200, headers: null, body: "{}" }],
+    ["response.headers is an array", { kind: "non_streaming", status: 200, headers: [], body: "{}" }],
+    ["sse frames is null", { kind: "sse", status: 200, headers: {}, frames: null }],
+    ["non_streaming body is not a string", { kind: "non_streaming", status: 200, headers: {}, body: 42 }],
+    ["kind is unknown", { kind: "websocket", status: 200, headers: {}, body: "{}" }],
+    ["kind is absent", { status: 200, headers: {}, body: "{}" }],
+  ])("%s throws a clean Error, not a TypeError", async (_label, response) => {
+    const hash = "badresp";
+    await writeRaw(hash, response);
+    const store = new CassetteStore({ dir });
+    await expect(store.read(hash)).rejects.toThrow(/malformed response/);
+    const err = await store.read(hash).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err).not.toBeInstanceOf(TypeError);
+  });
+
+  it("a well-formed sse cassette still round-trips (no over-blocking)", async () => {
+    const hash = "goodsse";
+    await writeRaw(hash, {
+      kind: "sse",
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+      frames: ["data: {}\n\n"],
+    });
+    const store = new CassetteStore({ dir });
+    const read = await store.read(hash);
+    expect(read!.response.kind).toBe("sse");
   });
 });

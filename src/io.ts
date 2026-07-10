@@ -50,6 +50,15 @@ export class CassetteStore {
           `cassette filename ${requestHash}.json contains request_hash ${parsed.request_hash}; refusing to use it`,
         );
       }
+      // The top-level guard above (#62) only proves `parsed` is an object; the
+      // nested `response` is still unchecked, and `rebuildResponse` dereferences
+      // `response.headers` (Object.entries), `response.kind`, and — for an SSE
+      // cassette — `response.frames` (for...of). A present-but-wrong-typed
+      // `response`/`headers`/`frames` (a partial-write or hand-edit artifact)
+      // otherwise threw the same cryptic `TypeError` #62 set out to eliminate,
+      // one seam over. Validate the shape here so a malformed response fails
+      // with the same clean, actionable "refusing to use it" Error (#77).
+      assertValidResponse(parsed.response, requestHash);
       return parsed;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
@@ -59,6 +68,39 @@ export class CassetteStore {
 
   pathFor(requestHash: string): string {
     return path.join(this.opts.dir, `${requestHash}.json`);
+  }
+}
+
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+// Validate the recorded `response` shape that `rebuildResponse` will dereference
+// (fetch-recorder.ts): a non-null `headers` object plus, per the `kind`
+// discriminant, a string `body` (non_streaming) or an array `frames` (sse). A
+// malformed cassette fails with a clean, actionable Error mirroring the #62
+// top-level guard — never a raw TypeError at replay (#77).
+function assertValidResponse(response: unknown, requestHash: string): void {
+  const bad = (detail: string): never => {
+    throw new Error(`cassette ${requestHash}.json has a malformed response (${detail}); refusing to use it`);
+  };
+  if (!isObject(response)) {
+    bad(`response must be an object, got ${response === null ? "null" : Array.isArray(response) ? "array" : typeof response}`);
+    return;
+  }
+  if (!isObject(response.headers)) {
+    bad(`response.headers must be an object, got ${response.headers === null ? "null" : Array.isArray(response.headers) ? "array" : typeof response.headers}`);
+  }
+  if (response.kind === "non_streaming") {
+    if (typeof response.body !== "string") {
+      bad(`non_streaming response.body must be a string, got ${typeof response.body}`);
+    }
+  } else if (response.kind === "sse") {
+    if (!Array.isArray(response.frames)) {
+      bad(`sse response.frames must be an array, got ${response.frames === null ? "null" : typeof response.frames}`);
+    }
+  } else {
+    bad(`response.kind must be "non_streaming" or "sse", got ${JSON.stringify(response.kind)}`);
   }
 }
 
