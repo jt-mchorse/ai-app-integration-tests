@@ -536,3 +536,15 @@ or a new fingerprint shape if one is identified.
 **Open questions / blockers:** none.
 
 **Next session:** prototype-pollution-adjacent key handling — check other repos' canonicalizers / dedup maps / key-by-key object builders for the same dropped-`__proto__`/`constructor` special-key class.
+
+## 2026-07-10 — Issue #77: validate the nested cassette response shape (~22 min, night)
+
+**What got done.** `CassetteStore.read` (#62) guarded only the top-level container type — a top-level `null`/array/primitive is rejected cleanly — but returned the object without validating the nested `response`, and `rebuildResponse` then dereferenced `response.headers` (`Object.entries`), `response.kind`, and `response.frames` (`for...of`). A present-but-wrong-typed `response`/`headers`/`frames` (a partial-write or hand-edit artifact) passed every guard and threw a raw `TypeError` at replay — the exact failure mode #62 set out to eliminate, one seam over.
+
+Added `assertValidResponse` in `io.ts` (called after the `request_hash` check): `response` must be a non-null object, `response.headers` a non-null object, and — by the `kind` discriminant — a `non_streaming` response has a string `body` while an `sse` response has an array `frames`; an unknown/absent `kind` is rejected. It fails with the same clean `refusing to use it` Error as the top-level guard, never a raw `TypeError`. Seven malformed-response `it.each` cases + a well-formed sse round-trip. Reproduced firsthand via `tsx` driving `createReplayerFetch` (discovering the request hash from `MissingCassetteError`), before and after.
+
+**Gotcha.** The `fakeCassette` test helper omitted `kind` (casting `as CassetteV1`), but the real recorder always writes `kind` and a kind-less response can't replay (falls to the SSE branch, `frames` undefined → crash), so I corrected the fixture to carry `kind: "non_streaming"`. Also: `createReplayerFetch`'s `hosts` option must be a `Set`, not an array. Full suite green (233 passed); eslint + typecheck clean.
+
+**Why prioritized.** Static priority:high queue globally exhausted; found via the sibling-incomplete-fix meta-lens (JSON-loader nested field-type guard, sibling of #62).
+
+**Open questions / blockers.** None — PR ready for review.
