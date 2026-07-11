@@ -548,3 +548,12 @@ Added `assertValidResponse` in `io.ts` (called after the `request_hash` check): 
 **Why prioritized.** Static priority:high queue globally exhausted; found via the sibling-incomplete-fix meta-lens (JSON-loader nested field-type guard, sibling of #62).
 
 **Open questions / blockers.** None — PR ready for review.
+## 2026-07-11 — Issue #79: validate response.status in cassette read() (~18 min, night)
+
+**What got done.** `assertValidResponse` (#77/#78) guarded the nested recorded response's `headers`/`kind`/`body`/`frames` but skipped `status` — the one `RecordedResponse` field `rebuildResponse` *also* dereferences, feeding it to `new Response(..., { status })`, which throws a raw `RangeError` outside integer 200–599. So `read()` certified a cassette with an out-of-range / non-integer / non-number status as valid and the crash landed deep in `rebuildResponse` at replay, one seam over from the fields #77 did guard. `status` isn't caller-controlled at replay — it comes from the committed cassette file (hand-edit, partial write, merge artifact, unclamped upstream).
+
+Added a `status` check to `assertValidResponse` (integer in 200–599, the constructor's accepted range) with the same "malformed response" message, so `read()` rejects cleanly. Tests: `read()` rejects status `0`/`999`/`100`/`200.5`/`"200"`/`null`/absent as a clean `Error` (not TypeError/RangeError); valid `200`/`204`/`599` still round-trip. Full suite (243), eslint, tsc green. Verified every link firsthand (assertValidResponse never read status; rebuildResponse feeds it to `new Response`; `new Response(null,{status:999})` throws RangeError).
+
+**Why prioritized.** Static priority:high queue globally exhausted; found via the sibling-incomplete-fix meta-lens on the 8 PRs merged in this run's Phase A (sibling of #77/#78). Confirmed the nested `request` shape is NOT a gap (never dereferenced on the replay/matching path after `read()`), so no churn PR there.
+
+**Open questions / blockers.** None — PR #80 ready for review.
