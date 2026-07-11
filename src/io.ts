@@ -91,6 +91,22 @@ function assertValidResponse(response: unknown, requestHash: string): void {
   if (!isObject(response.headers)) {
     bad(`response.headers must be an object, got ${response.headers === null ? "null" : Array.isArray(response.headers) ? "array" : typeof response.headers}`);
   }
+  // `status` is dereferenced on the same replay path — `rebuildResponse` feeds
+  // it straight to `new Response(..., { status })`, which throws a raw
+  // `RangeError` for anything that isn't an integer in 200-599. It was the one
+  // `RecordedResponse` field the #77 nested-shape guard skipped, so an
+  // out-of-range / non-integer / non-number status (hand-edit, partial write,
+  // merge artifact, unclamped upstream) escaped `read()` validation and crashed
+  // deep in `rebuildResponse` — the exact "raw error one seam over" mode this
+  // guard exists to prevent. Enforce the constructor's accepted range here.
+  if (
+    typeof response.status !== "number" ||
+    !Number.isInteger(response.status) ||
+    response.status < 200 ||
+    response.status > 599
+  ) {
+    bad(`response.status must be an integer in 200-599, got ${JSON.stringify(response.status)}`);
+  }
   if (response.kind === "non_streaming") {
     if (typeof response.body !== "string") {
       bad(`non_streaming response.body must be a string, got ${typeof response.body}`);

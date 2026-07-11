@@ -222,6 +222,15 @@ describe("CassetteStore.read rejects a malformed nested response cleanly (#77)",
     ["non_streaming body is not a string", { kind: "non_streaming", status: 200, headers: {}, body: 42 }],
     ["kind is unknown", { kind: "websocket", status: 200, headers: {}, body: "{}" }],
     ["kind is absent", { status: 200, headers: {}, body: "{}" }],
+    // #79: status is dereferenced by rebuildResponse into `new Response(...,{status})`,
+    // which throws a raw RangeError outside 200-599. The one field #77 skipped.
+    ["status is out of range (0)", { kind: "non_streaming", status: 0, headers: {}, body: "{}" }],
+    ["status is out of range (999)", { kind: "non_streaming", status: 999, headers: {}, body: "{}" }],
+    ["status is out of range (100)", { kind: "non_streaming", status: 100, headers: {}, body: "{}" }],
+    ["status is non-integer", { kind: "non_streaming", status: 200.5, headers: {}, body: "{}" }],
+    ["status is a string", { kind: "non_streaming", status: "200", headers: {}, body: "{}" }],
+    ["status is null", { kind: "non_streaming", status: null, headers: {}, body: "{}" }],
+    ["status is absent", { kind: "non_streaming", headers: {}, body: "{}" }],
   ])("%s throws a clean Error, not a TypeError", async (_label, response) => {
     const hash = "badresp";
     await writeRaw(hash, response);
@@ -243,5 +252,21 @@ describe("CassetteStore.read rejects a malformed nested response cleanly (#77)",
     const store = new CassetteStore({ dir });
     const read = await store.read(hash);
     expect(read!.response.kind).toBe("sse");
+  });
+
+  // #79: boundary statuses the Web Response constructor accepts must still
+  // round-trip — the status guard must not over-block a valid low/high/null-body
+  // status (204 No Content and 599 both construct fine).
+  it.each([200, 204, 599])("a cassette with valid status %i still round-trips", async (status) => {
+    const hash = `goodstatus${status}`;
+    await writeRaw(hash, {
+      kind: "non_streaming",
+      status,
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    const store = new CassetteStore({ dir });
+    const read = await store.read(hash);
+    expect(read!.response.status).toBe(status);
   });
 });
