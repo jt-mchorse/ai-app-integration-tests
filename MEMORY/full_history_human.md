@@ -557,3 +557,15 @@ Added a `status` check to `assertValidResponse` (integer in 200–599, the const
 **Why prioritized.** Static priority:high queue globally exhausted; found via the sibling-incomplete-fix meta-lens on the 8 PRs merged in this run's Phase A (sibling of #77/#78). Confirmed the nested `request` shape is NOT a gap (never dereferenced on the replay/matching path after `read()`), so no churn PR there.
 
 **Open questions / blockers.** None — PR #80 ready for review.
+
+## Session 2026-07-13 (night) — issue #82: validate cassette header entries at read()
+
+`assertValidResponse` checked that a cassette's `response.headers` is an object, but never validated its entries. On replay, `rebuildResponse` feeds each entry to `Headers.set(k, v)`, which throws a raw `TypeError` for an invalid header name (a key with a space or empty string) or a non-string / control-character value (`\n`, `\x00`). So a hand-edited / partial-write / merge-artifact cassette passed `read()` validation and then crashed deep in `rebuildResponse`, one seam over — the same "raw error at replay" mode the #77 nested-shape guard and #80 status-field guard were written to prevent.
+
+The fix iterates the header entries after the is-an-object check: it rejects any non-string value and probes each `(k, v)` against a throwaway `new Headers()` in a try/catch, `bad(...)`-ing anything `Headers.set` would reject. `read()` now fails with the clean "malformed response ... refusing to use it" Error. Reproduced firsthand against the built `dist/` (read() accepts a `{"content type": "x"}` cassette, replay throws) before fixing. Added five malformed-header rows to the #77 `it.each` plus a well-formed round-trip guard against over-blocking; full suite green (249 tests), lint + typecheck clean.
+
+**Why this work, this session:** Sixth hit of the night run, surfaced by the sibling-incomplete-fix dogfood hunt on ai-app-integration-tests and verified firsthand.
+
+**Open questions / blockers:** none — PR #83 ready for review.
+
+**Next session:** Phase A merge PR for #82.
