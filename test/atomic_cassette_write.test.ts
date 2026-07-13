@@ -231,6 +231,15 @@ describe("CassetteStore.read rejects a malformed nested response cleanly (#77)",
     ["status is a string", { kind: "non_streaming", status: "200", headers: {}, body: "{}" }],
     ["status is null", { kind: "non_streaming", status: null, headers: {}, body: "{}" }],
     ["status is absent", { kind: "non_streaming", headers: {}, body: "{}" }],
+    // #82: headers is-an-object isn't enough — rebuildResponse feeds each entry
+    // to Headers.set(k, v), which throws a raw TypeError for an invalid header
+    // name (space/empty) or a non-string / control-char value. The entries #77
+    // skipped, one seam over from status.
+    ["header name has a space", { kind: "non_streaming", status: 200, headers: { "content type": "x" }, body: "{}" }],
+    ["header name is empty", { kind: "non_streaming", status: 200, headers: { "": "x" }, body: "{}" }],
+    ["header value has a newline", { kind: "non_streaming", status: 200, headers: { "x-ok": "a\nb" }, body: "{}" }],
+    ["header value is not a string", { kind: "non_streaming", status: 200, headers: { "x-ok": 5 }, body: "{}" }],
+    ["header value is null", { kind: "non_streaming", status: 200, headers: { "x-ok": null }, body: "{}" }],
   ])("%s throws a clean Error, not a TypeError", async (_label, response) => {
     const hash = "badresp";
     await writeRaw(hash, response);
@@ -268,5 +277,21 @@ describe("CassetteStore.read rejects a malformed nested response cleanly (#77)",
     const store = new CassetteStore({ dir });
     const read = await store.read(hash);
     expect(read!.response.status).toBe(status);
+  });
+
+  // #82: a cassette with well-formed headers (real HTTP names + string values,
+  // exactly what the record path emits) must still round-trip — the header-entry
+  // guard must not over-block a valid recording.
+  it("a cassette with well-formed headers still round-trips (no over-blocking)", async () => {
+    const hash = "goodheaders";
+    await writeRaw(hash, {
+      kind: "non_streaming",
+      status: 200,
+      headers: { "content-type": "application/json", "x-request-id": "abc-123" },
+      body: "{}",
+    });
+    const store = new CassetteStore({ dir });
+    const read = await store.read(hash);
+    expect(read!.response.headers["content-type"]).toBe("application/json");
   });
 });

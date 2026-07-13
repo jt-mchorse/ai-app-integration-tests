@@ -90,6 +90,26 @@ function assertValidResponse(response: unknown, requestHash: string): void {
   }
   if (!isObject(response.headers)) {
     bad(`response.headers must be an object, got ${response.headers === null ? "null" : Array.isArray(response.headers) ? "array" : typeof response.headers}`);
+  } else {
+    // is-an-object isn't enough: `rebuildResponse` feeds each entry to
+    // `Headers.set(k, v)`, which throws a raw TypeError for an invalid header
+    // NAME (a key with a space / empty string) or a non-string / control-char
+    // VALUE (`\n`, `\x00`). A hand-edit / partial-write / merge-artifact
+    // cassette otherwise passed `read()` and crashed deep in `rebuildResponse`,
+    // one seam over — the same "raw error at replay" mode the #77 nested-shape
+    // and #80 status guards exist to prevent. Validate the entries here so a
+    // malformed header fails with the same clean, actionable Error.
+    const probe = new Headers();
+    for (const [k, v] of Object.entries(response.headers)) {
+      if (typeof v !== "string") {
+        bad(`response.headers[${JSON.stringify(k)}] must be a string, got ${v === null ? "null" : typeof v}`);
+      }
+      try {
+        probe.set(k, v as string);
+      } catch {
+        bad(`response.headers has an invalid entry ${JSON.stringify(k)}: ${JSON.stringify(v)}`);
+      }
+    }
   }
   // `status` is dereferenced on the same replay path — `rebuildResponse` feeds
   // it straight to `new Response(..., { status })`, which throws a raw
