@@ -602,3 +602,11 @@ The fix iterates the header entries after the is-an-object check: it rejects any
 **Open questions / blockers:** none — PR #89 ready for review.
 
 **Next session:** Phase A merge PR for #88.
+
+## 2026-07-14 (night, issue #90) — Blob request bodies collide (sibling of #86/#88)
+
+`readBodyAsText` in `src/fetch-recorder.ts` lumped `Blob` in with `ReadableStream`/`FormData` and dropped it to `null`, so a Blob request body never entered the request hash. That was wrong: a `Blob` is a fixed, deterministic byte container (no random multipart boundary — that's a FormData concept — and, unlike a stream, not single-read). `fetch` serializes it to its exact bytes and `await body.text()` reads them deterministically. Dropping to `null` made every Blob POST byte-identical to a no-body request, so two distinct Blob bodies hash-collided (one replayed the other's cassette) and a Blob POST collided with a no-body POST — the same collision class as #84 (empty-string), #86 (URLSearchParams), and #88 (typed-array views).
+
+Fix: decode `Blob` bodies via `await body.text()`, mirroring the URLSearchParams/ArrayBufferView branches, so they're tagged `bodyEncoding:"raw"` and folded into the hash. `File extends Blob`, so File bodies ride the same branch. This also corrects the #88 memory note, which had assumed Blob was "by design" out of scope — only `ReadableStream` (single-read) and `FormData` (random multipart boundary) genuinely remain un-canonicalizable.
+
+Verified firsthand with a Node ESM repro against `dist/`: pre-fix, 3 distinct requests wrote 1 cassette and a no-body replay served a Blob's response; post-fix, each distinct Blob records its own cassette, a no-body POST and a different Blob both raise `MissingCassetteError`, and the same Blob hits. Added a regression test; full suite (253), typecheck, and lint green. Shipped as PR #91.

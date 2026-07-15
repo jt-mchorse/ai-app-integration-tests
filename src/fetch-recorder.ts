@@ -143,10 +143,25 @@ async function readBodyAsText(
       // one body-type over.
       return body.toString();
     }
-    // Skip ReadableStream / FormData / Blob — genuinely un-canonicalizable here (a
-    // stream is single-read; FormData/Blob boundaries are nondeterministic). They
-    // still drop to null; a request whose only body is one of those is out of
-    // scope for hashing (documented limitation, not the URLSearchParams gap above).
+    if (body instanceof Blob) {
+      // A Blob body is a standard BodyInit that fetch serializes to its exact,
+      // fixed bytes — `await body.text()` reads them deterministically. It has no
+      // random "boundary" (that concept applies to multipart FormData, not a plain
+      // Blob) and, unlike a ReadableStream, is not single-read. Dropping it to
+      // `null` (below) left every Blob POST looking like a no-body request, so two
+      // distinct Blob bodies (`new Blob(["a"])` vs `new Blob(["b"])`) hash-collided
+      // and one replayed the other's cassette, and a Blob POST collided with a
+      // no-body POST. Decode it so normalizeRequest tags it `bodyEncoding:"raw"`
+      // and folds it into the hash — the same collision class as #88 (typed-array
+      // views) / #86 (URLSearchParams) / #84 (empty-string), one body-type over.
+      // `File extends Blob`, so a File body is covered by this branch too.
+      return await body.text();
+    }
+    // Skip ReadableStream / FormData — genuinely un-canonicalizable here (a stream
+    // is single-read; FormData serializes to a multipart body with a random
+    // boundary). They still drop to null; a request whose only body is one of
+    // those is out of scope for hashing (documented limitation, not the
+    // URLSearchParams/Blob gaps above).
     return null;
   }
   if (typeof input === "object" && "clone" in input && typeof input.clone === "function") {

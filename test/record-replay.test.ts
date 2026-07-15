@@ -296,6 +296,51 @@ describe("record then replay (non-streaming)", () => {
     });
     expect(await replayB.text()).toBe("view-B");
   });
+
+  it("does not collide two distinct Blob bodies (sibling of #86/#88)", async () => {
+    // A Blob body has fixed, deterministic bytes (no random multipart boundary —
+    // that's a FormData concept) that fetch serializes exactly; it used to drop to
+    // `null`, byte-identical to a no-body request. Two distinct Blob bodies
+    // hash-collided and one replayed the other's cassette, and a Blob-body POST
+    // collided with a no-body POST. Each distinct Blob body must now record/replay
+    // as its own cassette, distinct from no-body. `File extends Blob`, so a File
+    // body rides the same branch.
+    const upstreamA: typeof fetch = async () =>
+      new Response("blob-A", { status: 200, headers: { "content-type": "text/plain" } });
+    const upstreamB: typeof fetch = async () =>
+      new Response("blob-B", { status: 200, headers: { "content-type": "text/plain" } });
+
+    await createRecorderFetch({ upstream: upstreamA, store, hosts: HOSTS })(
+      "https://api.anthropic.com/v1/messages",
+      { method: "POST", body: new Blob(["ALPHA-payload"]) },
+    );
+    // A no-body POST must MISS, not collide with the Blob recording.
+    const replayer = createReplayerFetch({ store, hosts: HOSTS });
+    await expect(
+      replayer("https://api.anthropic.com/v1/messages", { method: "POST" }),
+    ).rejects.toBeInstanceOf(MissingCassetteError);
+
+    // A Blob carrying different bytes is its own distinct request.
+    await createRecorderFetch({ upstream: upstreamB, store, hosts: HOSTS })(
+      "https://api.anthropic.com/v1/messages",
+      { method: "POST", body: new Blob(["BETA-payload"]) },
+    );
+
+    const files = await fs.readdir(dir);
+    expect(files).toHaveLength(2);
+
+    const replayA = await replayer("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      body: new Blob(["ALPHA-payload"]),
+    });
+    expect(await replayA.text()).toBe("blob-A");
+
+    const replayB = await replayer("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      body: new Blob(["BETA-payload"]),
+    });
+    expect(await replayB.text()).toBe("blob-B");
+  });
 });
 
 describe("record then replay (SSE streaming)", () => {
