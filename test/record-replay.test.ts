@@ -550,3 +550,261 @@ describe("JSON-null body does not collide with a no-body request (#70)", () => {
     expect(await noResp.text()).toBe("RESP-FOR-NO-BODY");
   });
 });
+
+describe("FormData body enters the request hash (#92)", () => {
+  let dir: string;
+  let store: CassetteStore;
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "aiit-fd-"));
+    store = new CassetteStore({ dir });
+  });
+
+  const upstream = (text: string): typeof fetch =>
+    (async () =>
+      new Response(text, {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+      })) as typeof fetch;
+
+  const post = (body?: BodyInit): RequestInit =>
+    body === undefined ? { method: "POST" } : { method: "POST", body };
+
+  const URL_ = "https://api.anthropic.com/v1/messages";
+
+  function form(...pairs: Array<[string, string | Blob]>): FormData {
+    const fd = new FormData();
+    for (const [name, value] of pairs) fd.append(name, value);
+    return fd;
+  }
+
+  it("does not collide two distinct FormData bodies (sibling of #86/#88/#90)", async () => {
+    // A FormData body used to drop to `null`, byte-identical to a no-body
+    // request: recording `field=ALPHA` and then replaying `field=BETA` served
+    // the ALPHA cassette, silently. The boundary that made this look
+    // un-canonicalizable belongs to the serialized bytes; the hash uses the
+    // logical entries, which are deterministic.
+    await createRecorderFetch({ upstream: upstream("form-A"), store, hosts: HOSTS })(
+      URL_,
+      post(form(["field", "ALPHA"])),
+    );
+
+    const replayer = createReplayerFetch({ store, hosts: HOSTS });
+    await expect(replayer(URL_, post(form(["field", "BETA"])))).rejects.toBeInstanceOf(
+      MissingCassetteError,
+    );
+
+    await createRecorderFetch({ upstream: upstream("form-B"), store, hosts: HOSTS })(
+      URL_,
+      post(form(["field", "BETA"])),
+    );
+    expect(await (await replayer(URL_, post(form(["field", "ALPHA"])))).text()).toBe("form-A");
+    expect(await (await replayer(URL_, post(form(["field", "BETA"])))).text()).toBe("form-B");
+  });
+
+  it("does not collide a FormData POST with a no-body POST", async () => {
+    await createRecorderFetch({ upstream: upstream("form-body"), store, hosts: HOSTS })(
+      URL_,
+      post(form(["field", "ALPHA"])),
+    );
+    const replayer = createReplayerFetch({ store, hosts: HOSTS });
+    await expect(replayer(URL_, post())).rejects.toBeInstanceOf(MissingCassetteError);
+
+    await createRecorderFetch({ upstream: upstream("no-body"), store, hosts: HOSTS })(URL_, post());
+    expect(await (await replayer(URL_, post())).text()).toBe("no-body");
+    expect(await (await replayer(URL_, post(form(["field", "ALPHA"])))).text()).toBe("form-body");
+  });
+
+  it("distinguishes a repeated field name from a single one", async () => {
+    // `append` twice is legal and is a different wire request. A dict-shaped
+    // canonical form would lose one of them; the entry list keeps both.
+    await createRecorderFetch({ upstream: upstream("twice"), store, hosts: HOSTS })(
+      URL_,
+      post(form(["f", "x"], ["f", "x"])),
+    );
+    const replayer = createReplayerFetch({ store, hosts: HOSTS });
+    await expect(replayer(URL_, post(form(["f", "x"])))).rejects.toBeInstanceOf(
+      MissingCassetteError,
+    );
+  });
+
+  it("distinguishes a string value from a File with the same name and content", async () => {
+    // Without the "s"/"f" tag these would serialize alike. A File also carries a
+    // filename and type that belong in the hash.
+    await createRecorderFetch({ upstream: upstream("string-value"), store, hosts: HOSTS })(
+      URL_,
+      post(form(["f", "payload"])),
+    );
+    const replayer = createReplayerFetch({ store, hosts: HOSTS });
+    await expect(
+      replayer(URL_, post(form(["f", new File(["payload"], "f", { type: "text/plain" })]))),
+    ).rejects.toBeInstanceOf(MissingCassetteError);
+  });
+
+  it("distinguishes two Files that differ only by filename", async () => {
+    await createRecorderFetch({ upstream: upstream("a-txt"), store, hosts: HOSTS })(
+      URL_,
+      post(form(["f", new File(["same"], "a.txt", { type: "text/plain" })])),
+    );
+    const replayer = createReplayerFetch({ store, hosts: HOSTS });
+    await expect(
+      replayer(URL_, post(form(["f", new File(["same"], "b.txt", { type: "text/plain" })]))),
+    ).rejects.toBeInstanceOf(MissingCassetteError);
+  });
+
+  it("does not consume the body — the same FormData still reaches upstream", async () => {
+    // The property that separates FormData from ReadableStream, and the one that
+    // would make this fix unsafe if it were wrong. Assert it directly rather
+    // than trusting the spec.
+    let seen: FormData | null = null;
+    const capturing: typeof fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      seen = (init?.body as FormData) ?? null;
+      return new Response("ok", { status: 200 });
+    }) as typeof fetch;
+
+    const fd = form(["field", "ALPHA"], ["field", "BETA"]);
+    await createRecorderFetch({ upstream: capturing, store, hosts: HOSTS })(URL_, post(fd));
+
+    expect(seen).toBeInstanceOf(FormData);
+    expect([...(seen as unknown as FormData).entries()]).toEqual([
+      ["field", "ALPHA"],
+      ["field", "BETA"],
+    ]);
+    // And the original is still readable too.
+    expect(fd.getAll("field")).toEqual(["ALPHA", "BETA"]);
+  });
+
+  it("still drops a ReadableStream body to null", async () => {
+    // Narrowing the skip comment to ReadableStream must not have widened the
+    // branch: a stream is single-read, so hashing it would take the body away
+    // from the upstream request. Two distinct stream bodies still collide, and
+    // that stays a documented limitation.
+    const stream = (text: string): ReadableStream<Uint8Array> =>
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(text));
+          controller.close();
+        },
+      });
+
+    await createRecorderFetch({ upstream: upstream("stream-A"), store, hosts: HOSTS })(URL_, {
+      method: "POST",
+      body: stream("ALPHA"),
+      // @ts-expect-error - duplex is required for a stream body and not in the DOM lib types here
+      duplex: "half",
+    });
+    const replayer = createReplayerFetch({ store, hosts: HOSTS });
+    expect(await (await replayer(URL_, post())).text()).toBe("stream-A");
+  });
+});
+
+describe("the recorder forwards the caller's own body upstream (#93)", () => {
+  let dir: string;
+  let store: CassetteStore;
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "aiit-up-"));
+    store = new CassetteStore({ dir });
+  });
+
+  const URL_ = "https://api.anthropic.com/v1/messages";
+
+  /** Records one request and returns whatever the upstream fetch received as its body. */
+  async function bodySeenUpstream(body: BodyInit): Promise<unknown> {
+    let seen: unknown;
+    const capturing: typeof fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      seen = init?.body;
+      return new Response("ok", { status: 200 });
+    }) as typeof fetch;
+    await createRecorderFetch({ upstream: capturing, store, hosts: HOSTS })(URL_, {
+      method: "POST",
+      body,
+    });
+    return seen;
+  }
+
+  it("forwards binary bytes intact, not TextDecoder mojibake", async () => {
+    // The sharp one. `bodyText` used to win, so a PNG header went upstream as
+    // "�PNG��" — the live API received corrupted bytes and the
+    // cassette recorded the response to a request the caller never made.
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0xff, 0xfe]);
+    const seen = await bodySeenUpstream(bytes);
+    expect(seen).toBeInstanceOf(Uint8Array);
+    expect([...(seen as Uint8Array)]).toEqual([...bytes]);
+    // And specifically not the lossy decode that used to be sent.
+    expect(new TextDecoder().decode(bytes)).toContain("�");
+    expect(typeof seen).not.toBe("string");
+  });
+
+  it("forwards a Blob as a Blob, preserving its type", async () => {
+    const blob = new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" });
+    const seen = await bodySeenUpstream(blob);
+    expect(seen).toBeInstanceOf(Blob);
+    expect((seen as Blob).type).toBe("image/png");
+  });
+
+  it("forwards URLSearchParams as URLSearchParams", async () => {
+    // Byte-equivalent as a string, but `fetch` only sets
+    // `Content-Type: application/x-www-form-urlencoded` for the real thing.
+    const seen = await bodySeenUpstream(new URLSearchParams({ foo: "1" }));
+    expect(seen).toBeInstanceOf(URLSearchParams);
+  });
+
+  it("forwards FormData as FormData with its entries intact", async () => {
+    // Reading the entries for hashing must not consume or replace them — the
+    // property that separates FormData from ReadableStream, and the one that
+    // would make #92's decode unsafe if it were wrong.
+    const fd = new FormData();
+    fd.append("field", "ALPHA");
+    fd.append("field", "BETA");
+    const seen = await bodySeenUpstream(fd);
+    expect(seen).toBeInstanceOf(FormData);
+    expect([...(seen as FormData).entries()]).toEqual([
+      ["field", "ALPHA"],
+      ["field", "BETA"],
+    ]);
+    expect(fd.getAll("field")).toEqual(["ALPHA", "BETA"]);
+  });
+
+  it("leaves a string body exactly as it was", async () => {
+    // Where `bodyText === init.body`, which is why this went unnoticed for as
+    // long as string bodies were the only decoded kind.
+    expect(await bodySeenUpstream("hello")).toBe("hello");
+  });
+
+  it("still forwards a body that came from a Request input", async () => {
+    // The clone path is the one case `bodyText` was written for: `init` has no
+    // body, so the fallback has to fire or the upstream request loses it.
+    let seen: unknown;
+    const capturing: typeof fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      seen = init?.body;
+      return new Response("ok", { status: 200 });
+    }) as typeof fetch;
+    const request = new Request(URL_, { method: "POST", body: "from-request-input" });
+    await createRecorderFetch({ upstream: capturing, store, hosts: HOSTS })(request);
+    expect(seen).toBe("from-request-input");
+  });
+
+  it("does not change which cassette any body type hashes to", async () => {
+    // Fidelity upstream must not disturb the hash — every body-collision fix
+    // from #57 through #92 depends on it. Record each type twice and assert one
+    // cassette per type, not one per attempt.
+    const bodies: BodyInit[] = [
+      "hello",
+      new URLSearchParams({ foo: "1" }),
+      new Uint8Array([1, 2, 3]),
+      new Blob(["blob-payload"]),
+    ];
+    for (const body of bodies) {
+      for (let i = 0; i < 2; i++) {
+        await createRecorderFetch({
+          upstream: (async () => new Response("ok", { status: 200 })) as typeof fetch,
+          store,
+          hosts: HOSTS,
+        })(URL_, { method: "POST", body });
+      }
+    }
+    const files = (await fs.readdir(dir)).filter((f) => f.endsWith(".json"));
+    expect(files.length).toBe(bodies.length);
+  });
+});
