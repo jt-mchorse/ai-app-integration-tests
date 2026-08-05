@@ -610,3 +610,68 @@ The fix iterates the header entries after the is-an-object check: it rejects any
 Fix: decode `Blob` bodies via `await body.text()`, mirroring the URLSearchParams/ArrayBufferView branches, so they're tagged `bodyEncoding:"raw"` and folded into the hash. `File extends Blob`, so File bodies ride the same branch. This also corrects the #88 memory note, which had assumed Blob was "by design" out of scope — only `ReadableStream` (single-read) and `FormData` (random multipart boundary) genuinely remain un-canonicalizable.
 
 Verified firsthand with a Node ESM repro against `dist/`: pre-fix, 3 distinct requests wrote 1 cassette and a no-body replay served a Blob's response; post-fix, each distinct Blob records its own cassette, a no-body POST and a different Blob both raise `MissingCassetteError`, and the same Blob hits. Added a regression test; full suite (253), typecheck, and lint green. Shipped as PR #91.
+
+## 2026-08-04 — Issues #92 and #93: a value computed for one job, used for another
+
+Two defects on adjacent lines of `createRecorderFetch`. The second is why the
+first couldn't ship on its own, and it's the more interesting of the two.
+
+**#92.** A `FormData` body dropped to `null` in `readBodyAsText`, so it never
+entered the request hash. Recording `field=ALPHA` and then replaying
+`field=BETA` served the ALPHA cassette; so did a no-body POST. Silent
+wrong-replay, this repo's core failure mode.
+
+The skip comment justified excluding FormData with its "random multipart
+boundary". The boundary is real — and irrelevant. It's a property of the
+*serialized bytes*, and the hash never uses serialized bytes; it canonicalizes
+the logical body. That's exactly why `URLSearchParams` is hashed via
+`toString()` rather than by capturing what `fetch` framed onto the wire.
+FormData's logical body is `[...entries()]`: deterministic, ordered,
+duplicate-preserving, re-readable.
+
+So the comment gave a reason that holds for `ReadableStream` and had been
+extended to `FormData`, where it doesn't. That is the *same* correction #90 made
+for `Blob` on this *same sentence*, which is worth noticing: one sentence
+covering three things, correct about one of them, and it took three separate
+issues to unpick. The comment is now narrowed to `ReadableStream` alone.
+
+**#93.** I found this verifying #92's acceptance criterion that hashing must not
+consume the body. The upstream re-issue read:
+
+```ts
+body: bodyText ?? init?.body ?? undefined,
+```
+
+`bodyText` wins whenever it exists. Captured from the upstream `fetch`:
+
+```
+Blob(png bytes)      sent upstream as String: "�PNG"
+Uint8Array(binary)   sent upstream as String: "�PNG��"
+```
+
+`TextDecoder` replaced every non-UTF-8 byte with `U+FFFD`, and that lossy string
+went on the wire. Recording a binary upload sends a corrupted request to the live
+API, and the cassette then faithfully records the response to a request the
+caller never made. Replay looks perfect.
+
+The root cause is one variable doing two jobs. `bodyText` is the *hash* input; it
+was also made the *upstream payload*. The comment justified that with "the body
+might have been consumed above" — but nothing in the `init.body` branches
+consumes anything. The only consuming path is `input.clone().text()` for a
+`Request` input, where `init.body` is undefined anyway. `bodyText` was exactly
+the right fallback and exactly the wrong default.
+
+And it got worse over time without anyone touching that line. While only string
+bodies were decoded, `bodyText === init.body` and this was invisible. #86, #88
+and #90 each taught the decoder a new type and each silently widened the blast
+radius. The lens I want to keep: **when a fix teaches a normalizer to understand
+a new input type, check every other consumer of that normalizer's output.** A
+value computed for one purpose and reused for a second becomes wrong for the
+second as soon as the first gets better at its job.
+
+One test-writing note. `git stash` doesn't work as an anti-vacuous check when the
+new tests append to a *tracked* file — it removes them too, and the suite goes
+green for the wrong reason. Reverting only `src/fetch-recorder.ts` with `git
+checkout main --` fails 8 of the 14, which is the check I wanted.
+
+267 passed. Shipped as PR #94.

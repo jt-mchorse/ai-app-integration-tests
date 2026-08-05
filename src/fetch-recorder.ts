@@ -157,11 +157,42 @@ async function readBodyAsText(
       // `File extends Blob`, so a File body is covered by this branch too.
       return await body.text();
     }
-    // Skip ReadableStream / FormData — genuinely un-canonicalizable here (a stream
-    // is single-read; FormData serializes to a multipart body with a random
-    // boundary). They still drop to null; a request whose only body is one of
-    // those is out of scope for hashing (documented limitation, not the
-    // URLSearchParams/Blob gaps above).
+    if (body instanceof FormData) {
+      // A FormData body used to be lumped in with ReadableStream and dropped to
+      // `null`, on the grounds that it "serializes to a multipart body with a
+      // random boundary". The boundary is real, but it is a property of the
+      // *serialized bytes*, and the hash never uses serialized bytes — it
+      // canonicalizes the LOGICAL body. That is exactly why `URLSearchParams`
+      // above is hashed via `toString()` rather than by capturing what `fetch`
+      // actually framed onto the wire.
+      //
+      // FormData's logical body is `[...entries()]`: deterministic,
+      // insertion-ordered, duplicate-key preserving, and re-readable (unlike a
+      // stream, reading it here does not consume it, so the same object still
+      // reaches the upstream fetch). Dropping it to `null` made every FormData
+      // POST byte-identical to a no-body request, so two distinct form bodies
+      // hash-collided and one replayed the other's cassette (#92).
+      //
+      // Each entry is emitted as a tagged JSON record so a string value can't
+      // be confused with a File carrying the same field name, and so a file's
+      // name/type participate in the hash alongside its bytes. `File extends
+      // Blob`, so `.text()` reads it deterministically — the same property the
+      // Blob branch above relies on.
+      const records: string[] = [];
+      for (const [name, value] of body.entries()) {
+        records.push(
+          typeof value === "string"
+            ? JSON.stringify(["s", name, value])
+            : JSON.stringify(["f", name, value.name, value.type, await value.text()]),
+        );
+      }
+      return records.join("\n");
+    }
+    // Skip ReadableStream — genuinely un-canonicalizable here, because it is
+    // single-read: consuming it to hash it would take the body away from the
+    // upstream request. It still drops to null; a request whose only body is a
+    // stream is out of scope for hashing (a documented limitation, unlike the
+    // URLSearchParams / Blob / FormData gaps above, which were all bugs).
     return null;
   }
   if (typeof input === "object" && "clone" in input && typeof input.clone === "function") {
@@ -308,12 +339,29 @@ export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
     const { normalized, bodyText } = await normalizeRequest(input, init);
     const requestHash = hashRequest(normalized);
 
-    // Re-issue the original request to upstream. Body might have been consumed
-    // above, so reconstruct from bodyText if present.
+    // Re-issue the original request to upstream, forwarding the caller's own
+    // body object whenever there is one.
+    //
+    // This used to prefer `bodyText`, justified as "the body might have been
+    // consumed above". None of the `init.body` branches in `readBodyAsText`
+    // consume anything — string, ArrayBuffer, any ArrayBufferView,
+    // URLSearchParams and FormData are all re-readable, and Blob is a fixed
+    // byte container. The only consuming path is `input.clone().text()`, which
+    // handles a `Request` input, and there `init?.body` is undefined anyway —
+    // so `bodyText` is exactly the right fallback and exactly the wrong default.
+    //
+    // While only string bodies were decoded this was invisible (`bodyText ===
+    // init.body`). Once #86/#88/#90 taught the decoder about URLSearchParams,
+    // views and Blobs, it started degrading real requests: a binary body went
+    // upstream as `TextDecoder` output, with every non-UTF-8 byte replaced by
+    // U+FFFD, so the live API received corrupted bytes and the cassette
+    // faithfully recorded the response to a request the caller never made
+    // (#93). A URLSearchParams or Blob body also lost the `Content-Type` fetch
+    // sets automatically for it and does not set for a string.
     const upstreamInit: RequestInit = {
       ...init,
       method: normalized.method,
-      body: bodyText ?? init?.body ?? undefined,
+      body: init?.body ?? bodyText ?? undefined,
     };
     const liveResponse = await upstream(input, upstreamInit);
 
