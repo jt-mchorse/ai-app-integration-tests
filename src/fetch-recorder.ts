@@ -216,16 +216,32 @@ function shouldIntercept(url: string, hosts: ReadonlySet<string>): boolean {
 }
 
 /**
- * Lower-case every host so matching is case-insensitive. `URL.hostname` is
- * always lower-cased by the WHATWG parser and hostnames are case-insensitive
- * (RFC 3986 §3.2.2), but caller-supplied hosts are taken verbatim — a
- * mixed-/upper-case entry like `API.ANTHROPIC.COM` would never match the
+ * Trim and lower-case every host so matching is insensitive to case and to
+ * surrounding whitespace. `URL.hostname` is always lower-cased by the WHATWG
+ * parser and carries no padding, but caller-supplied hosts are taken verbatim —
+ * a mixed-/upper-case entry like `API.ANTHROPIC.COM` would never match the
  * lower-cased `u.hostname` and silently degrade the recorder to pass-through.
+ *
+ * That argument is exactly as true of whitespace, and the `.trim()` was missing
+ * (#95): `" api.anthropic.com "` hit the real upstream and wrote **no
+ * cassette**, with no error — tests pass green while calling live APIs, which
+ * is the harm both `validateHosts` gates (#26 installer layer, #34 factory
+ * layer) exist to prevent. Padding is not contrived; the obvious way to make
+ * the list configurable is `process.env.RECORD_HOSTS?.split(",")`, and
+ * `"a.com, b.com".split(",")` yields `" b.com"`. Cross-repo sibling of
+ * mcp-server-cookbook#52, where a whitespace-padded `MCP_FS_SANDBOX_READ_ONLY`
+ * silently failed *open* to write mode; same source of padding, same fix.
+ *
+ * Trimming rather than rejecting is deliberate — the intent of a padded entry
+ * is unambiguous, so it is the matching that should be forgiving, not the
+ * validation that should be stricter. Both `validateHosts` implementations are
+ * unchanged.
+ *
  * Built once per factory so the per-request `shouldIntercept` stays a plain
  * Set lookup.
  */
 function normalizeHosts(hosts: ReadonlySet<string>): ReadonlySet<string> {
-  return new Set([...hosts].map((h) => h.toLowerCase()));
+  return new Set([...hosts].map((h) => h.trim().toLowerCase()));
 }
 
 /* ------------------------------------------------------------------ */
