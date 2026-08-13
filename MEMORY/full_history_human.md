@@ -675,3 +675,38 @@ green for the wrong reason. Reverting only `src/fetch-recorder.ts` with `git
 checkout main --` fails 8 of the 14, which is the check I wanted.
 
 267 passed. Shipped as PR #94.
+
+## 2026-08-12 — half a normalization (#95)
+
+`normalizeHosts` lower-cased caller-supplied hostnames. It didn't trim them. So
+`" api.anthropic.com "` never matched the padding-free `URL.hostname`, the
+recorder passed the call straight through to the real upstream, wrote no
+cassette, and said nothing. Measured: one upstream hit, zero cassettes, no
+error — exactly what `install.ts`'s own `validateHosts` docstring describes as
+the thing to prevent, "tests pass green but were actually hitting live APIs".
+
+The argument for the fix was already written in the function being fixed. Its
+docstring explains that an upper-case entry "would never match the lower-cased
+`u.hostname` and silently degrade the recorder to pass-through". Every word of
+that is true of whitespace.
+
+So the lens: **a normalizer that handles one axis of operator sloppiness
+usually carries, in its own comment, the argument for the others.** A
+`.toLowerCase()` without a `.trim()` — or the reverse — is a half-done
+normalization worth asking about. mcp-server-cookbook#52 was the same shape in
+a sibling repo, where a padded `MCP_FS_SANDBOX_READ_ONLY` silently failed
+*open* to write mode.
+
+A process note I want to keep. My first probe said the install path was fine
+and the factory path was broken — a contradiction, since one calls the other.
+The probe was wrong: it treated *any* throw from the replayer as "intercepted",
+and the replayer throws two different errors, `MissingCassetteError` when it
+does intercept and "non-intercepted host" when it doesn't. When two probes of
+the same property disagree, the probe is wrong before the code is. Re-probing
+the recorder and asserting on the cassette file settled it immediately.
+
+That's also why every test here asserts a cassette exists on disk rather than a
+boolean: the broken path returned a perfectly ordinary 200. And two of the ten
+are negative controls, because the risk of adding a trim is widening matching
+too far — an unlisted host must still pass through, and `"   "` must not become
+an entry that looks configured and matches nothing.
