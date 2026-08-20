@@ -710,3 +710,62 @@ boolean: the broken path returned a perfectly ordinary 200. And two of the ten
 are negative controls, because the risk of adding a trim is widening matching
 too far — an unlisted host must still pass through, and `"   "` must not become
 an entry that looks configured and matches nothing.
+
+## 2026-08-19 — a guard rejecting Infinity for a reason that isn't true (#97)
+
+I went into `retry-budget.ts` looking for the "guard the input but not the
+derived value" shape, and found it: `backoff = backoffMs *
+Math.pow(multiplier, attempt - 1)` is computed from three validated inputs and
+checked by none of them. But the thing that made the issue sharp was a comment
+making a checkable claim:
+
+> `NaN` → `setTimeout(NaN)` coerces to 0 (silent abandonment of the backoff
+> schedule); `Infinity` → `setTimeout(Infinity)` hangs the test.
+
+So I ran it.
+
+```
+setTimeout(Infinity) resolved after 2 ms
+  TimeoutOverflowWarning: Infinity does not fit into a 32-bit signed integer.
+  Timeout duration was set to 1.
+```
+
+`setTimeout(Infinity)` does not hang. Node clamps *any* delay above `2**31 - 1`
+to 1 ms. So `Infinity` has the **same** harm as `NaN` — "silent abandonment of
+the backoff schedule", the guard's own phrase — not the opposite one.
+
+That reframing is the whole finding. If the real harm is "silently collapses to
+1 ms", then every value in `(2147483647, ∞)` has it, and the guard caught
+exactly one point of that interval:
+
+```
+backoffMs=2147483647  -> real sleep 2147483647 ms
+backoffMs=2147483648  -> real sleep 1 ms  (CLAMPED)
+backoffMs=3600000000  -> real sleep 1 ms  (CLAMPED)
+```
+
+And the computed schedule had the same gap. With ordinary inputs
+(`backoffMs: 1000`, `multiplier: 2`), attempt 22 sleeps 2,097,152,000 ms and
+attempt 23 sleeps 1 ms — an exponential schedule silently becoming a tight
+loop. The module's own opening comment says it exists to prevent "a real bug
+masked by a silently-unbounded retry"; a collapsed backoff is the pacing-side
+version of that.
+
+Both checks go at the boundary, computed from the already-validated inputs.
+Two choices worth recording. **Not mid-loop:** rejecting halfway through a
+retry would be worse than the bug, turning a flake into a hard failure inside a
+budget the caller had committed to. **Not clamped to the limit:** clamping
+silently changes the schedule the caller asked for, which is the same class of
+silent degradation being closed — rejecting lets them pick a real number.
+
+The first test calls the real `setTimeout` and measures the elapsed time rather
+than trusting my description, because the harm is a runtime behaviour of Node's
+timer. Reverting the guards turns 8 of 17 red, two of them by *timing out at
+10 s* because the pre-fix schedule genuinely runs. A loud regression signal is
+the right outcome there.
+
+One thread for a future session: the `agent-orchestration-platform` sibling
+(`withRetry` / `validatePolicy`) was recorded as hunted-empty on 2026-08-13.
+Worth re-checking for this same clamp gap — that sweep was over the *numeric
+domain*, and the bad value here is finite and positive, so it would not have
+been caught.
