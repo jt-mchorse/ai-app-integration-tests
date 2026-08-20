@@ -107,6 +107,47 @@ export function expectSemanticallySimilar(
   }
   const tokensA = tokenize(actual, opts?.stopwords);
   const tokensB = tokenize(expected, opts?.stopwords);
+  // The threshold guard above covers ONE operand. The token sets are the other,
+  // and they reach the same vacuous pass the comment there warns about (#99).
+  //
+  // `jaccardSimilarity` returns 1.0 for two empty sets — documented, and correct
+  // as set semantics. But an `expected` with no informative tokens cannot
+  // discriminate between ANY two inputs, so every comparison against it agrees.
+  // Measured, all passing before this guard:
+  //
+  //   ""        vs "it is what it is"  -> [] vs []  -> 1.000  PASSES
+  //   "..."     vs "the and of"        -> [] vs []  -> 1.000  PASSES
+  //   "🎉🎉🎉"   vs "here we are"        -> [] vs []  -> 1.000  PASSES
+  //   "  \n\t " vs "and so it was"     -> [] vs []  -> 1.000  PASSES
+  //
+  // An empty response from the model is exactly the failure a streaming-UI test
+  // exists to catch, and it passed.
+  //
+  // The second route is sharper, because the `stopwords` option invites it —
+  // "callers customize for non-English or domain-specific corpora". A caller
+  // set that happens to cover both texts made "the sky is blue" and "refund
+  // window is 30 days" compare equal. Two sentences with no words in common.
+  //
+  // Both routes run through an empty `tokensB`, so one rule closes both. This
+  // is an authoring error like a NaN threshold, not a mismatch, so it throws a
+  // distinct error rather than a `SemanticMismatchError` — there is no
+  // meaningful similarity score to report.
+  //
+  // Deliberately NOT symmetric: an empty `tokensA` against a real `tokensB`
+  // already yields 0.0 and fails with the score in the message, which is a
+  // better diagnostic than this would be.
+  if (tokensB.length === 0) {
+    const cause =
+      opts?.stopwords !== undefined
+        ? "every token was dropped by the caller-supplied `stopwords` set"
+        : "it contains only stopwords and/or non-letter characters";
+    throw new RangeError(
+      `expected text has no informative tokens (${cause}), so the assertion ` +
+        `cannot discriminate between any two inputs and would pass for every ` +
+        `actual — including an empty response. Give \`expected\` at least one ` +
+        `content word, or narrow \`stopwords\`. expected: ${JSON.stringify(expected)}`,
+    );
+  }
   const similarity = jaccardSimilarity(tokensA, tokensB);
   if (similarity < threshold) {
     throw new SemanticMismatchError(actual, expected, similarity, threshold, opts?.label);
