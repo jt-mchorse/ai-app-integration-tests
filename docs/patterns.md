@@ -134,6 +134,15 @@ expectSemanticallySimilar(
 - The math is intentionally simple (no embeddings, no stemming). For
   rigorous semantic eval, use `llm-eval-harness`'s judge layer; this
   helper is the test-runtime smoke check.
+- Throws `RangeError` when `expected` has no informative tokens —
+  either because it is made only of stopwords and punctuation, or
+  because a caller-supplied `stopwords` set swallowed all of it. Such
+  an assertion cannot discriminate between any two inputs, so it would
+  pass for *every* actual, including an empty response. That is an
+  authoring error, treated the same way as a NaN `threshold`: it fails
+  loudly rather than degrading the guarantee in silence. An empty
+  `actual` against a real `expected` is *not* this case — it fails
+  normally with `SemanticMismatchError` and a similarity of 0.
 
 **Calibration.** A 5-minute exercise: take 20 outputs you'd consider
 "approximately correct" and 20 outputs you'd consider "wrong," compute

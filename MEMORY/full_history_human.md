@@ -769,3 +769,58 @@ One thread for a future session: the `agent-orchestration-platform` sibling
 Worth re-checking for this same clamp gap — that sweep was over the *numeric
 domain*, and the bad value here is finite and positive, so it would not have
 been caught.
+
+## 2026-08-20 — an assertion that cannot discriminate was passing silently (#99)
+
+`expectSemanticallySimilar` already guards its `threshold` against NaN, and its
+comment says exactly why: `similarity < NaN` is false, so "the assertion always
+passed regardless of input — silently vacuous, the worst kind of degraded test
+guarantee."
+
+That is a statement about a *harm*, not about NaN. The useful question is what
+else reaches it — and the token sets did, by two routes.
+
+`tokenize` strips everything that isn't a letter, digit or whitespace and then
+drops stopwords, so `""`, `"..."`, emoji and whitespace all produce `[]`.
+Against an all-stopword `expected` like "it is what it is", both sets are empty,
+`jaccardSimilarity` returns 1.0, and the assertion passed. An empty response
+from the model is precisely what a streaming-UI test exists to catch.
+
+The second route is sharper, because the option invites it: the docstring says
+callers customize `stopwords` for non-English or domain-specific corpora, and a
+caller set that happens to cover both texts made "the sky is blue" and "refund
+window is 30 days" compare equal. Two sentences with no words in common. When
+an option lets a caller widen a filter, ask what happens when the filter eats
+everything.
+
+Choosing the fix *boundary* mattered more than the fix. `jaccardSimilarity([],
+[])` returning 1.0 is not the bug — it's documented, defensible as set
+semantics, and an exported pure helper someone may use directly. The defect is
+at the assertion boundary, where the test guarantee lives. Same shape as
+embedding-model-shootout#123 earlier in this run, where the comparator was
+correct and the coordinate handed to it was wrong.
+
+The guard is deliberately not symmetric. An empty `actual` against a real
+`expected` already fails with `SemanticMismatchError` carrying similarity 0, and
+the new error would lose the score the message carries. Only `expected` being
+empty makes the assertion undiscriminating. That asymmetry is pinned as a test
+so it reads as a decision rather than an oversight.
+
+It throws a `RangeError` rather than a `SemanticMismatchError`, because this is
+an authoring error like a NaN threshold and there is no meaningful similarity to
+report — and the message distinguishes the two causes, so the operator knows
+which knob to turn.
+
+No core decision governs this module, but D-005 is the nearest and argues for
+it: a missing cassette in replay mode throws rather than silently falling back
+to live. Same posture, one module over.
+
+**Why this work, this session:** the static `priority:high` queue was globally
+empty. `cassette.ts` turned out to be saturated on its hashing and redaction
+axes, so I moved to the support helpers.
+
+**Open questions / blockers:** none.
+
+**Next session:** don't re-sweep the redaction-coverage axis —
+`assertNoLeakedSecrets` serializes the whole cassette so bodies are covered, and
+both request and response headers go through `redactHeaders`.
