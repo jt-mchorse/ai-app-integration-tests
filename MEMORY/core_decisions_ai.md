@@ -99,3 +99,15 @@
   reversibility: cheap
   related_issues: [12, 16]
   superseded_by: null
+
+- id: D-012
+  date: 2026-08-25
+  decision: sse_frames_are_split_on_any_of_the_specs_three_line_ending_forms_but_stored_verbatim
+  rationale: captureSse_scanned_for_backslash_n_backslash_n_ALONE_and_the_whatwg_sse_spec_ends_a_line_with_ANY_of_crlf_lf_or_cr_so_a_crlf_or_cr_framed_upstream_never_matched_the_whole_stream_accumulated_in_buf_and_the_trailing_if_buf_length_gt_0_frames_push_buf_swept_it_into_ONE_ELEMENT_measured_on_one_three_event_stream_LF_3_frames_CRLF_1_frame_CR_1_frame_NO_BYTES_LOST_because_frames_join_still_reassembled_the_body_exactly_WHAT_WAS_LOST_IS_THE_CHUNK_BOUNDARIES_which_is_the_one_property_a_streaming_integration_test_harness_EXISTS_to_preserve_the_replayer_enqueues_one_chunk_per_frame_with_no_synthetic_delay_so_a_three_event_stream_replayed_as_a_SINGLE_CHUNK_and_a_test_asserting_progressive_rendering_behaved_differently_against_the_cassette_than_against_the_live_api_SILENTLY_WITH_A_GREEN_CASSETTE
+  verbatim_not_normalized: true   # normalizing the stored text would fix the COUNT by breaking the one property that SURVIVED the old scan - frames.join("") === the wire bytes - and would hand a replayed test different bytes than the live API sent. The split is the fix; the rewrite is not.
+  alternatives_rejected: [normalize_crlf_and_cr_to_lf_in_the_stored_frames_REJECTED_it_trades_byte_fidelity_for_frame_count_when_both_are_obtainable, match_all_three_separator_forms_but_keep_scanning_only_at_the_buffer_end_REJECTED_a_trailing_cr_must_be_HELD_BACK_across_reads_or_dot_dot_dot_cr_plus_lf_dot_dot_dot_manufactures_a_boundary_not_in_the_stream, drop_the_unterminated_tail_like_nextjs_does_REJECTED_that_repo_hands_the_tail_to_a_json_parser_and_a_RECORDER_should_keep_real_bytes]
+  no_cassette_changes: true   # an LF stream is unaffected either way, so no committed recording moves and no request hash changes
+  reversibility: cheap
+  related_issues: [#104]
+  cross_repo: [nextjs-streaming-ai-patterns#95, nextjs-streaming-ai-patterns#106]
+  superseded_by: null
