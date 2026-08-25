@@ -40,7 +40,7 @@ retry budgets, time-bounded waits, and semantic equality.
 ## Architecture
 
 See [`docs/architecture.md`](docs/architecture.md) for the full
-breakdown and the design decisions behind each layer (D-002…D-011).
+breakdown and the design decisions behind each layer (D-002…D-012).
 Quick diagram:
 
 ```mermaid
@@ -197,6 +197,10 @@ See [`MEMORY/core_decisions_human.md`](MEMORY/core_decisions_human.md). Notable:
   rescans every committed cassette.
 - **D-005.** Missing cassette in replay mode throws. Silent fall-through
   to live is forbidden — it hides credential leaks and stale tests.
+- **D-012.** SSE frames are split on any of the spec's three line-ending
+  forms but stored **verbatim**. The split is what preserves the chunk
+  boundaries a replayed test sees; rewriting the bytes would hand that
+  test different bytes than the live API sent.
 
 ## License
 

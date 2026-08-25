@@ -219,6 +219,27 @@ configuration; callers with their own conventions (custom error
 hierarchies, library-specific timeout markers) pass their own
 `classify` and the budget machinery is unchanged.
 
+## SSE frame capture (#104, D-012)
+
+`captureSse` splits the recorded stream on a blank line, and the WHATWG
+SSE spec spells a line ending three ways (`\r\n`, `\n`, `\r`). Scanning
+for `"\n\n"` alone meant a CRLF- or CR-framed upstream recorded **one
+frame instead of N** — no bytes lost, because the trailing tail push
+swept the whole stream into a single element and `frames.join("")` still
+reassembled it, but the chunk boundaries gone. The replayer enqueues one
+chunk per frame, so a three-event stream replayed as a single chunk and
+a test asserting progressive rendering behaved differently against the
+cassette than against the live API.
+
+Frames are split on any of the three forms and stored **verbatim**
+(D-012): the split restores the count, and keeping the bytes untouched
+preserves `frames.join("") === the wire`, which is what makes a replayed
+test byte-faithful. An LF stream is unaffected either way, so no
+committed cassette changes and no request hash moves.
+
+Same class as `nextjs-streaming-ai-patterns#95`/`#106`, found by
+sweeping this portfolio for that pattern.
+
 ## CI runtime (#5, D-010)
 
 The CI workflow keeps the full toolkit suite plus the example-app's
