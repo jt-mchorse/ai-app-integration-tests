@@ -17,10 +17,24 @@
  *
  * Production behavior is unchanged: when ``ANTHROPIC_TEST_MODE`` is unset
  * or set to ``"live"`` the hook is a no-op and the real SDK runs.
+ *
+ * That sentence was accurate and *incomplete*, which is what made #101 easy
+ * to miss: the hook used to be a no-op for every other value too. ``mode !==
+ * "replay"`` treated a typo, a stray space and a set-but-empty variable as
+ * "run against the real API", where the toolkit's ``installFromEnv`` throws
+ * for the same input. It now shares one parse with a single stated domain —
+ * see ``./test-mode``.
  */
 
+import { parseTestMode } from "./test-mode";
+
 export async function register() {
-  const mode = (process.env.ANTHROPIC_TEST_MODE ?? "live").toLowerCase();
+  // Default `"live"`, deliberately different from `installFromEnv`'s
+  // `"replay"`: this runs on every production server boot, where installing a
+  // stub would be far worse than not installing one. `parseTestMode` throws on
+  // anything outside the three-value domain, so the *unsafe* fall-through is
+  // gone while the safe default stays (#101).
+  const mode = parseTestMode(process.env.ANTHROPIC_TEST_MODE, "live");
   if (mode !== "replay") return;
 
   const { installPlaywrightStub } = await import("./instrumentation-stub");

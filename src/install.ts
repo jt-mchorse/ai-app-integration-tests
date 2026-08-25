@@ -1,3 +1,4 @@
+import { parseTestMode } from "./test-mode.js";
 import { createRecorderFetch, createReplayerFetch } from "./fetch-recorder.js";
 import { CassetteStore } from "./io.js";
 
@@ -94,7 +95,17 @@ export function uninstall(): void {
  * "replay" (default), and pass-through when "live".
  */
 export function installFromEnv(opts: InstallOptions = {}): void {
-  const mode = (process.env.ANTHROPIC_TEST_MODE ?? "replay").toLowerCase();
+  // The domain lives in `./test-mode`, not in this switch. It used to be
+  // spelled out here and re-derived — differently — in `example-app`'s
+  // instrumentation hook, where an unrecognized value silently meant "no stub,
+  // real SDK" instead of throwing (#101). Sharing the parse is what stops that
+  // recurring; `test/test-mode-parity.test.ts` locks the example-app mirror to
+  // this one by executing both.
+  //
+  // `"replay"` here vs `"live"` in the hook is deliberate and documented in
+  // `parseTestMode` — a test tool defaults to safe, a production boot path
+  // defaults to not-installing-a-stub.
+  const mode = parseTestMode(process.env.ANTHROPIC_TEST_MODE, "replay");
   switch (mode) {
     case "record":
       installRecorder(opts);
@@ -105,9 +116,5 @@ export function installFromEnv(opts: InstallOptions = {}): void {
     case "live":
       // Pass-through: do nothing. Tests calling the real API.
       return;
-    default:
-      throw new Error(
-        `ANTHROPIC_TEST_MODE must be "record" | "replay" | "live"; got ${JSON.stringify(mode)}`,
-      );
   }
 }

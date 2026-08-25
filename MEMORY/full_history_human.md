@@ -824,3 +824,83 @@ axes, so I moved to the support helpers.
 **Next session:** don't re-sweep the redaction-coverage axis —
 `assertNoLeakedSecrets` serializes the whole cassette so bodies are covered, and
 both request and response headers go through `redactHeaders`.
+
+---
+
+## 2026-08-24 — Issue #101: two readers of one env var, disagreeing toward the live API
+
+**How it was found.** Straight after shipping `nextjs-streaming-ai-patterns#104`
+— where `process.env.X ?? "default"` failed to default a set-but-empty string —
+I grepped all four TypeScript repos for the same expression. That grep landed
+here. It is the third run in a row where sweeping the portfolio for a
+just-shipped pattern produced a whole issue rather than a footnote.
+
+**But the finding was bigger than the grep.** The empty string was one row. The
+real defect was that *two* functions read `ANTHROPIC_TEST_MODE` and disagreed
+about what an unrecognized value means. `src/install.ts::installFromEnv`
+validates with a `switch` whose `default:` throws.
+`example-app/instrumentation.ts::register` re-derived the rule as
+`if (mode !== "replay") return;` — so a typo, a stray space out of a CI YAML
+block, or a set-but-empty variable silently meant "no stub installed, run
+against the real Anthropic API".
+
+Running both over the same 13 values, side by side:
+
+```
+value          instrumentation.register     installFromEnv
+""             no-op -> LIVE SDK            THROWS          <<<
+"  "           no-op -> LIVE SDK            THROWS          <<<
+" replay"      no-op -> LIVE SDK            THROWS          <<<
+"replay "      no-op -> LIVE SDK            THROWS          <<<
+"repaly"       no-op -> LIVE SDK            THROWS          <<<
+"1" "true" "stub"
+               no-op -> LIVE SDK            THROWS          <<<
+"replay"       installs stub                installReplayer
+"record"       no-op -> LIVE SDK            installRecorder
+"live"         no-op -> LIVE SDK            pass-through
+```
+
+**8 of 13 disagree, and every disagreement is in the unsafe direction.** The
+differential probe is what made it unarguable; reading either side alone would
+have produced a much weaker issue.
+
+**And the README forbids it in prose.** "Silent fall-through to live is
+forbidden", and "defaulting to `replay` so CI never accidentally hits the real
+API". Both sentences were true of the toolkit and false of the hook. A README
+guarantee is a test case for *every* implementation, not just the one its author
+had in mind.
+
+The hook's own docstring was accurate and *incomplete*: "when
+`ANTHROPIC_TEST_MODE` is unset or set to `live` the hook is a no-op" — true, and
+it omits that it is also a no-op for every other value. An accurate but partial
+enumeration is harder to spot than a false one.
+
+**The defaults differ, and that is correct.** `installFromEnv` defaults to
+`replay` because it is a test tool; the hook defaults to `live` because it runs
+on *every* production Next.js server boot, where installing a stub would be far
+worse. I preserved the asymmetry and wrote down why, so a future reader doesn't
+"fix" it. Separating the part that must agree from the part that must not was
+most of the design work here.
+
+**The package boundary forced a mirror.** `example-app/` has its own
+`package.json` and does not depend on the toolkit, so the rule cannot be
+imported. It lives once per package, and `test/test-mode-parity.test.ts` locks
+the two by **executing both** over a 24-value matrix — a differential test, not
+a text comparison, so a copy spelled differently but behaving identically passes,
+while one edited in only one place fails. Verified by deleting `"live"` from the
+mirror's domain: 4 of 26 parity tests failed. The lock carries its own
+anti-vacuous guard too, since a parity assertion over a tiny matrix proves
+nothing.
+
+**Neither reader had a test.** `installFromEnv`'s mode switch was only ever
+reached incidentally through `demo.test.ts`, and `example-app/instrumentation.ts`
+had no test at all — while `example-app/test/` covered all three routes. The
+untested file was the one that decides whether the suite is hermetic.
+
+**Filed separately:** #102 — the same `??` shape on `ANTHROPIC_API_KEY` in the
+three routes, at `priority:low` because the harm there is a worse diagnostic
+rather than a wrong result, and I said so rather than inflating it.
+
+**Tests.** 50 new (26 parity + 24 hook). Reverting the hook's expression fails 13
+of 24; the toolkit suite goes 312 → 338 and the example-app suite 14 → 38, both
+green, `tsc` and `eslint` clean.
