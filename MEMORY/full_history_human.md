@@ -987,3 +987,33 @@ is about code shape, assert the code shape.
 **Tests.** 15 new; none of the three routes' key handling was covered before.
 Reverting `readApiKey` to the old expression turns 10 of 15 red. example-app
 suite 24 → 39 green, root suite 382 green, tsc clean in both packages.
+
+## 2026-08-26 — a path alias that only one tool could resolve (#102, correction)
+
+**What happened.** I imported the new shared reader as `@/api-key`.
+`tsconfig.json` maps `@/* -> ./*`, so `tsc --noEmit` was clean — but
+`example-app/vitest.config.ts` configures no `resolve.alias` and no
+tsconfig-paths plugin, so vitest never resolved it and the three route suites
+failed to *load*, on CI and locally alike.
+
+**A path alias is configured per tool, and a green typecheck proves only the tool
+that read that config.**
+
+**I reached for the alias only because I miscounted the relative depth** —
+`../../../../`, four levels, when `app/api/<route>/route.ts` needs three. The
+alias looked like the fix for a broken import and was really a *second* broken
+import that one tool happened to accept. When an import fails, count the
+directories; don't switch resolution strategies.
+
+**The verification mistake is the one to remember.** I read
+`npx vitest run | tail -4` as a pass. It printed `Tests 39 passed` without the
+`Test Files 3 failed` line just above it. A test-count line is not a
+suite-status line — and a suite that fails to *load* contributes zero tests, so
+the count silently shrinks instead of going red. My "24 → 39" baseline in the PR
+body was measured through the same truncation; the real numbers are 38 → 53.
+Grep for `Test Files`, not just `Tests`.
+
+**And the repro that actually proved the fix:** `rsync` the package to a temp
+dir *excluding* `node_modules`, then `npm ci`, then vitest. My first attempt
+cherry-picked files with `cp` and produced a fake failure from the files I forgot
+to copy. Copy everything and exclude, rather than enumerate what to copy.
