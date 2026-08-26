@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+import { readApiKey } from "@/api-key";
+
 /**
  * Tool-use endpoint.
  *
@@ -80,7 +82,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "query is required" }, { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY ?? "test-key";
+  const apiKey = readApiKey();
   const client = new Anthropic({ apiKey });
 
   const messages: Anthropic.Messages.MessageParam[] = [

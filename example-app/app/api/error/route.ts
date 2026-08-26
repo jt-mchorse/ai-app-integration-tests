@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+import { readApiKey } from "@/api-key";
+
 /**
  * Error-path endpoint.
  *
@@ -52,7 +54,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY ?? "test-key";
+  const apiKey = readApiKey();
   const client = new Anthropic({ apiKey });
 
   if (body.kind === "upstream") {
