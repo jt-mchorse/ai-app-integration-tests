@@ -904,3 +904,45 @@ rather than a wrong result, and I said so rather than inflating it.
 **Tests.** 50 new (26 parity + 24 hook). Reverting the hook's expression fails 13
 of 24; the toolkit suite goes 312 → 338 and the example-app suite 14 → 38, both
 green, `tsc` and `eslint` clean.
+
+## 2026-08-25 — a CRLF stream recorded as one frame instead of three (#104, D-012)
+
+**What got done.** `captureSse` scanned for `"\n\n"` alone. The WHATWG SSE spec
+ends a line with any of `\r\n`, `\n`, or `\r`, so a CRLF- or CR-framed upstream
+never matched, the whole stream accumulated, and the trailing
+`if (buf.length > 0) frames.push(buf)` swept it into a single element. Measured
+on one three-event stream: LF recorded 3 frames, CRLF and CR recorded 1. Frames
+are now split on any of the three forms and stored verbatim.
+
+**How it was found.** By sweeping the portfolio for a pattern fixed earlier in
+the same session. `nextjs-streaming-ai-patterns#106` was the fourth issue of this
+run; this is the tenth, in a different repo, from the identical single-form
+separator scan. That method — after shipping a fix, grep the portfolio for the
+pattern — keeps being the highest-yield one, and it works across repos and not
+only within one.
+
+**The symptom was the opposite of its sibling's.** `nextjs` *dropped* the stream
+(zero frames); this repo *merged* it (one frame). The difference is a single
+trailing line. A transferred pattern does not have to present the same way.
+
+**And the merged form is much harder to see,** because no bytes are lost:
+`frames.join("")` still equals the wire, so every content assertion a test makes
+still passes. Only the chunk count is wrong — and for a harness whose product is
+*replaying a stream faithfully*, the chunk boundaries are the thing, not the
+bytes. The replayer enqueues one chunk per frame with no synthetic delay, so a
+three-event stream replayed as one chunk and a test asserting progressive
+rendering behaved differently against the cassette than against the live API.
+
+**The design call worth reusing.** Normalizing the stored frames would have fixed
+the count by breaking the one property that survived the old scan. Both are
+obtainable: scan a normalized view, slice out of the original buffer. When a fix
+looks like it trades one fidelity for another, look for the form that keeps both.
+
+**Open questions.** None. An LF stream splits identically either way, so no
+committed cassette changes and no request hash moves.
+
+**Tests.** 44 new, across LF/CRLF/CR/mixed/unterminated at read chunk sizes 1, 3,
+7 and 4096 — size 1 puts every separator byte in its own read, which is the only
+way to exercise the held-back `\r`. Narrowing the terminator list back to LF
+turns 8 of 44 red while every LF control row stays green. Suite 338 → 382 green,
+eslint and tsc clean.

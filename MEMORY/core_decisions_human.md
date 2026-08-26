@@ -163,3 +163,43 @@ The "5 consecutive runs under 5 min" acceptance is *post-merge*. This PR is the 
 **Reversibility:** Cheap. If we later want the binary committed in the same PR pattern, it's `bash scripts/capture_demo.sh | tee` → record → ffmpeg → `git add docs/demo.<ext>` + README embed away. The decision documents the *split*, not a hard line against committed binaries.
 
 **Related issues:** #12, #16
+
+## D-012 — SSE frames are split on any line ending, stored verbatim (2026-08-25)
+
+**Decision.** `captureSse` finds an event separator in all three of the forms the
+WHATWG SSE spec allows (`\r\n`, `\n`, `\r`), and stores each frame's text exactly
+as it arrived on the wire.
+
+**Why.** The scan was `buf.indexOf("\n\n")`, which finds exactly one of those
+forms. A CRLF- or CR-framed upstream therefore never matched, the whole stream
+accumulated, and the trailing `if (buf.length > 0) frames.push(buf)` swept it
+into a single element. Measured on one three-event stream: LF recorded 3 frames,
+CRLF and CR recorded 1.
+
+No bytes were lost — `frames.join("")` still reassembled the body exactly. What
+was lost is the **chunk boundaries**, which is the one property a
+streaming-integration-test harness exists to preserve. The replayer enqueues one
+chunk per frame with no synthetic delay, so a three-event stream replayed as a
+single chunk, and a test asserting progressive rendering behaved differently
+against the cassette than against the live API — silently, with a green cassette.
+
+**On verbatim.** Normalizing the stored frames to `\n` would fix the count by
+breaking the one property that *survived* the old scan, and would hand a replayed
+test different bytes than the live API sent. Both are obtainable: split on any
+form, slice out of the original buffer. The split is the fix; the rewrite is not.
+
+**Alternatives considered.** *Normalize the stored text* — rejected, above.
+*Match all three forms without holding back a trailing `\r`* — rejected; at the
+end of a read `...\r` cannot yet be told from the first half of a `\r\n` whose
+`\n` is in the next read, and deciding early manufactures a boundary that is not
+in the stream. *Drop the unterminated tail, as `nextjs` does* — rejected; that
+repo hands its tail to a JSON parser, whereas a recorder should keep real bytes.
+
+**Reversibility.** Cheap, and nothing already recorded moves: an LF stream splits
+identically either way, so no committed cassette changes and no request hash
+shifts.
+
+**Provenance.** Found by sweeping the portfolio for the pattern fixed in
+`nextjs-streaming-ai-patterns#95` and `#106` earlier the same session. Same
+single-form separator scan; the outcome differed (that repo *dropped* the stream,
+this one *merged* it) only because of the trailing tail push.

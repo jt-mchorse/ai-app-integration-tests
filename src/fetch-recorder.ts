@@ -436,6 +436,55 @@ function headersToObject(h: Headers): Record<string, string> {
   return out;
 }
 
+/**
+ * Index and length of the first SSE event separator in `s`, at or after `from`.
+ *
+ * The WHATWG SSE spec ends a line with ANY of `\r\n`, `\n`, or `\r`, so a blank
+ * line -- the event separator -- has NINE byte forms (three terminators, twice).
+ * `indexOf("\n\n")` finds exactly one of them, and `captureSse` used to scan for
+ * only that. Measured on the same three-event stream (#104):
+ *
+ *     upstream   frames  replayBody preserved?  chunks the app sees on replay
+ *     LF              3  yes                    3
+ *     CRLF            1  yes                    1
+ *     CR              1  yes                    1
+ *
+ * No bytes were lost -- the trailing `frames.push(buf)` swept the whole
+ * unsplit stream into a single element, and `frames.join("")` still
+ * reassembled it exactly. What was lost is the CHUNK BOUNDARIES, which is the
+ * one property a streaming-integration-test harness exists to preserve: the
+ * replayer enqueues one chunk per frame, so a three-event stream replayed as
+ * one chunk, and a test asserting progressive rendering behaved differently
+ * against the cassette than against the live API. Silently, with a green
+ * cassette.
+ *
+ * Same class as `nextjs-streaming-ai-patterns#95` and `#106`; the outcome
+ * differs (that repo DROPPED the stream, this one MERGED it) only because of
+ * the trailing tail push.
+ *
+ * Returns the length as well as the index because the separator is 2-4 bytes
+ * depending on form, and the caller slices the frame out of the ORIGINAL
+ * buffer -- see `captureSse` for why the stored text stays verbatim.
+ */
+function findSseSeparator(s: string, from: number): { index: number; length: number } | null {
+  const TERMINATORS = ["\r\n", "\n", "\r"] as const;
+  for (let i = from; i < s.length; i++) {
+    for (const first of TERMINATORS) {
+      if (!s.startsWith(first, i)) continue;
+      for (const second of TERMINATORS) {
+        if (s.startsWith(second, i + first.length)) {
+          return { index: i, length: first.length + second.length };
+        }
+      }
+      // A terminator not followed by another is an ordinary line break inside
+      // the frame. Skip past it so a `\r\n` is not re-examined as a lone `\r`.
+      i += first.length - 1;
+      break;
+    }
+  }
+  return null;
+}
+
 async function captureSse(r: Response): Promise<{ frames: string[]; replayBody: string }> {
   if (!r.body) return { frames: [], replayBody: "" };
   const reader = r.body.getReader();
@@ -447,11 +496,32 @@ async function captureSse(r: Response): Promise<{ frames: string[]; replayBody: 
     const { value, done } = await reader.read();
     if (done) break;
     buf += decoder.decode(value, { stream: true });
-    let sep: number;
-    while ((sep = buf.indexOf("\n\n")) !== -1) {
-      const frame = buf.slice(0, sep + 2);
-      buf = buf.slice(sep + 2);
-      frames.push(frame);
+    // Frames are sliced out of `buf` VERBATIM, original line endings and all
+    // (D-012, #104). Normalizing the stored text would fix the frame count by
+    // breaking the one property that survived the old scan --
+    // `frames.join("") === the wire bytes` -- and would hand a replayed test
+    // different bytes than the live API sent. The split is the fix; the
+    // rewrite is not. An LF stream is unaffected either way, so no recorded
+    // cassette changes and no request hash moves.
+    //
+    // A trailing `\r` is held back rather than decided eagerly: at the end of a
+    // chunk, `...\r` cannot yet be told from the first half of a `\r\n` whose
+    // `\n` is in the next read, and deciding early would manufacture a frame
+    // boundary that is not in the stream.
+    let searchFrom = 0;
+    for (;;) {
+      const hit = findSseSeparator(buf, searchFrom);
+      if (hit === null) break;
+      const end = hit.index + hit.length;
+      // Withhold a separator that ends exactly at the buffer's edge on a
+      // 1-byte terminator: the next read may extend `\r` into `\r\n`.
+      if (end === buf.length && buf.endsWith("\r")) {
+        searchFrom = hit.index;
+        break;
+      }
+      frames.push(buf.slice(0, end));
+      buf = buf.slice(end);
+      searchFrom = 0;
     }
   }
   // Flush the decoder: with `stream: true` an incomplete trailing multibyte
