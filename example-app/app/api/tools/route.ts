@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-import { readApiKey } from "@/api-key";
+import { readApiKey } from "../../../api-key";
 
 /**
  * Tool-use endpoint.
