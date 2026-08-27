@@ -946,3 +946,74 @@ committed cassette changes and no request hash moves.
 way to exercise the held-back `\r`. Narrowing the terminator list back to LF
 turns 8 of 44 red while every LF control row stays green. Suite 338 → 382 green,
 eslint and tsc clean.
+
+## 2026-08-26 — the fallback I wrote is not the fallback that runs (#102)
+
+**What got done.** All three example-app routes read
+`process.env.ANTHROPIC_API_KEY ?? "test-key"`. `??` fires on `null`/`undefined`
+only, so `ANTHROPIC_API_KEY=` reached the SDK as `""`. `example-app/api-key.ts`
+now gives the three routes one reader that treats empty and whitespace-only as
+unset.
+
+**Third filed-but-unworked followup tonight,** after `nextjs#107` and `mcp#146`.
+All three were `priority:low` or `med`, and all three were real. The followup
+list is where a previous run already paid the measurement cost.
+
+**The issue argued its own low severity honestly, and I kept that framing.**
+Under `ANTHROPIC_TEST_MODE=replay` the stub intercepts `fetch` and the key is
+never used; outside it, `""` and `"test-key"` both fail to authenticate, so only
+the error text differs. A fix worth shipping can still be worth describing as
+small. The real argument for doing it is "the fallback I wrote is not the
+fallback that runs", repeated in three files — a maintenance claim, not a
+severity claim, and enough.
+
+**A design asymmetry worth keeping, and asserting.** `parseTestMode` *throws* on
+an unrecognized value, because it could mean a silent live run, which the README
+forbids. `readApiKey` does not, because an unset key is the ordinary
+local-development state the placeholder exists to serve. Two env readers in one
+package can correctly disagree about strictness, and there is a test saying why.
+
+**A table self-guard worth reusing.** One case recomputes the old `??`
+expression and asserts it disagrees on *exactly* the six blank rows — so a future
+edit cannot make every parametrized case pass while proving nothing. Same shape
+as the meta-test in `nextjs#107` earlier tonight.
+
+**And a source-level assertion for the "share one reader" criterion.** The test
+reads all three `route.ts` files and asserts neither that
+`process.env.ANTHROPIC_API_KEY` appears nor that `readApiKey` is missing, so a
+fourth route copy-pasting the old form fails there. When the acceptance criterion
+is about code shape, assert the code shape.
+
+**Tests.** 15 new; none of the three routes' key handling was covered before.
+Reverting `readApiKey` to the old expression turns 10 of 15 red. example-app
+suite 24 → 39 green, root suite 382 green, tsc clean in both packages.
+
+## 2026-08-26 — a path alias that only one tool could resolve (#102, correction)
+
+**What happened.** I imported the new shared reader as `@/api-key`.
+`tsconfig.json` maps `@/* -> ./*`, so `tsc --noEmit` was clean — but
+`example-app/vitest.config.ts` configures no `resolve.alias` and no
+tsconfig-paths plugin, so vitest never resolved it and the three route suites
+failed to *load*, on CI and locally alike.
+
+**A path alias is configured per tool, and a green typecheck proves only the tool
+that read that config.**
+
+**I reached for the alias only because I miscounted the relative depth** —
+`../../../../`, four levels, when `app/api/<route>/route.ts` needs three. The
+alias looked like the fix for a broken import and was really a *second* broken
+import that one tool happened to accept. When an import fails, count the
+directories; don't switch resolution strategies.
+
+**The verification mistake is the one to remember.** I read
+`npx vitest run | tail -4` as a pass. It printed `Tests 39 passed` without the
+`Test Files 3 failed` line just above it. A test-count line is not a
+suite-status line — and a suite that fails to *load* contributes zero tests, so
+the count silently shrinks instead of going red. My "24 → 39" baseline in the PR
+body was measured through the same truncation; the real numbers are 38 → 53.
+Grep for `Test Files`, not just `Tests`.
+
+**And the repro that actually proved the fix:** `rsync` the package to a temp
+dir *excluding* `node_modules`, then `npm ci`, then vitest. My first attempt
+cherry-picked files with `cp` and produced a fake failure from the files I forgot
+to copy. Copy everything and exclude, rather than enumerate what to copy.

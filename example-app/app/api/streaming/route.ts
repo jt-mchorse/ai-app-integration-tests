@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+import { readApiKey } from "../../../api-key";
+
 /**
  * Streaming text generation endpoint.
  *
@@ -25,7 +27,7 @@ export async function POST(req: Request) {
   }
   const prompt = body.prompt;
 
-  const apiKey = process.env.ANTHROPIC_API_KEY ?? "test-key";
+  const apiKey = readApiKey();
   const client = new Anthropic({ apiKey });
 
   const t0 = Date.now();
