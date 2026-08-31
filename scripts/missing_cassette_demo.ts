@@ -16,14 +16,19 @@
  * dir via `MISSING_CASSETTE_DEMO_FIXTURES`.
  */
 
+import { readNonBlankEnv } from "../src/env.js";
 import {
   MissingCassetteError,
   installFromEnv,
   uninstall,
 } from "../src/index.js";
 
-const fixturesDir = process.env.MISSING_CASSETTE_DEMO_FIXTURES;
-if (!fixturesDir) {
+// `!fixturesDir` until #107: false for `"  "`, so a whitespace-only value
+// passed the guard and reached `installFromEnv` as a fixtures directory named
+// two spaces. `readNonBlankEnv` refuses blanks *and* hands back the trimmed
+// value, which is the half that matters for a padded-but-valid path.
+const fixturesDir = readNonBlankEnv("MISSING_CASSETTE_DEMO_FIXTURES");
+if (fixturesDir === undefined) {
   console.error(
     "MISSING_CASSETTE_DEMO_FIXTURES must be set (caller should pass an empty tempdir).",
   );
