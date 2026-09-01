@@ -1017,3 +1017,18 @@ Grep for `Test Files`, not just `Tests`.
 dir *excluding* `node_modules`, then `npm ci`, then vitest. My first attempt
 cherry-picked files with `cp` and produced a fake failure from the files I forgot
 to copy. Copy everything and exclude, rather than enumerate what to copy.
+
+## 2026-08-31 — Issue #107: the demo fixtures guard refuses a blank value, and trims
+**Duration:** ~1 session block · **Branch:** `session/2026-08-31-0817-issue-107`
+
+- `scripts/missing_cassette_demo.ts` guarded with `!fixturesDir`, false for `"  "`, so a whitespace-only value reached `installFromEnv` as a fixtures directory named two spaces. Unset and `""` were both correctly refused — which is why it survived: the two cases anyone tries by hand behave.
+- `src/env.ts` holds the rule `parseTestMode` (#101) already settled, and returns the **trimmed** value. Rejecting blanks while passing the raw string on would have fixed the rejection and kept the broken path.
+- **Declined the issue's own suggestion, with a reason.** It asked for a shared helper so `src/` and `scripts/` cannot drift. `parseTestMode` deliberately does not import it: `src/test-mode.ts` and `example-app/test-mode.ts` are a mirrored pair the example app structurally cannot break out of, and the existing parity test holds two hand-written copies to one behaviour. The intent is met instead with the same instrument — a differential test running both implementations over one matrix.
+- **A test in this PR passed against the un-fixed script, and catching that was the most useful moment.** "A padded but valid tempdir is accepted" asserted exit 0, which an *untrimmed* directory also produces, because a directory named `"  /tmp/x  "` has no cassettes in it either. It now plants a cassette for the exact request the demo issues — hash read off the script's own output rather than hard-coded — so trimmed and untrimmed produce opposite exit codes.
+- 42 new tests, 382 → 424 green. Restoring the bare `!` guard turns 6 red.
+
+**Why this work, this session:** it was the repo's only open issue that wasn't a decision-revisit or a demo capture.
+
+**Open questions / blockers:** none.
+
+**Next session:** #81 (decision-revisit) and #16 (demo capture) remain.
