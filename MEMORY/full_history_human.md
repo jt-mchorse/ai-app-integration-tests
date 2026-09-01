@@ -1032,3 +1032,33 @@ to copy. Copy everything and exclude, rather than enumerate what to copy.
 **Open questions / blockers:** none.
 
 **Next session:** #81 (decision-revisit) and #16 (demo capture) remain.
+
+## 2026-09-01 — Issue #109: the threshold that could never fire
+**Branch:** `session/2026-09-01-0819-issue-109`
+
+- The semantic assertion compares `similarity < threshold`, and it has been
+  hardened twice against that comparison becoming unfalsifiable — once for a
+  NaN threshold, once for an expected text with no informative tokens. A
+  threshold of `0` was still inside the accepted range, and since the similarity
+  score is bounded below by zero by construction, the gate could never fire.
+  Two sentences with no words in common passed. So did an empty response.
+- What makes it worth a guard rather than a footnote is where a zero comes from.
+  `Number("")`, `Number(" ")` and `Number(null)` are all zero, while
+  `Number("abc")` is NaN — so the existing guard rejected a *typo'd* config
+  value and accepted a *missing* one. Reading a threshold from an unset
+  environment variable silently disabled every semantic assertion in a suite.
+- The upper end is deliberately not symmetric and now has tests saying why: two
+  identical token sets score exactly 1.0, so a threshold of 1 is the strictest
+  real gate rather than an always-fail. Over-tightening the range to exclude it —
+  the obvious next overcorrection — turns exactly those two tests red.
+
+**Why this work, this session:** the repo's open issues are a decision revisit
+and a demo capture, so the session hunted. Ranking modules by issue traffic put
+`semantic-assert.ts` and `wait-for.ts` last, with three mentions each across the
+repo's entire issue history.
+
+**Open questions / blockers:** none. `waitFor` accepts `timeoutMs = 0`, which is
+the same shape with the opposite consequence — it fails fast rather than passing
+vacuously — and should stay.
+
+**Next session:** #81 needs a decision from JT; #16 is the demo capture.
