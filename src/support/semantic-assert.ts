@@ -102,8 +102,45 @@ export function expectSemanticallySimilar(
   // was accepted. Then `similarity < NaN` is also false, so the assertion
   // *always passed regardless of input* — silently vacuous, the worst kind
   // of degraded test guarantee.
-  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
-    throw new RangeError(`threshold must be a finite number in [0, 1], got ${threshold}`);
+  //
+  // `threshold = 0` is the third route to that same vacuous pass, through the
+  // operand the paragraph above already names (#109). It was inside the
+  // accepted range, and `jaccardSimilarity` returns a value in [0, 1] **by
+  // construction**, so `similarity < 0` can never be true. Measured, all
+  // passing at `threshold: 0`:
+  //
+  //   "the sky is blue"               vs "refund window is 30 days"  -> 0.000  PASSES
+  //   ""                              vs "refund window is 30 days"  -> 0.000  PASSES
+  //   "ERROR: model returned nothing" vs "your refund was processed" -> 0.000  PASSES
+  //
+  // Not merely "the caller asked for it": `0` is what a *missing*
+  // configuration coerces to, and the finiteness guard catches the noisy
+  // sibling while admitting the silent one —
+  //
+  //   Number("")   === 0      parseFloat("") === NaN   -> rejected
+  //   Number(" ")  === 0      Number("abc")  === NaN   -> rejected
+  //   Number(null) === 0
+  //
+  // so `threshold: Number(process.env.SEMANTIC_THRESHOLD)` rejects a typo and
+  // silently disables every semantic assertion in the suite when the variable
+  // is simply unset.
+  //
+  // The upper end is NOT the mirror problem and must keep working: two
+  // identical token sets score exactly 1.0, so `threshold: 1` is the strictest
+  // real gate rather than an always-fail. Hence `(0, 1]`, the same half-open
+  // shape `prompt-regression-suite`'s snapshot `tolerance` uses for the same
+  // `>=`-style comparison.
+  if (!Number.isFinite(threshold) || threshold <= 0 || threshold > 1) {
+    throw new RangeError(
+      `threshold must be a finite number in (0, 1], got ${threshold}` +
+        (threshold === 0
+          ? ". Jaccard similarity is bounded below by 0, so a threshold of 0 makes " +
+            "`similarity < threshold` unfalsifiable: the assertion would pass for " +
+            "every actual, including an empty response. Note Number(\"\") and " +
+            "Number(null) are both 0, so an unset config value lands here. If you " +
+            "want no assertion, do not call one."
+          : ""),
+    );
   }
   const tokensA = tokenize(actual, opts?.stopwords);
   const tokensB = tokenize(expected, opts?.stopwords);

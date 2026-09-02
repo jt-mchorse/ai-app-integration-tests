@@ -134,6 +134,15 @@ expectSemanticallySimilar(
 - The math is intentionally simple (no embeddings, no stemming). For
   rigorous semantic eval, use `llm-eval-harness`'s judge layer; this
   helper is the test-runtime smoke check.
+- `threshold` must be in **(0, 1]**, not `[0, 1]`. Jaccard similarity is
+  bounded below by 0, so `similarity < 0` can never be true and a threshold of
+  `0` makes the assertion pass for every actual, including an empty response —
+  the same unfalsifiable gate a `NaN` threshold produced (#109). It matters
+  because `0` is what a *missing* config coerces to: `Number("")`,
+  `Number(" ")` and `Number(null)` are all `0`, while `Number("abc")` is
+  `NaN`, so the older guard rejected a typo'd value and admitted an unset one.
+  `1` is deliberately still valid — two identical token sets score exactly
+  `1.0`, so it is the strictest real gate rather than an always-fail.
 - Throws `RangeError` when `expected` has no informative tokens —
   either because it is made only of stopwords and punctuation, or
   because a caller-supplied `stopwords` set swallowed all of it. Such

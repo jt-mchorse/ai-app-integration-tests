@@ -483,10 +483,26 @@ describe("support — finiteness validation (issue #24)", () => {
       ).toThrow(/threshold must be a finite number/);
     });
 
-    test("regression — finite threshold in [0, 1] still accepted", () => {
+    test("regression — finite threshold in (0, 1] still accepted", () => {
       expect(() => expectSemanticallySimilar("a b c", "a b c", { threshold: 0.5 })).not.toThrow();
-      expect(() => expectSemanticallySimilar("a b c", "a b c", { threshold: 0 })).not.toThrow();
       expect(() => expectSemanticallySimilar("a b c", "a b c", { threshold: 1 })).not.toThrow();
+    });
+
+    test("0 is no longer in the accepted range (#109)", () => {
+      // This row moved from "accepted" to "rejected". The range was [0, 1] and
+      // is now (0, 1], because `jaccardSimilarity` is bounded below by 0, so
+      // `similarity < 0` can never be true — the same unfalsifiable gate the
+      // NaN rows above are rejected for, reached through a value the finiteness
+      // check let past. `Number("")` and `Number(null)` are both 0, so an
+      // unset config value lands on it.
+      //
+      // The upper end is deliberately NOT symmetric and stays in the accepted
+      // row above: two identical token sets score exactly 1.0, so `threshold: 1`
+      // is the strictest real gate rather than an always-fail. See
+      // test/semantic-assert-zero-threshold.test.ts.
+      expect(() =>
+        expectSemanticallySimilar("a b c", "a b c", { threshold: 0 }),
+      ).toThrow(/threshold must be a finite number in \(0, 1\]/);
     });
   });
 });
