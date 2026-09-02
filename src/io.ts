@@ -157,13 +157,53 @@ function assertValidResponse(response: unknown, requestHash: string): void {
 // The temp file lives in the destination's parent directory so the
 // rename is same-filesystem — `fs.rename` is atomic on POSIX within
 // the same filesystem; cross-filesystem rename degrades to a copy.
+// Cap the target basename's contribution to the temp filename (#111). The temp
+// name is `.<base>.<pid>.<12-hex>.tmp`, so the affixes are two separator dots,
+// the pid, another dot, 12 hex characters and `.tmp` — base + 25 bytes in the
+// worst case, since a Linux pid can be 7 digits. Prepending a full basename
+// that is itself near NAME_MAX (255 on ext4/APFS) overflows the limit and the
+// write fails ENAMETOOLONG, even though a plain `fs.writeFile` of that same
+// target succeeds.
+//
+// Reachable through public API, not just in theory: `CassetteStore` is exported
+// from `src/index.ts` and `write(cassette)` takes the basename from
+// `cassette.request_hash`, a plain string field on a public type that nothing
+// on the write path constrains. Measured with a 240-character hash, the plain
+// write of the identical filename succeeded and `CassetteStore.write` raised
+// ENAMETOOLONG. The recorder's own path can't get there — `hashRequest` returns
+// `sha256(...).slice(0, 32)` — but a fixture generator or a migration script
+// building a `CassetteV1` by hand can, which is usage this library exists to
+// support.
+//
+// 200 leaves ~30 bytes of headroom over that arithmetic. Same constant and same
+// shape as the pattern leader the comment below already names
+// (`mcp-server-cookbook/servers/filesystem-sandbox/src/atomic_write.ts`, #96)
+// and the Python siblings (`rag-production-kit#128` and each
+// `io_utils.atomic_write_text`). Those caps landed AFTER this port was copied,
+// so the family claim below was prose the code did not honour.
+//
+// The base in the temp name is cosmetic (`ls`-ability); uniqueness comes from
+// the pid + 12 random hex + O_EXCL, so truncating it is safe. Budget is in
+// BYTES because NAME_MAX is a byte limit, and we trim by whole characters so a
+// multi-byte codepoint is never split.
+const MAX_TEMP_BASE_BYTES = 200;
+
+function capBaseForTemp(base: string): string {
+  if (Buffer.byteLength(base, "utf8") <= MAX_TEMP_BASE_BYTES) return base;
+  let out = base;
+  while (out.length > 0 && Buffer.byteLength(out, "utf8") > MAX_TEMP_BASE_BYTES) {
+    out = out.slice(0, -1);
+  }
+  return out;
+}
+
 async function atomicWriteFile(target: string, data: Buffer): Promise<void> {
   const dir = path.dirname(target);
   const base = path.basename(target);
   await fs.mkdir(dir, { recursive: true });
 
   const token = randomBytes(6).toString("hex");
-  const tmp = path.join(dir, `.${base}.${process.pid}.${token}.tmp`);
+  const tmp = path.join(dir, `.${capBaseForTemp(base)}.${process.pid}.${token}.tmp`);
 
   // O_EXCL — collide-loudly with any concurrent process attempt.
   const handle = await fs.open(tmp, fsc.O_WRONLY | fsc.O_CREAT | fsc.O_EXCL, 0o600);
