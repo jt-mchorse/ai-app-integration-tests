@@ -1062,3 +1062,66 @@ the same shape with the opposite consequence — it fails fast rather than passi
 vacuously — and should stay.
 
 **Next session:** #81 needs a decision from JT; #16 is the demo capture.
+
+## 2026-09-02 — #111: the bounded path wasn't the only path
+
+`atomicWriteFile` built its temp filename from the full target basename, and
+the affixes come to base + 25 bytes in the worst case. So a destination
+basename near the 255-byte NAME_MAX pushed the temp name over and the write
+failed `ENAMETOOLONG` — for a target a plain `fs.writeFile` accepts.
+
+**This one is reachable, and finding that out required asking a different
+question than I started with.** `hashRequest` returns
+`sha256(...).slice(0, 32)`, so the recorder can only ever produce 37-byte
+basenames. That made it look unreachable, the same as the
+`agent-orchestration-platform` sibling where every basename is a timestamp or a
+fixed doc name. But `CassetteStore` is exported from `src/index.ts`, and
+`write(cassette)` takes the basename from `cassette.request_hash` — a plain
+string on a public type that nothing on the write path constrains. Measured
+with a 240-character hash: the plain write of the identical filename succeeds
+and `CassetteStore.write` raises `ENAMETOOLONG`.
+
+The lesson is the question: **who else can set the field**, not just who
+generates it. A bounded generator says nothing about a public setter one seam
+over. A fixture generator or a migration script that rewrites hashes builds a
+`CassetteV1` by hand, and that is usage this library exists to support.
+
+**The docstring named the family that already had the fix.** It positions
+itself against `mcp-server-cookbook`'s `filesystem-sandbox/src/atomic_write.ts`
+and the four Python `atomic_write_text` helpers (leh#48, lco#42, prs#39,
+rag#44). All five carry a cap; this one did not, because the cap landed in
+mcp#96 and rag#128 *after* these ports were copied. The leader even records the
+reason it was written — "since `write_file` takes a client-supplied path, that
+spurious failure is reachable" — and that reason holds here too, just not
+through the path anyone was looking at.
+
+The tests drive the reachable road end to end: a 240-character `request_hash`
+through `write()` and back through `read()`, asserting a *usable cassette*
+rather than an absent exception. The threshold table is stated as a relation
+between two calls — any basename the host's own plain `fs.writeFile` accepts
+must go through the atomic path too, and a host that refuses the plain write
+skips that row rather than failing — so nothing asserts something only one
+machine believes. Plus a 120×"é" hash (240 bytes, comfortably under budget in
+*characters*) that a byte-slice would split mid-codepoint, and a maximality
+assertion, because a cap returning `""` satisfies every length check.
+
+**One thing I deliberately didn't do:** validate `request_hash`'s shape on
+write. A 240-character hash is nobody's real hash and the guard is tempting —
+but it is a contract narrowing on a public type with its own blast radius,
+`read()` already enforces the filename/field agreement that matters for replay,
+and the cap is correct regardless of what the field is allowed to hold. A
+tempting adjacent tightening inside a fix looks like part of the fix, and it
+isn't.
+
+Reverting the cap turns 4 of the 8 red and leaves the short-name rows green.
+Suite 451 → 459; `eslint` and `tsc --noEmit` clean.
+
+**Why this work, this session:** the last member of a portfolio-wide
+atomic-write sweep that closed the same class in nine Python repos and one
+other TypeScript port earlier in the run. This repo's other open issues (#81,
+#16) are a decision-revisit and a demo capture.
+
+**Open questions / blockers:** none.
+
+**Next session:** #81 (the `/api/tools` raw-500 vs `/api/error`'s 502 envelope)
+still needs a JT decision.
