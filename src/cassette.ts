@@ -262,10 +262,12 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   /\/\/[^/@\s:]+:[^/@\s]+@/,
   // A `key=`-family name followed by a credential-shaped value. The docstring
   // above promised this prefix for a long time and no pattern implemented it
-  // (#113); these are the shapes the other six structurally cannot see, because
-  // every one of them keys off the credential's own PREFIX and these credentials
-  // have none — Azure OpenAI's `api-key` is a bare 32-hex string, an OAuth
-  // `access_token` is opaque. The `api-key` header entry's own comment says
+  // (#113); these are the shapes the other six structurally cannot see. Five of
+  // them key off the credential's own PREFIX (`sk-`, `Bearer `, `AIza`,
+  // `Basic `) and these credentials have none — Azure OpenAI's `api-key` is a
+  // bare 32-hex string, an OAuth `access_token` is opaque. The sixth, userinfo,
+  // keys off URL STRUCTURE rather than a prefix, and so misses them for the
+  // different reason that they are not in a `//u:p@` position. The `api-key` header entry's own comment says
   // "redaction-by-name is the only thing that catches it", which is exactly why
   // the same value in any position that is not a header name was caught by
   // nothing.
