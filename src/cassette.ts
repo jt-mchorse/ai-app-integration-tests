@@ -216,9 +216,16 @@ export function redactHeaders(headers: Record<string, string>): Record<string, s
  * anything that *looks* like an API key. Throws if any candidate is found so
  * a leaking cassette never gets committed.
  *
- * Heuristic: 32+ chars of `[A-Za-z0-9_-]` immediately preceded by `sk-`, `key=`,
- * `Bearer `, etc., in a header VALUE. The `[REDACTED]` placeholder is
- * exempted because it's the redaction marker, not a leaked key.
+ * Heuristic: a credential-shaped value behind a recognised prefix — `sk-`,
+ * `Bearer `, `AIza`, `Basic `, URL userinfo, or a `key=`-family name. The
+ * `[REDACTED]` placeholder is exempted because it's the redaction marker, not
+ * a leaked key.
+ *
+ * This used to say "in a header VALUE", and to list `key=` among the prefixes
+ * when no such pattern existed (#113). Both were wrong in the same direction:
+ * the scan runs over the WHOLE serialized cassette precisely because the URL
+ * and the body are where a credential escapes header redaction, and `key=` is
+ * the shape those two carry.
  *
  * NOTE (#60): none of these patterns ends in a trailing `\b`. Each charclass can
  * end in a NON-word char (`=` base64 padding, `+` `/` `-` `.`), and a `\b` only
@@ -253,6 +260,33 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   // incidental JSON `:`/`@` (timestamps like `12:30`, emails like `a@b.com`,
   // which have no preceding `//`). Catches the credential leaking either way (D-004).
   /\/\/[^/@\s:]+:[^/@\s]+@/,
+  // A `key=`-family name followed by a credential-shaped value. The docstring
+  // above promised this prefix for a long time and no pattern implemented it
+  // (#113); these are the shapes the other six structurally cannot see. Five of
+  // them key off the credential's own PREFIX (`sk-`, `Bearer `, `AIza`,
+  // `Basic `) and these credentials have none — Azure OpenAI's `api-key` is a
+  // bare 32-hex string, an OAuth `access_token` is opaque. The sixth, userinfo,
+  // keys off URL STRUCTURE rather than a prefix, and so misses them for the
+  // different reason that they are not in a `//u:p@` position. The `api-key` header entry's own comment says
+  // "redaction-by-name is the only thing that catches it", which is exactly why
+  // the same value in any position that is not a header name was caught by
+  // nothing.
+  //
+  // The URL case is not hypothetical the way the "echoed error body" rationale
+  // above it is: `normalizeUrl` strips the fragment (#56) and userinfo (#64)
+  // and PRESERVES the query string, so `?api-key=<key>` is written into the
+  // committed cassette every time. Azure OpenAI, Google (`?key=`), OAuth
+  // (`?access_token=`) and Azure SAS all put credentials there.
+  //
+  // Matches both `name=value` (query string) and `"name": "value"` (JSON body).
+  // `\b` before the alternation is load-bearing: without it `monkey=...` matches
+  // on its trailing "key". 24+ chars rather than 32+ because an opaque OAuth
+  // token is routinely shorter than an API key, and this pattern is anchored on
+  // a name that means "credential" — the anchor carries the specificity, so the
+  // length bound does not have to. A leak guard that also refuses a `model=`
+  // name or a base64 image chunk gets switched off, so the negative rows in
+  // `test/cassette-leak-scanner.test.ts` are as load-bearing as the positive.
+  /\b(?:api[-_]?key|access[-_]?token|auth[-_]?token|key)["']?\s*[=:]\s*["']?([A-Za-z0-9_\-.+/=]{24,})/i,
 ];
 
 export function assertNoLeakedSecrets(cassette: CassetteV1): void {

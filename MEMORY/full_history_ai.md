@@ -1247,3 +1247,27 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-09-03T08:45Z
+issue: 113
+focus: the_leak_scanners_docstring_promised_a_key_equals_pattern_that_did_not_exist_and_normalizeUrl_commits_query_string_credentials_verbatim
+phase: night_session_multi_issue_loop_issue_8
+delta:
+  files_changed: 2
+  tests_added: 21
+  suite: 459_to_480_green
+measured:
+  gaps: "5 of 11 credential shapes UNCAUGHT - ?key=<32hex>, ?api-key=<32hex> (Azure OpenAI), ?access_token=<opaque>, body {api_key: <32hex>}, echoed body with api-key=. All 5 CONTROL patterns (sk-/Bearer/AIza/Basic/userinfo) fired correctly"
+  guaranteed_not_speculative: "normalizeUrl strips fragment (#56) and userinfo (#64) and PRESERVES the query string, so ?api-key=<key> is written into the committed cassette EVERY TIME - unlike the AIza/Basic patterns whose rationale is a hypothetical echoed error body"
+  anti_vacuous: "THREE variants - remove the pattern 7 red (5 gaps + 2 docstring-promise); bare length-only pattern 3 red on the INNOCUOUS rows; drop the leading word-boundary 1 red (monkey= matches on its trailing key)"
+context_for_next_session:
+  - A_DOCSTRING_THAT_LISTS_A_PATTERN_THE_CODE_DOES_NOT_HAVE_IS_A_DIRECT_FALSIFIABLE_DIFF_the_heuristic_said_preceded_by_sk_dash_KEY_EQUALS_Bearer_etc_and_API_KEY_PATTERNS_had_SIX_entries_and_none_of_them_was_key_equals_READ_THE_DOCSTRING_AS_A_SPEC_AND_DIFF_IT_AGAINST_THE_LIST
+  - AND_THE_SAME_FILE_NAMED_ITS_OWN_GAP_the_api_key_header_comment_says_REDACTION_BY_NAME_IS_THE_ONLY_THING_THAT_CATCHES_IT_which_is_TRUE_and_therefore_says_THE_SAME_VALUE_ANYWHERE_THAT_IS_NOT_A_HEADER_NAME_IS_CAUGHT_BY_NOTHING_a_sentence_explaining_why_one_layer_is_load_bearing_is_a_map_of_where_the_other_layers_are_blind
+  - EVERY_EXISTING_PATTERN_KEYS_OFF_THE_CREDENTIALS_OWN_PREFIX_and_the_credentials_that_matter_here_HAVE_NO_PREFIX_azure_is_bare_32_hex_oauth_is_opaque_SO_ANCHOR_ON_THE_NAME_INSTEAD_which_is_also_what_lets_the_length_bound_relax_from_32_to_24_without_noise_THE_ANCHOR_CARRIES_THE_SPECIFICITY
+  - A_LEAK_GUARDS_NEGATIVE_ARM_IS_AS_LOAD_BEARING_AS_ITS_POSITIVE_a_gate_that_refuses_a_model_equals_name_or_a_base64_image_chunk_IS_A_GATE_SOMEONE_SWITCHES_OFF_the_over_broad_length_only_neighbour_passes_every_positive_row_and_dies_on_the_innocuous_ones
+  - AND_THE_LEADING_WORD_BOUNDARY_IS_A_REAL_TEST_ROW_NOT_A_DETAIL_without_it_monkey_equals_matches_on_its_trailing_key_I_ONLY_FOUND_THAT_BY_PUTTING_IT_IN_THE_TABLE_BEFORE_WRITING_THE_REGEX
+  - THE_HALF_I_DEFERRED_redacting_query_credentials_in_normalizeUrl_is_the_SYMMETRIC_COMPLETION_of_64s_userinfo_strip_but_it_changes_hashRequest_OUTPUT_only_for_urls_ALREADY_CARRYING_A_CREDENTIAL_ie_cassettes_ALREADY_LEAKING_state_the_consequence_of_shipping_only_half_1_PLAINLY_recording_against_a_query_authenticated_api_now_FAILS_instead_of_leaking
+decisions_made: []
+followups: []
+---

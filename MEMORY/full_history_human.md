@@ -1125,3 +1125,56 @@ other TypeScript port earlier in the run. This repo's other open issues (#81,
 
 **Next session:** #81 (the `/api/tools` raw-500 vs `/api/error`'s 502 envelope)
 still needs a JT decision.
+
+## 2026-09-03 — #113: the scanner documented a pattern it did not have
+
+`assertNoLeakedSecrets` is D-004's belt-and-suspenders guard. Its docstring
+stated the heuristic as "32+ chars ... immediately preceded by `sk-`, **`key=`**,
+`Bearer `, etc." — and `API_KEY_PATTERNS` has six entries, none of which is
+`key=`. Reading the docstring as a spec and diffing it against the list is the
+whole finding.
+
+Five credential shapes went through: `?key=`, `?api-key=`, `?access_token=` in
+the URL, `{"api_key": ...}` in a body, and an echoed error body carrying
+`api-key=`. All five existing patterns fired correctly on their own shapes, so
+the guard looked healthy.
+
+**The URL rows are guaranteed, not speculative.** The `AIza`, `Basic` and
+userinfo patterns are all justified by a hypothetical "echoed error body". The
+query-string case needs no such luck: `normalizeUrl` strips the fragment (#56)
+and userinfo (#64) and *preserves* the query string, so a request to an API
+that authenticates by query parameter writes its key into the committed
+cassette every single time. Azure OpenAI, Google, OAuth and Azure SAS all do
+that. It is the same field and the same harm #64 fixed one component over,
+whose comment says a credential "must never be committed in cleartext".
+
+**The file named its own gap.** The `api-key` header entry's comment says Azure's
+bare 32-hex key is "invisible to the `sk-`/`Bearer`/`AIza` patterns below, so
+redaction-by-name is the only thing that catches it". Every word true — and
+therefore: the same value in any position that is *not* a header name is caught
+by nothing. A sentence explaining why one layer is load-bearing is a map of
+where the other layers are blind.
+
+Every existing pattern keys off the credential's own *prefix*, and the
+credentials that matter here have none. So the new pattern anchors on the
+**name** instead, which is also what lets the length bound relax from 32 to 24
+without going noisy: the anchor carries the specificity.
+
+**The negative arm is as load-bearing as the positive.** A leak guard that
+refuses a `model=` name, a request id or a base64 image chunk is a guard
+somebody switches off, and that is the real failure mode. The over-broad
+length-only neighbour passes every positive row and dies on the innocuous ones.
+The leading `\b` earned its place the same way — without it `monkey=` matches on
+its trailing "key", which I only found because the row was in the table before
+the regex was written.
+
+**What I deferred.** Redacting credential query params in `normalizeUrl` is the
+symmetric completion of #64, but it changes `hashRequest` output — only for URLs
+already carrying a credential, i.e. cassettes already leaking and needing
+re-recording — so it is a behaviour change to a public function and goes to JT.
+The consequence of shipping only the scanner is worth stating plainly rather
+than hiding: recording against a query-authenticated API now *fails* instead of
+leaking. That is the correct direction for D-004 and a worse experience than
+redacting, which is exactly why the second half exists.
+
+**Next session:** #113's half 2 and #81 are both open for JT.
