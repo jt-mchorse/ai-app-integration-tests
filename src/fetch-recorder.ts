@@ -82,7 +82,16 @@ async function normalizeRequest(
 }
 
 function collectHeaders(headers: HeadersInit | undefined, input: RequestInfo | URL): Record<string, string> {
-  const out: Record<string, string> = {};
+  // `Object.create(null)`, for the reason `canonicalize` states about body keys
+  // (#75) and this accumulator inherited without ever being named (#115). The
+  // mechanism is not about bodies: it is about `out[k] = v` on an object
+  // literal. `__proto__` is a legal HTTP field name — `_` is a `tchar` under
+  // RFC 7230 — so nothing upstream rejects it, and assigning `out["__proto__"]`
+  // on a plain `{}` hits the prototype *setter*: it mutates `out`'s prototype
+  // instead of creating an own property, and the header silently disappears
+  // from `Object.keys` and `JSON.stringify`. Measured on the shipped code, a
+  // two-header input came back with one.
+  const out: Record<string, string> = Object.create(null);
   if (typeof input === "object" && "headers" in input && input.headers) {
     input.headers.forEach((v: string, k: string) => {
       out[k.toLowerCase()] = v;
@@ -429,7 +438,19 @@ export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
 }
 
 function headersToObject(h: Headers): Record<string, string> {
-  const out: Record<string, string> = {};
+  // The fourth accumulator, and the one #115's own list did not name — found by
+  // the discovery lock rather than by reading, which is the whole argument for
+  // writing the lock that way. It is on the *response* path
+  // (`redactHeaders(headersToObject(liveResponse.headers))`), so the
+  // consequence is one step past the issue's analysis: a dropped response
+  // header is replayed missing to the application under test, not merely
+  // recorded wrong.
+  //
+  // Verified that it is reachable rather than assumed: `new
+  // Headers().set("__proto__", "evil")` is accepted by the WHATWG Headers
+  // implementation, and this loop then produced `{}` — zero keys from a
+  // one-header response.
+  const out: Record<string, string> = Object.create(null);
   h.forEach((v, k) => {
     out[k.toLowerCase()] = v;
   });

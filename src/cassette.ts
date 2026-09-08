@@ -196,7 +196,20 @@ const SENSITIVE_HEADER_NAMES = new Set([
 ]);
 
 export function redactHeaders(headers: Record<string, string>): Record<string, string> {
-  const out: Record<string, string> = {};
+  // Both accumulators below are `Object.create(null)` for the reason
+  // `canonicalize` states one screen up (#75), applied to the population that
+  // reasoning actually describes (#115): every `out[k] = v` on an object
+  // literal, not only the body one. A `__proto__` header assigned on a plain
+  // `{}` hits the prototype setter and vanishes — and it reaches here as a real
+  // own-enumerable key, both from `collectHeaders` and from `JSON.parse` of a
+  // committed cassette, so a re-record drops a header the previous recording
+  // had and the file changes without the request changing.
+  //
+  // `Object.keys`/`.sort()`/`JSON.stringify` are unchanged on null-prototype
+  // objects, so every other cassette stays byte-identical — the same argument
+  // #75's comment makes, and `test/cassette-proto-header.test.ts` runs it
+  // against the committed fixtures rather than restating it.
+  const out: Record<string, string> = Object.create(null);
   for (const [k, v] of Object.entries(headers)) {
     const key = k.toLowerCase();
     if (SENSITIVE_HEADER_NAMES.has(key)) {
@@ -206,7 +219,7 @@ export function redactHeaders(headers: Record<string, string>): Record<string, s
     }
   }
   // Sort headers by name for stable output.
-  const sorted: Record<string, string> = {};
+  const sorted: Record<string, string> = Object.create(null);
   for (const k of Object.keys(out).sort()) sorted[k] = out[k];
   return sorted;
 }
