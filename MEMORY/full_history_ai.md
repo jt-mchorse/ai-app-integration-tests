@@ -1271,3 +1271,29 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-09-08T15:00Z
+duration_min: 25
+issue: 115
+focus: a_discovery_lock_over_the_ast_found_a_FOURTH_accumulator_the_issues_own_hand_list_missed_and_it_was_on_the_response_path
+phase: day_session_multi_issue_loop_issue_5
+delta:
+  files_changed: 4
+  tests_added: 10
+  suite: 480_to_490_green
+measured:
+  the_defect: "shipped redactHeaders: {__proto__: evil, content-type: application/json} in with TWO own keys, out with ONE. and new Headers().set(__proto__, evil) IS ACCEPTED by the WHATWG implementation so headersToObject produced ZERO keys from a one-header response"
+  the_fourth_site: "the lock found fetch-recorder.ts headersToObject on its FIRST RUN - the issue named three, all on the REQUEST side, and this one is on the RESPONSE side where a dropped header is REPLAYED MISSING to the app under test, one step past the issue's own harm analysis"
+  anti_vacuous: "THREE neighbours built and run - all four back to plain braces 4 red; only the two cassette.ts sites 1 red; only the three sites THE ISSUE NAMED 1 red. THE TWO PARTIAL FIXES ARE CAUGHT ONLY BY THE DISCOVERY LOCK because the behavioural tests exercise redactHeaders and not the other two accumulators"
+  byte_identical: "both committed cassette header maps re-normalise to identical JSON; Object.keys/.sort()/JSON.stringify are unchanged on null-prototype objects"
+context_for_next_session:
+  - THE_LENS_AND_IT_PAID_ON_ITS_FIRST_RUN_WHEN_A_CLASS_HAS_BEEN_FOUND_THREE_TIMES_STOP_LISTING_THE_POPULATION_AND_DISCOVER_IT_57_70_body_encoding_75_body_keys_115_headers_EACH_TIME_SCOPED_TO_THE_AXIS_IN_HAND_so_i_wrote_a_ts_ast_walk_that_finds_every_const_x_object_shaped_init_that_is_later_the_target_of_x_bracket_expr_equals_and_asserts_the_init_is_Object_create_null_IT_IMMEDIATELY_NAMED_A_SITE_I_WAS_NOT_LOOKING_FOR
+  - AND_THE_FOURTH_SITE_HAD_A_BIGGER_CONSEQUENCE_THAN_THE_THREE_headersToObject_is_on_the_RESPONSE_path_so_a_dropped_header_is_REPLAYED_MISSING_TO_THE_APP_UNDER_TEST_while_the_issues_three_were_request_side_fidelity_only_THE_MEMBER_A_HAND_LIST_MISSES_IS_NOT_DRAWN_FROM_THE_SAME_SEVERITY_DISTRIBUTION_AS_THE_ONES_IT_NAMES
+  - THE_PARTIAL_FIX_NEIGHBOURS_ARE_CAUGHT_ONLY_BY_THE_LOCK_fixing_two_of_four_or_three_of_four_leaves_the_whole_behavioural_suite_GREEN_because_the_tests_exercise_redactHeaders_and_never_call_collectHeaders_or_headersToObject_directly_A_DISCOVERY_LOCK_IS_THE_ONLY_THING_THAT_SEPARATES_A_PARTIAL_SWEEP_FROM_A_COMPLETE_ONE
+  - THE_ANTI_VACUOUS_ARM_FOR_A_DISCOVERY_LOCK_IS_A_FLOOR_ON_WHAT_IT_DISCOVERED_expect_accumulators_length_at_least_4_AND_at_least_2_distinct_files_because_a_walk_that_matched_NOTHING_satisfies_the_no_plain_literal_assertion_on_an_EMPTY_SET_which_is_how_an_ast_lock_rots_into_a_no_op_after_a_refactor
+  - GOTCHA_THE_TEST_FILE_CANNOT_CONTAIN_THE_LITERAL_KEY_build_it_from_pieces_join_because_a_plain_object_literal_in_the_TEST_would_hit_the_same_setter_and_because_node_reported_an_esm_loader_frame_named___proto___when_i_inlined_it_in_a_node_dash_e
+  - proto_IS_A_LEGAL_HTTP_FIELD_NAME_underscore_is_a_tchar_under_rfc_7230_and_I_ASSERTED_IT_RATHER_THAN_CITED_IT_new_Headers_set_proto_evil_returns_evil_THE_REACHABILITY_QUESTION_IS_WHAT_MADE_THIS_priority_low_so_answering_it_with_a_running_assertion_is_the_point
+decisions_made: []
+followups: []
+---

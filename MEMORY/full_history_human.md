@@ -1178,3 +1178,44 @@ leaking. That is the correct direction for D-004 and a worse experience than
 redacting, which is exactly why the second half exists.
 
 **Next session:** #113's half 2 and #81 are both open for JT.
+
+## 2026-09-08 — Issue #115: the lock found a site the issue had not named
+**Duration:** ~25 min · **Branch:** `session/2026-09-08-1500-issue-115`
+
+- #75 fixed the `__proto__`-key hazard in `canonicalize` and scoped its
+  reasoning to *body* keys. The mechanism it states is not about bodies — it is
+  about `out[k] = v` on an object literal — and there were three more of them.
+  Measured on the shipped `redactHeaders`: `{"__proto__": "evil",
+  "content-type": "..."}` goes in with two own keys and comes out with one.
+- **The lock discovers the population instead of listing it, and paid on its
+  first run.** This class had been found three times (#57/#70 body encoding,
+  #75 body keys, #115 headers) and each time the population was scoped to the
+  axis in hand. A TypeScript AST walk that finds every object-shaped `const`
+  later used as `x[expr] = ...` immediately named a fourth site the issue had
+  not: `headersToObject` in `fetch-recorder.ts`.
+- **The fourth site has a bigger consequence than the three.** It is on the
+  *response* path, so a dropped header is replayed **missing** to the
+  application under test — one step past the issue's own harm analysis, which
+  concluded the damage was request-side fidelity only. Reachability asserted
+  rather than argued: `new Headers().set("__proto__", "evil")` is accepted by
+  the WHATWG implementation, and the shipped loop produced zero own keys from a
+  one-header response.
+- **The partial fixes are caught only by the lock.** Fixing two of four, or the
+  three the issue named, leaves the entire behavioural suite green — the tests
+  exercise `redactHeaders` and never call `collectHeaders` or `headersToObject`
+  directly. Three neighbours built and run: all four back to plain `{}` (4 red),
+  two of four (1 red), the issue's three (1 red).
+- The lock carries its own anti-vacuous floor — at least four accumulators
+  across at least two files — because a walk that matched nothing would satisfy
+  "no plain object literal among them" on an empty set.
+- Committed fixtures verified byte-identical, rather than repeating #75's claim.
+  Suite 480 → 490.
+
+**Why this work, this session:** ai-app-integration-tests had not been touched
+since 2026-09-02 and #115 was its oldest actionable issue.
+
+**Open questions / blockers:** none.
+
+**Next session:** whether a `__proto__` header should be *rejected* rather than
+recorded is a policy question, not this fix — it is a legal field name and
+`NormalizedRequest.headers` documents fidelity.
