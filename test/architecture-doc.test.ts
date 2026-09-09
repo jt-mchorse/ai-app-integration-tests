@@ -32,6 +32,9 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { resolve, join } from "node:path";
 
+import * as SHARED from "./support/source-files.js";
+import { sourceFiles } from "./support/source-files.js";
+
 const ROOT = resolve(__dirname, "..");
 const ARCH_PATH = resolve(ROOT, "docs/architecture.md");
 const DECISIONS_PATH = resolve(ROOT, "MEMORY/core_decisions_ai.md");
@@ -232,8 +235,9 @@ describe("docs/architecture.md is current with shipped scope (#18)", () => {
 // (`content_block_delta`, `get_weather`) are excluded as prose/wire noise.
 // Two hard-pinned exception sets carry the non-declaration identifiers.
 
-const SOURCE_DIRS = ["src"] as const;
-const SOURCE_EXTS = [".ts", ".tsx"] as const;
+// Re-exported from the shared module so this file's existing references keep
+// working and there is still exactly one definition (#117).
+const { SOURCE_DIRS, SOURCE_EXTS } = SHARED;
 
 // Framework / web / runtime globals the doc names in backticks that are NOT
 // repo declarations. Multi-word only (a single-word `Response` / `Request`
@@ -282,19 +286,11 @@ function candidateSymbols(md: string): string[] {
   return [...out].sort();
 }
 
-/** Recursively collect `*.ts` / `*.tsx` files under a source dir. */
-function sourceFiles(dir: string): string[] {
-  const abs = resolve(ROOT, dir);
-  if (!existsSync(abs)) return [];
-  const files: string[] = [];
-  for (const entry of readdirSync(abs, { withFileTypes: true })) {
-    if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
-    const full = join(abs, entry.name);
-    if (entry.isDirectory()) files.push(...sourceFiles(join(dir, entry.name)));
-    else if (SOURCE_EXTS.some((e) => entry.name.endsWith(e))) files.push(full);
-  }
-  return files;
-}
+// `sourceFiles` moved to `test/support/source-files.ts` (#117), unchanged.
+// `proto-key-accumulators.test.ts` shipped a FLATTER answer to the same
+// question one session after this one, and `src/support/` fell out of it. This
+// walk is the shared definition now; sharing it is a no-op here, which the
+// population assertions below pin.
 
 /** Every top-level declaration name across the source dirs — exported or
  *  internal. The TS analogue of the Python resolver's module attribute

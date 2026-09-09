@@ -111,6 +111,19 @@ replayed missing to the application under test. `Object.keys`,
 `.sort()` and `JSON.stringify` behave identically on null-prototype
 objects, so every existing cassette is byte-identical.
 
+It discovered the accumulators *within* a file and hand-scoped the set
+of files: `readdirSync(SRC_DIR)` returns one level, and `src/support/`
+exists (#117). Measured with the same accumulator planted twice —
+`src/support/_probe.ts` left the lock at 10 passed, `src/_probe.ts`
+turned it red. The recursive walk was already three files away in
+`test/architecture-doc.test.ts`; it now lives once, in
+`test/support/source-files.ts`, and both locks import it. A second
+correct copy is what produced the gap, and two locks whose populations
+can quietly disagree is the same shape one level up from the thing they
+check. Sharing is a no-op for the architecture-doc lock — it walked
+recursively already, and its 23 tests are unchanged, which is asserted
+rather than assumed.
+
 ## Redaction (D-004)
 
 Two checks run before any cassette is written:
