@@ -44,7 +44,6 @@ import {
   allSourceFiles,
   sourceFiles,
 } from "./support/source-files.js";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import ts from "typescript";
 

@@ -235,9 +235,11 @@ describe("docs/architecture.md is current with shipped scope (#18)", () => {
 // (`content_block_delta`, `get_weather`) are excluded as prose/wire noise.
 // Two hard-pinned exception sets carry the non-declaration identifiers.
 
-// Re-exported from the shared module so this file's existing references keep
-// working and there is still exactly one definition (#117).
-const { SOURCE_DIRS, SOURCE_EXTS } = SHARED;
+// From the shared module so there is exactly one definition (#117).
+// `SOURCE_EXTS` is not destructured here: the local walk that used it moved to
+// `test/support/source-files.ts` with it, and eslint's no-unused-vars is right
+// that keeping the binding would be decoration.
+const { SOURCE_DIRS } = SHARED;
 
 // Framework / web / runtime globals the doc names in backticks that are NOT
 // repo declarations. Multi-word only (a single-word `Response` / `Request`
