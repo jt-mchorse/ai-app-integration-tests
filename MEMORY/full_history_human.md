@@ -1219,3 +1219,49 @@ since 2026-09-02 and #115 was its oldest actionable issue.
 **Next session:** whether a `__proto__` header should be *rejected* rather than
 recorded is a policy question, not this fix — it is a legal field name and
 `NormalizedRequest.headers` documents fidelity.
+
+## 2026-09-09 — Issue #117: the lock discovered accumulators and hand-scoped the files
+**Branch:** `session/2026-09-09-0902-issue-117`
+
+`test/proto-key-accumulators.test.ts` shipped one session ago, and its docstring
+explains that it discovers accumulators from the TypeScript AST rather than
+listing them — "because a list is how the population got scoped the first three
+times". It discovers accumulators *within* a file. It found the files one level
+deep, and `src/support/` exists.
+
+The same accumulator planted twice: inside `src/support/` the lock stayed fully
+green; directly in `src/` it went red. One directory level apart, identical
+hazard.
+
+The recursive walk was already three files away, private to
+`test/architecture-doc.test.ts`. This is the second repo today with exactly that
+shape — `nextjs-streaming-ai-patterns` was the first — and the lesson is the
+same: grep the repo for the same job done properly before writing a walk. It now
+lives once, in `test/support/source-files.ts`, and both locks import it.
+
+I checked that sharing is a no-op for the existing caller rather than assuming
+it: 23 tests before, 23 after. When a private helper becomes a shared one, the
+first caller's result set is the thing to verify, not just that it compiles.
+
+The gap is latent — `src/support/` holds no keyed accumulator today and all five
+sites are already null-prototype. The count is pinned at five so the widening
+reads as a population change and not a silent behaviour one; a wider walk that
+found *fewer* sites would be a regression wearing a fix's clothes.
+
+Two process notes worth keeping. I committed on a grep that matched output
+rather than on the result — `vitest run | grep "Tests "` succeeds when grep finds
+a line, including `2 failed | 490 passed`, so the `&&` chain continued and the
+commit landed red. And the two failures were the architecture-doc lock catching
+my own prose: I had cited two throwaway probe paths that do not exist on disk
+and named a Node global that resolves to no declaration in `src/`. Both rules
+were right and the prose was wrong. A doc lock that reads your explanation of a
+fix is working.
+
+**Why this work, this session:** the repo's two open issues are low-priority
+decision-revisits, so the hunt was the work, and the surface was the lock shipped
+in the PR this run merged during Phase A.
+
+**Next session:** `Object.assign(target, untrusted)` has the same `[[Set]]`
+semantics and would be a real second hazard; every use here is
+`Object.assign(new Error(...), {literal})` in tests, so it is noted rather than
+built for.
