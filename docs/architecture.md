@@ -93,6 +93,24 @@ The hash is `sha256(JSON.stringify({ method, url, body }))[:32]`, where:
 This means two semantically-equivalent requests reuse the same cassette
 even when the JSON shape differs in encoding (`{a:1,b:2}` vs `{b:2,a:1}`).
 
+**Every keyed accumulator is null-prototype (#75, #115).** Assigning
+`out[k] = v` on a plain `{}` where `k` is `__proto__` hits the prototype
+*setter*: it mutates `out`'s prototype instead of creating an own
+property, and the entry disappears from `Object.keys` and
+`JSON.stringify`. `__proto__` is a legal HTTP field name (`_` is a
+`tchar` under RFC 7230) and a real own-enumerable key after
+`JSON.parse`, so it reaches these maps from a live request, from a
+response, and from re-reading a committed cassette. #75 fixed
+`canonicalize` and scoped its reasoning to body keys; #115 applied the
+same mechanism to the header accumulators. The lock in
+`test/proto-key-accumulators.test.ts` **discovers** the accumulators
+from the source with the TypeScript AST rather than listing them —
+which is how it found a fourth site the issue had not named,
+`headersToObject` on the *response* path, where a dropped header is
+replayed missing to the application under test. `Object.keys`,
+`.sort()` and `JSON.stringify` behave identically on null-prototype
+objects, so every existing cassette is byte-identical.
+
 ## Redaction (D-004)
 
 Two checks run before any cassette is written:
