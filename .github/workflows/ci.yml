@@ -26,7 +26,16 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm test
+      # `--reporter=json --outputFile` are extra flags on the run this job
+      # already performs -- nothing executes twice, and no new job is needed
+      # (#119). The report is what pins the README's count to what actually
+      # ran; it said 49 against 492 real cases for as long as the sentence
+      # existed, because the other two README locks pin quoted paths and the
+      # D-NNN range and neither covers a number.
+      - name: Run the toolkit suite, emitting a machine-readable report
+        run: npx vitest run --reporter=json --outputFile=/tmp/vitest-report.json
+      - name: Verify the README's vitest count is what ran
+        run: node tools/check-readme-test-count.mjs /tmp/vitest-report.json
       - run: npm run build
       - name: Job timing
         if: always()

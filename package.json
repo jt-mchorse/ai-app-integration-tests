@@ -21,7 +21,8 @@
     "example:dev": "npm run dev --prefix example-app",
     "example:build": "npm run build --prefix example-app",
     "example:test": "npm test --prefix example-app",
-    "test:all": "npm test && npm test --prefix example-app"
+    "test:all": "npm test && npm test --prefix example-app",
+    "check:readme-test-count": "npx vitest run --reporter=json --outputFile=/tmp/vitest-report.json && node tools/check-readme-test-count.mjs /tmp/vitest-report.json"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
