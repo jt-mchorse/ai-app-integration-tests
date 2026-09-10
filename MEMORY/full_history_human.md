@@ -1265,3 +1265,69 @@ in the PR this run merged during Phase A.
 semantics and would be a real second hazard; every use here is
 `Object.assign(new Error(...), {literal})` in tests, so it is noted rather than
 built for.
+
+---
+
+## 2026-09-10 — the Benchmarks section was off by a factor of ten (#119)
+
+**Focus:** `README.md`'s "Benchmarks / Results" claim, and the unit a lock for
+it has to use.
+
+**What got done.** The README said "49 vitest tests run in ~340 ms locally with
+zero network access". There were 492 — 503 once this change's own tests landed.
+Off by a factor of ten, in the section a reader goes to for numbers, and it had
+drifted across every session that added a test.
+
+Nothing was watching, and that is the interesting part: this repo has *two*
+README locks and neither covers a number. `readme-snapshot.test.ts` pins that
+quoted paths exist on disk; `readme-decision-range.test.ts` pins the `D-NNN`
+upper bound. Worth asking of every README lock which *kinds* of claim it covers
+and which it does not.
+
+The Playwright half of the same paragraph is correct — exactly 3 `test(` cases
+and ~5 s — and it is untouched. Saying precisely which half was wrong is worth
+more than a bigger claim about the whole section.
+
+**The unit is the trap, and it is live here.** Static `it(`/`test(`
+occurrences in `test/` come to 292; the runtime executed count is 503. A
+200-case gap from `it.each` parametrization. So a lock written against the
+static count — the obvious spelling, a grep — would pin 292 and report green,
+which is exactly how five README counts in `mcp-server-cookbook` stayed green on
+wrong numbers for months. The arm that matters is therefore that the static
+count is *strictly less* than the pinned one: equality of the two units is the
+bug, and a lock that only checked "the README matches some recorded number"
+would happily re-freeze the wrong one.
+
+The model is lifted from that sibling repo's `check-test-count.mjs`, which had
+already settled the unit, the report source and the exit-code contract.
+`--reporter=json --outputFile` are extra flags on the run CI already performs,
+so nothing executes twice and no new job was needed.
+
+The duration is deliberately not locked — it is host-dependent, and asserting a
+wall-clock figure is the host-environment-assertion mistake. The sentence now
+gives an order of magnitude and names the host.
+
+**Two things worth carrying forward.** A test-count lock is self-referential by
+construction: this change's own 11 tests moved the number from 492 to 503, and
+that friction is the point. And the checker exits 2, not 0, on a missing or
+unparseable report — a check that returns success when it could not measure
+anything is the quietest way to stop checking, so it has its own named row.
+
+**The gotcha.** Restoring the third falsification arm with
+`git checkout tools/check-readme-test-count.mjs` did nothing and reported no
+error, because the file is *untracked*. The neighbour's edit survived into a
+"restored" run that came back one red, and I read it as a real failure for a
+moment. Copy to `/tmp` before every probe, including for files git does not know
+about yet — this is the fifth `git checkout` incident in my notes and the first
+of this shape.
+
+**Why this was prioritized.** The repo's open issues are a demo capture needing
+a recorded video and a JT-gated decision-revisit, so the surface was the
+published artifact.
+
+**Open questions / blockers:** none. Noted, not swept in:
+`architecture-doc.test.ts` keeps a private recursive walk over
+`example-app/app/api/`, a different tree from the `src/` the shared
+`sourceFiles()` covers. It is already recursive, so it has neither the flat-walk
+bug #117 fixed nor an obvious sharing story, and it excludes `*.test.ts` where
+the shared walk does not.
