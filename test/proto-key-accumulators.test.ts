@@ -34,8 +34,16 @@
  * times.
  */
 
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
+import { relative } from "node:path";
+
+import {
+  ROOT,
+  SOURCE_DIRS,
+  SOURCE_EXTS,
+  allSourceFiles,
+  sourceFiles,
+} from "./support/source-files.js";
 import { describe, expect, it } from "vitest";
 import ts from "typescript";
 
@@ -46,7 +54,20 @@ import { redactHeaders } from "../src/cassette.js";
 // does.
 const PROTO = ["__", "proto", "__"].join("");
 
-const SRC_DIR = new URL("../src", import.meta.url).pathname;
+// The population, from the repo's shared definition (#117).
+//
+// This was `new URL("../src", ...)` + `readdirSync(SRC_DIR).filter(...)`, which
+// returns ONE LEVEL -- and `src/support/` exists. Measured with the same
+// accumulator planted twice:
+//
+//     planted at src/support/_probe.ts   ->  10 passed (10)     invisible
+//     planted at src/_probe.ts           ->  1 failed | 9 passed
+//
+// This file discovers accumulators *within* a file and hand-scoped the set of
+// files, which is the shape it exists to prevent, one level up. The recursive
+// walk was already in `architecture-doc.test.ts`; it is shared now rather than
+// copied, because two locks whose populations can disagree is the same problem
+// again.
 
 /** A local `const x: T = <init>` that is later target of `x[...] = ...`. */
 interface Accumulator {
@@ -58,8 +79,8 @@ interface Accumulator {
 
 function findAccumulators(): Accumulator[] {
   const found: Accumulator[] = [];
-  for (const file of readdirSync(SRC_DIR).filter((f) => f.endsWith(".ts"))) {
-    const path = join(SRC_DIR, file);
+  for (const path of allSourceFiles()) {
+    const file = relative(ROOT, path);
     const source = ts.createSourceFile(
       file,
       readFileSync(path, "utf8"),
@@ -136,11 +157,52 @@ describe("every keyed accumulator is null-prototype", () => {
     // rather than listing it, made by the lock on its first run. Its
     // consequence is one step past the issue's own analysis: a dropped
     // response header is replayed *missing* to the application under test.
+    //
+    // Paths are repo-relative since #117 (`src/cassette.ts`, not `cassette.ts`)
+    // because the walk now covers subdirectories and a bare basename would be
+    // ambiguous the moment two directories hold a file of the same name.
     const byFile = findAccumulators().map((a) => `${a.file}:${a.name}`);
-    expect(byFile).toContain("fetch-recorder.ts:out");
-    expect(byFile).toContain("cassette.ts:out");
-    expect(byFile).toContain("cassette.ts:sorted");
-    expect(byFile.filter((n) => n === "fetch-recorder.ts:out")).toHaveLength(2);
+    expect(byFile).toContain("src/fetch-recorder.ts:out");
+    expect(byFile).toContain("src/cassette.ts:out");
+    expect(byFile).toContain("src/cassette.ts:sorted");
+    expect(byFile.filter((n) => n === "src/fetch-recorder.ts:out")).toHaveLength(2);
+    // The count is unchanged by the wider walk: `src/support/` holds no keyed
+    // accumulator today. Pinned so the widening is visibly a POPULATION change
+    // and not a silent behaviour change -- a wider walk that found FEWER sites
+    // would be a regression wearing a fix's clothes.
+    expect(byFile).toHaveLength(5);
+  });
+
+  it("walks src/ recursively, so a subdirectory cannot fall out silently", () => {
+    // The gap #117 closed, asserted against the real tree rather than a
+    // fixture: `src/support/` exists and the old `readdirSync(SRC_DIR)` walk
+    // returned one level, so an accumulator added there inherited nothing.
+    // Measured with the same accumulator planted twice:
+    //
+    //     planted at src/support/_probe.ts   ->  10 passed (10)   invisible
+    //     planted at src/_probe.ts           ->  1 failed | 9 passed
+    const scanned = allSourceFiles().map((f) => relative(ROOT, f));
+    expect(scanned.some((f) => f.startsWith("src/"))).toBe(true);
+    expect(
+      scanned.some((f) => f.startsWith("src/support/")),
+      "src/support/ must be in the population; it is what the flat walk missed",
+    ).toBe(true);
+    // Anti-vacuous for the assertion above: a walk that returned every file in
+    // the repo would also satisfy it while checking nothing.
+    expect(scanned.every((f) => f.startsWith("src/"))).toBe(true);
+    expect(scanned.every((f) => f.endsWith(".ts") || f.endsWith(".tsx"))).toBe(true);
+  });
+
+  it("shares one definition of the population with the architecture-doc lock", () => {
+    // Not a second correct copy. Two locks whose populations can quietly
+    // disagree is the same shape one level up from the thing this file checks,
+    // and it is how `src/support/` fell out in the first place: the recursive
+    // walk already existed in `architecture-doc.test.ts` and was private to it.
+    expect([...SOURCE_DIRS]).toEqual(["src"]);
+    expect([...SOURCE_EXTS]).toEqual([".ts", ".tsx"]);
+    // `sourceFiles` is the shared walk itself, exercised directly so that
+    // renaming it breaks here rather than silently reducing the population.
+    expect(sourceFiles("src").length).toBe(allSourceFiles().length);
   });
 });
 
