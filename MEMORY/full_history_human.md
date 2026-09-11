@@ -1331,3 +1331,48 @@ published artifact.
 `sourceFiles()` covers. It is already recursive, so it has neither the flat-walk
 bug #117 fixed nor an obvious sharing story, and it excludes `*.test.ts` where
 the shared walk does not.
+
+## 2026-09-11 — #119 pinned one of three numbers in the sentence it fixed (#121)
+
+**What got done.** #119 landed this morning and its reasoning was about numbers
+generically: the existing README locks pin quoted paths and the `D-NNN` range, and
+"neither covers a number". It then pinned one of the three numbers in the paragraph it
+repaired — the test count — leaving the file count (29) and the Playwright count (3)
+unchecked in the same breath. The README even names its deliberate omission, "the
+duration is deliberately not pinned", which covers the two timings and says nothing
+about the other two counts. All three were correct, so this was a coverage gap rather
+than live drift, and both are as host-independent as the test count.
+
+The file count has a near-miss worth keeping: `numTotalTestSuites` is the plausible
+field and it reads 113, because it counts `describe` blocks rather than files. A check
+that used it would have been green on a wrong number, which is #119's own lesson, so
+there is now a test asserting the two differ. The Playwright count comes from
+Playwright's own listing rather than a grep for `test(` — a grep cannot see a
+`test.skip` or a project matrix running one spec twice — and it exits 2 rather than 0
+on an empty listing, because matching zero against zero would be green while the e2e
+suite ran nothing.
+
+**Two corrections to my own work, both before pushing.** My first CI step ended in
+`|| true`, which would have made the new lock gate nothing — the same "checker that
+gates nothing" fingerprint I fixed in `mcp-server-cookbook#172` earlier in this very
+session, reached by a different route. There is now an arm asserting no invocation of
+this checker is neutralised that way. And that step referenced a vitest report the
+`playwright` job never produces, which is why the Playwright claim has its own
+`--playwright` entry point: folding it in as an optional argument and letting the root
+job pass nothing would make "optional" mean "never checked".
+
+**A third number nobody claimed.** CI runs two vitest suites — 518 tests in 29 files at
+the root, and 53 in 5 files inside `example-app`. I did not merge them: 518 is the
+harness library's coverage and `example-app` is the application the harness is pointed
+at, so a combined 571 would overstate the harness. The README now says which suite each
+number describes and states the second suite's numbers, so that suite exists somewhere
+a drift check can see it.
+
+The headline moved from 503 to 518 because this change adds 15 tests — the lock working
+on its own diff.
+
+**Why this was prioritized.** This repo's two open issues are an operator-only demo
+capture and a JT-gated decision-revisit, so the work came from hunting, and the change
+merged two hours earlier in this run was the freshest surface.
+
+**Open questions / blockers:** none.
