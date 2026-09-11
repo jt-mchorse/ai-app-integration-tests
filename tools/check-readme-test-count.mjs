@@ -68,7 +68,110 @@ export function executedCount(report) {
   return report.numPassedTests;
 }
 
-export function check(reportPath, readme = readFileSync(README_PATH, "utf8")) {
+// The sentence also claims a FILE count and a Playwright count, in the same
+// breath as the test count #119 pinned (#121). #119's own argument was about
+// numbers generically -- "the two existing README locks pin quoted paths and the
+// D-NNN range and neither covers a number" -- and it then pinned one of the three.
+// The README says which omission is deliberate ("The duration is deliberately
+// *not* pinned -- it is host-dependent"), which covers `~5.5 s` and `~5 s` and
+// says nothing about `29 files` or `3`. Both are as host-independent as the test
+// count and derivable from artifacts CI already produces.
+export const README_FILES_RE = /\((\d[\d,]*)\s+files\b/;
+export const README_PLAYWRIGHT_RE = /the\s+(\d[\d,]*)\s+Playwright\b/;
+
+/** Distinct test FILES in a vitest JSON report. */
+export function fileCount(report) {
+  // `testResults` is one entry per file. NOT `numTotalTestSuites`, which counts
+  // `describe` blocks -- 113 against 29 files in this repo today. That field is
+  // the plausible one and it has the wrong unit, which is exactly #119's lesson
+  // ("a green lock on the wrong unit is worse than no lock"), so
+  // `tools/check-readme-test-count.test.mjs` asserts the two differ and that this
+  // function follows `testResults`.
+  if (!Array.isArray(report?.testResults)) {
+    throw new Error("report has no testResults array");
+  }
+  return new Set(report.testResults.map((t) => t?.name)).size;
+}
+
+/** Tests Playwright itself lists, from `--list --reporter=json` output. */
+export function playwrightCount(listing) {
+  // Playwright's own listing, not a grep for `test(`. A grep counts source
+  // occurrences and cannot see `test.skip`, `test.describe` nesting, or a project
+  // matrix that runs one spec twice -- the same reason #119 rejected a static
+  // `it(` count, which would have pinned 292 against 503.
+  const suites = Array.isArray(listing?.suites) ? listing.suites : [];
+  let n = 0;
+  const walk = (suite) => {
+    for (const spec of suite.specs ?? []) n += (spec.tests ?? []).length || 1;
+    for (const child of suite.suites ?? []) walk(child);
+  };
+  for (const s of suites) walk(s);
+  return n;
+}
+
+/**
+ * @param reportPath        vitest JSON report for the ROOT suite.
+ * @param readme            README text (injectable for tests).
+ * @param playwrightListPath optional `playwright test --list --reporter=json`
+ *   output. Optional because it comes from a different command in a different
+ *   package, so the root CI job can run this check without it; the `playwright`
+ *   job passes it. When absent the Playwright claim is not checked, and
+ *   `check-readme-test-count.test.mjs` asserts that the CI workflow DOES pass it
+ *   somewhere -- otherwise "optional" would quietly mean "never checked", which
+ *   is the shape #119 was.
+ */
+/**
+ * Check only the README's Playwright claim, against Playwright's own listing.
+ *
+ * A separate entry point because the listing exists only in the `playwright` CI
+ * job and the vitest report only in the root job -- neither job has both. Folding
+ * it into `check()` as an optional argument and letting the root job pass nothing
+ * would make "optional" mean "never checked in CI", which is the shape #119 was
+ * and the `stuck-registration` fingerprint generally (#121).
+ */
+export function checkPlaywright(listingPath, readme = readFileSync(README_PATH, "utf8")) {
+  let listing;
+  try {
+    listing = JSON.parse(readFileSync(listingPath, "utf8"));
+  } catch (e) {
+    return { code: 2, message: `cannot read the playwright listing at ${listingPath}: ${e.message}` };
+  }
+  const listed = playwrightCount(listing);
+  const m = README_PLAYWRIGHT_RE.exec(readme);
+  if (!m) {
+    return {
+      code: 2,
+      message:
+        "README.md no longer contains a `the <N> Playwright` claim. If the sentence " +
+        "moved, update README_PLAYWRIGHT_RE; if it was removed on purpose, remove this check.",
+    };
+  }
+  const claimed = Number(m[1].replace(/,/g, ""));
+  if (claimed !== listed) {
+    return {
+      code: 1,
+      message:
+        `README.md claims ${claimed} Playwright tests; Playwright lists ${listed}.\n` +
+        "The unit is what `playwright test --list` reports, not a grep for `test(` -- " +
+        "a grep cannot see `test.skip` or a project matrix running one spec twice.",
+    };
+  }
+  if (listed === 0) {
+    return {
+      code: 2,
+      message:
+        "Playwright listed 0 tests. A zero-vs-zero match would pass this check while " +
+        "the e2e suite ran nothing, so it is an error rather than a pass.",
+    };
+  }
+  return { code: 0, message: `check-readme-test-count: README's ${claimed} playwright match` };
+}
+
+export function check(
+  reportPath,
+  readme = readFileSync(README_PATH, "utf8"),
+  playwrightListPath = null,
+) {
   let report;
   try {
     report = JSON.parse(readFileSync(reportPath, "utf8"));
@@ -99,16 +202,100 @@ export function check(reportPath, readme = readFileSync(README_PATH, "utf8")) {
         "README's Benchmarks section to the measured number.",
     };
   }
-  return { code: 0, message: `check-readme-test-count: README's ${claimed} matches what ran` };
+
+  // The file count, from the same report (#121).
+  let files;
+  try {
+    files = fileCount(report);
+  } catch (e) {
+    return { code: 2, message: `${reportPath}: ${e.message}` };
+  }
+  const claimedFiles = README_FILES_RE.exec(readme);
+  if (!claimedFiles) {
+    return {
+      code: 2,
+      message:
+        "README.md no longer contains an `(<N> files` claim. If the sentence moved, " +
+        "update README_FILES_RE; if it was removed on purpose, remove this check.",
+    };
+  }
+  const claimedFileCount = Number(claimedFiles[1].replace(/,/g, ""));
+  if (claimedFileCount !== files) {
+    return {
+      code: 1,
+      message:
+        `README.md claims ${claimedFileCount} test files; ${files} ran.\n` +
+        "The unit is distinct files in the report's `testResults`, not " +
+        "`numTotalTestSuites` (which counts `describe` blocks).",
+    };
+  }
+
+  // The Playwright count, from Playwright's own listing (#121).
+  let pwNote = "";
+  if (playwrightListPath !== null) {
+    let listing;
+    try {
+      listing = JSON.parse(readFileSync(playwrightListPath, "utf8"));
+    } catch (e) {
+      return {
+        code: 2,
+        message: `cannot read the playwright listing at ${playwrightListPath}: ${e.message}`,
+      };
+    }
+    const listed = playwrightCount(listing);
+    const claimedPw = README_PLAYWRIGHT_RE.exec(readme);
+    if (!claimedPw) {
+      return {
+        code: 2,
+        message:
+          "README.md no longer contains a `the <N> Playwright` claim. If the sentence " +
+          "moved, update README_PLAYWRIGHT_RE; if it was removed on purpose, remove " +
+          "this check.",
+      };
+    }
+    const claimedPwCount = Number(claimedPw[1].replace(/,/g, ""));
+    if (claimedPwCount !== listed) {
+      return {
+        code: 1,
+        message:
+          `README.md claims ${claimedPwCount} Playwright tests; Playwright lists ${listed}.\n` +
+          "The unit is what `playwright test --list` reports, not a grep for `test(` -- " +
+          "a grep cannot see `test.skip` or a project matrix running one spec twice.",
+      };
+    }
+    pwNote = ` / ${claimedPwCount} playwright`;
+  }
+
+  return {
+    code: 0,
+    message:
+      `check-readme-test-count: README's ${claimed} tests / ${claimedFileCount} files` +
+      `${pwNote} match what ran`,
+  };
 }
 
 function main(argv) {
-  const [reportPath] = argv;
+  if (argv[0] === "--playwright") {
+    const [, listingPath] = argv;
+    if (!listingPath) {
+      process.stderr.write(
+        "usage: node tools/check-readme-test-count.mjs --playwright <playwright-list-json>\n",
+      );
+      return 2;
+    }
+    const r = checkPlaywright(listingPath);
+    (r.code === 0 ? process.stdout : process.stderr).write(`${r.message}\n`);
+    return r.code;
+  }
+  const [reportPath, playwrightListPath] = argv;
   if (!reportPath) {
-    process.stderr.write("usage: node tools/check-readme-test-count.mjs <report-path>\n");
+    process.stderr.write(
+      "usage: node tools/check-readme-test-count.mjs <vitest-report> [playwright-list-json]\n" +
+        "   or: node tools/check-readme-test-count.mjs --playwright <playwright-list-json>\n",
+    );
     return 2;
   }
-  const { code, message } = check(reportPath);
+  const { code, message } = check(reportPath, undefined, playwrightListPath ?? null);
   (code === 0 ? process.stdout : process.stderr).write(`${message}\n`);
   return code;
 }

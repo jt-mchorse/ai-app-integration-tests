@@ -116,6 +116,15 @@ jobs:
         run: npm run build --prefix example-app
       - name: Run Playwright tests
         run: npm run test:e2e --prefix example-app
+      # The README's "the 3 Playwright streaming tests" claim, pinned to what
+      # Playwright itself lists (#121). This job is the only place the listing
+      # exists, which is why the check takes it as an optional second argument
+      # rather than trying to produce it from the root job.
+      - name: Pin the README's Playwright count
+        run: |
+          npx --prefix example-app playwright test --list --reporter=json \
+            > /tmp/playwright-list.json
+          node tools/check-readme-test-count.mjs --playwright /tmp/playwright-list.json
       - name: Upload Playwright traces on failure
         if: failure()
         uses: actions/upload-artifact@v4

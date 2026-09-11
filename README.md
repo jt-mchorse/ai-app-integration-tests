@@ -146,12 +146,22 @@ const surfaced = await waitFor(() => readUiResponse(), { timeoutMs: 5000, interv
 ## Benchmarks / Results
 
 The relevant metric for this layer is "tests stay green and fast" —
-503 vitest tests run in a few seconds locally with zero network access
+518 vitest tests run in a few seconds locally with zero network access
 (29 files, ~5.5 s on an M-series Mac); the 3 Playwright streaming tests
 run in ~5 s (CI target: <60 s per the issue acceptance criteria,
 comfortably met).
 
-The vitest count is pinned to what actually runs by
+Those numbers are the **harness library's own** suite, at the repository
+root. CI runs a second vitest suite inside `example-app/` — the demo
+application the harness is pointed at — of 53 tests in 5 files
+(`npm test --prefix example-app`, the `example-app` job). It is counted
+separately on purpose: 518 is the harness's coverage, and mixing the
+application's tests into that number would overstate it. Stated here so
+the suite exists somewhere a drift check can see, which it previously did
+not (#121).
+
+The vitest count, the file count and the Playwright count are pinned to
+what actually runs by
 [`tools/check-readme-test-count.mjs`](tools/check-readme-test-count.mjs),
 which reads the JSON report the CI suite already emits. It had said "49"
 since the session that wrote it, against 492 real cases, because the two
@@ -163,6 +173,17 @@ would have pinned 292: `it.each` parametrization accounts for the other
 (`mcp-server-cookbook` D-011). The duration is deliberately *not*
 pinned — it is host-dependent, so it is stated as an order of magnitude
 with the host named.
+
+The file count and the Playwright count were added in #121. #119 pinned
+one of the three numbers in this paragraph, and its own argument — that
+the existing README locks cover quoted paths and the `D-NNN` range and
+"neither covers a number" — applied to all three. The file count comes
+from distinct files in the report's `testResults`, **not** from
+`numTotalTestSuites`, which counts `describe` blocks and reads 113. The
+Playwright count comes from `playwright test --list --reporter=json`
+rather than a grep for `test(`, which could not see a `test.skip` or a
+project matrix running one spec twice — the same reason #119 rejected a
+static `it(` count.
 
 ## Demo
 
