@@ -348,6 +348,27 @@ describe("the checks are wired into CI", () => {
     expect(CI).toMatch(/check-readme-test-count\.mjs --playwright/);
   });
 
+  it("the CI step lists Playwright from example-app's own directory", () => {
+    // `--prefix example-app` changes npm's package resolution and NOT the working
+    // directory. Run from the repo root, `playwright test --list` finds no
+    // `playwright.config.ts`, picks up the ROOT's vitest files instead, and reports
+    // 0 suites with 34 load errors -- exiting 1 before the checker runs. That is how
+    // this step failed in CI on its first push (#121); it passed locally only
+    // because I had run it from inside `example-app`.
+    //
+    // The zero-listing guard in `checkPlaywright` would have caught the 0 as an
+    // exit 2 if `bash -e` had not already failed on the npx exit code first, which
+    // is why both exist.
+    const step = CI.split("\n")
+      .filter((l) => l.includes("playwright test --list"))
+      .join("\n");
+    expect(step, "the CI step no longer lists Playwright tests").not.toBe("");
+    expect(step, "list Playwright from example-app's cwd, not via --prefix").toMatch(
+      /cd example-app && npx playwright test --list/,
+    );
+    expect(step).not.toMatch(/--prefix example-app playwright test --list/);
+  });
+
   it("no invocation is neutralised by `|| true`", () => {
     const lines = CI.split("\n").filter((l) => l.includes("check-readme-test-count.mjs"));
     expect(lines.length, "no invocations found at all").toBeGreaterThan(0);
