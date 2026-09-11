@@ -146,9 +146,23 @@ const surfaced = await waitFor(() => readUiResponse(), { timeoutMs: 5000, interv
 ## Benchmarks / Results
 
 The relevant metric for this layer is "tests stay green and fast" —
-49 vitest tests run in ~340 ms locally with zero network access; the
-3 Playwright streaming tests run in ~5 s (CI target: <60 s per the
-issue acceptance criteria, comfortably met).
+503 vitest tests run in a few seconds locally with zero network access
+(29 files, ~5.5 s on an M-series Mac); the 3 Playwright streaming tests
+run in ~5 s (CI target: <60 s per the issue acceptance criteria,
+comfortably met).
+
+The vitest count is pinned to what actually runs by
+[`tools/check-readme-test-count.mjs`](tools/check-readme-test-count.mjs),
+which reads the JSON report the CI suite already emits. It had said "49"
+since the session that wrote it, against 492 real cases, because the two
+existing README locks pin quoted *paths* and the `D-NNN` range and
+neither covers a number (#119). The unit is *executed, non-skipped
+cases* — the number `vitest run` prints. A static `it(`/`test(` grep
+would have pinned 292: `it.each` parametrization accounts for the other
+200, and a green lock on the wrong unit is worse than no lock
+(`mcp-server-cookbook` D-011). The duration is deliberately *not*
+pinned — it is host-dependent, so it is stated as an order of magnitude
+with the host named.
 
 ## Demo
 
