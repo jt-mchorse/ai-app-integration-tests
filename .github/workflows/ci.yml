@@ -116,6 +116,20 @@ jobs:
         run: npm run build --prefix example-app
       - name: Run Playwright tests
         run: npm run test:e2e --prefix example-app
+      # The README's "the 3 Playwright streaming tests" claim, pinned to what
+      # Playwright itself lists (#121). This job is the only place the listing
+      # exists, which is why the check takes it as an optional second argument
+      # rather than trying to produce it from the root job.
+      - name: Pin the README's Playwright count
+        run: |
+          # `cd example-app`, not `--prefix example-app`. `--prefix` changes npm's
+          # package resolution and NOT the working directory, so from the repo root
+          # Playwright finds no `playwright.config.ts`, picks up the ROOT's vitest
+          # files instead, and reports 0 suites with 34 load errors -- exit 1 before
+          # the checker even runs. Measured in CI and then reproduced locally (#121).
+          ( cd example-app && npx playwright test --list --reporter=json ) \
+            > /tmp/playwright-list.json
+          node tools/check-readme-test-count.mjs --playwright /tmp/playwright-list.json
       - name: Upload Playwright traces on failure
         if: failure()
         uses: actions/upload-artifact@v4

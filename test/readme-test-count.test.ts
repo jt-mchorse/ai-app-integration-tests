@@ -27,10 +27,15 @@ import { join, resolve } from "node:path";
 
 import {
   README_COUNT_RE,
+  README_FILES_RE,
   README_PATH,
+  README_PLAYWRIGHT_RE,
   ROOT,
   check,
+  checkPlaywright,
   executedCount,
+  fileCount,
+  playwrightCount,
   readmeClaimedCount,
 } from "../tools/check-readme-test-count.mjs";
 
@@ -46,9 +51,36 @@ function writeReport(numPassedTests: number): string {
   const { mkdirSync, writeFileSync } = require("node:fs") as typeof import("node:fs");
   const path = report(numPassedTests);
   mkdirSync(resolve(path, ".."), { recursive: true });
-  writeFileSync(path, JSON.stringify({ numPassedTests, numPendingTests: 0 }), "utf-8");
+  // `testResults` carries the README's file claim too, since #121. Before that this
+  // fixture was `{ numPassedTests, numPendingTests }` and `check()` read only the
+  // first -- so completing it here is what keeps these rows about the TEST count
+  // rather than about a report missing a field. The missing-field case has its own
+  // row below, because "the report shape changed" is worth an exit 2 of its own.
+  const claimedFiles = Number(README_FILES_RE.exec(README)?.[1] ?? 1);
+  writeFileSync(
+    path,
+    JSON.stringify({
+      numPassedTests,
+      numPendingTests: 0,
+      testResults: Array.from({ length: claimedFiles }, (_, i) => ({ name: `f${i}.test.ts` })),
+    }),
+    "utf-8",
+  );
   return path;
 }
+
+describe("a report missing testResults", () => {
+  it("exits 2 rather than silently skipping the file claim", () => {
+    const { mkdirSync, writeFileSync } = require("node:fs") as typeof import("node:fs");
+    const path = join(ROOT, "node_modules", ".cache", "probe-no-testresults.json");
+    mkdirSync(resolve(path, ".."), { recursive: true });
+    const claimedTests = readmeClaimedCount(README)!;
+    writeFileSync(path, JSON.stringify({ numPassedTests: claimedTests }), "utf-8");
+    const r = check(path, README);
+    expect(r.code, "a report shape this check cannot read must be an error, not a pass").toBe(2);
+    expect(r.message).toContain("testResults");
+  });
+});
 
 describe("the README's claimed count", () => {
   it("is present and parseable", () => {
@@ -150,5 +182,198 @@ describe("the unit — the arm that stops the wrong number being re-frozen", () 
     // newline. Matching on the literal would pin the line width, not the claim.
     const flat = README.replace(/\s+/g, " ");
     expect(flat).toMatch(/executed, non-skipped cases|what `vitest run` prints/);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// The other two numbers in the same sentence (#121)
+// ---------------------------------------------------------------------------
+//
+// #119 pinned the test count and its own argument was about numbers generically:
+// "the two existing README locks pin quoted paths and the `D-NNN` range and
+// neither covers a number". It then pinned one of three. The README names the
+// deliberate omission -- "The duration is deliberately *not* pinned -- it is
+// host-dependent" -- which covers `~5.5 s` and `~5 s` and says nothing about
+// `29 files` or `3`.
+
+function writeFullReport(numPassedTests: number, files: string[]): string {
+  const { mkdirSync, writeFileSync } = require("node:fs") as typeof import("node:fs");
+  const path = join(ROOT, "node_modules", ".cache", `probe-full-${numPassedTests}-${files.length}.json`);
+  mkdirSync(resolve(path, ".."), { recursive: true });
+  writeFileSync(
+    path,
+    JSON.stringify({
+      numPassedTests,
+      numPendingTests: 0,
+      // 113 in this repo today, against 29 files: the plausible field with the
+      // wrong unit.
+      numTotalTestSuites: 113,
+      testResults: files.map((name) => ({ name })),
+    }),
+    "utf-8",
+  );
+  return path;
+}
+
+describe("the file count", () => {
+  it("is present and parseable in the README", () => {
+    const m = README_FILES_RE.exec(README);
+    expect(m, "the README no longer claims `(<N> files`").toBeTruthy();
+    expect(Number(m![1])).toBeGreaterThan(0);
+  });
+
+  it("counts distinct files in testResults, NOT numTotalTestSuites", () => {
+    // The near-miss worth a test. `numTotalTestSuites` counts `describe` blocks
+    // and is 113 here; the claim is about files. A check that read the plausible
+    // field would be green on a wrong number, which is #119's own lesson.
+    const rpt = JSON.parse(
+      readFileSync(writeFullReport(7, ["a.test.ts", "b.test.ts", "a.test.ts"]), "utf-8"),
+    );
+    expect(fileCount(rpt)).toBe(2);
+    expect(rpt.numTotalTestSuites).toBe(113);
+    expect(fileCount(rpt)).not.toBe(rpt.numTotalTestSuites);
+  });
+
+  it("passes when the README's file count matches the report", () => {
+    const claimedTests = readmeClaimedCount(README)!;
+    const claimedFiles = Number(README_FILES_RE.exec(README)![1]);
+    const path = writeFullReport(
+      claimedTests,
+      Array.from({ length: claimedFiles }, (_, i) => `f${i}.test.ts`),
+    );
+    expect(check(path, README).code).toBe(0);
+  });
+
+  it("fails on file-count drift, and names both numbers", () => {
+    const claimedTests = readmeClaimedCount(README)!;
+    const claimedFiles = Number(README_FILES_RE.exec(README)![1]);
+    const path = writeFullReport(
+      claimedTests,
+      Array.from({ length: claimedFiles + 1 }, (_, i) => `f${i}.test.ts`),
+    );
+    const r = check(path, README);
+    expect(r.code).toBe(1);
+    expect(r.message).toContain(String(claimedFiles));
+    expect(r.message).toContain(String(claimedFiles + 1));
+    expect(r.message).toContain("numTotalTestSuites");
+  });
+
+  it("exits 2 when the README's file claim is gone", () => {
+    const claimedTests = readmeClaimedCount(README)!;
+    const path = writeFullReport(claimedTests, ["only.test.ts"]);
+    const stripped = README.replace(README_FILES_RE, "(many files");
+    expect(check(path, stripped).code).toBe(2);
+  });
+});
+
+describe("the Playwright count", () => {
+  const listing = (specCount: number) => ({
+    suites: [
+      {
+        specs: Array.from({ length: specCount }, () => ({ tests: [{}] })),
+        suites: [],
+      },
+    ],
+  });
+
+  it("is present and parseable in the README", () => {
+    const m = README_PLAYWRIGHT_RE.exec(README);
+    expect(m, "the README no longer claims `the <N> Playwright`").toBeTruthy();
+    expect(Number(m![1])).toBeGreaterThan(0);
+  });
+
+  it("counts what Playwright lists, walking nested suites", () => {
+    expect(playwrightCount(listing(3))).toBe(3);
+    expect(
+      playwrightCount({
+        suites: [{ specs: [{ tests: [{}] }], suites: [{ specs: [{ tests: [{}, {}] }] }] }],
+      }),
+      "a nested suite's specs must count, and a spec with two projects counts twice",
+    ).toBe(3);
+    expect(playwrightCount({ suites: [] })).toBe(0);
+  });
+
+  it("passes when the README matches the listing", () => {
+    const claimed = Number(README_PLAYWRIGHT_RE.exec(README)![1]);
+    const path = join(ROOT, "node_modules", ".cache", "pw-ok.json");
+    const { mkdirSync, writeFileSync } = require("node:fs") as typeof import("node:fs");
+    mkdirSync(resolve(path, ".."), { recursive: true });
+    writeFileSync(path, JSON.stringify(listing(claimed)), "utf-8");
+    expect(checkPlaywright(path, README).code).toBe(0);
+  });
+
+  it("fails on drift, and names both numbers", () => {
+    const claimed = Number(README_PLAYWRIGHT_RE.exec(README)![1]);
+    const path = join(ROOT, "node_modules", ".cache", "pw-drift.json");
+    const { mkdirSync, writeFileSync } = require("node:fs") as typeof import("node:fs");
+    mkdirSync(resolve(path, ".."), { recursive: true });
+    writeFileSync(path, JSON.stringify(listing(claimed + 2)), "utf-8");
+    const r = checkPlaywright(path, README);
+    expect(r.code).toBe(1);
+    expect(r.message).toContain(String(claimed));
+    expect(r.message).toContain(String(claimed + 2));
+  });
+
+  it("exits 2 on a zero listing rather than matching zero against zero", () => {
+    // A suite that fails to load lists nothing. Treating 0 === 0 as a pass is the
+    // `Test Files is not Tests` trap: the check would be green while the e2e suite
+    // ran nothing at all.
+    const path = join(ROOT, "node_modules", ".cache", "pw-zero.json");
+    const { mkdirSync, writeFileSync } = require("node:fs") as typeof import("node:fs");
+    mkdirSync(resolve(path, ".."), { recursive: true });
+    writeFileSync(path, JSON.stringify({ suites: [] }), "utf-8");
+    const stripped = README.replace(README_PLAYWRIGHT_RE, "the 0 Playwright");
+    expect(checkPlaywright(path, stripped).code).toBe(2);
+  });
+
+  it("exits 2 when the listing is missing or unparseable", () => {
+    expect(checkPlaywright(join(ROOT, "node_modules", ".cache", "nope.json"), README).code).toBe(2);
+  });
+});
+
+describe("the checks are wired into CI", () => {
+  // A checker with an npm alias and no CI step passes locally forever and gates
+  // nothing -- the `stuck-registration` fingerprint. The Playwright mode exists
+  // only for the `playwright` job, so it is the one most easily left unwired, and
+  // a first draft of that CI step ended in `|| true`, which would have gated
+  // nothing at all (#121).
+  const CI = readFileSync(join(ROOT, ".github", "workflows", "ci.yml"), "utf-8");
+
+  it("the vitest/file check runs in CI", () => {
+    expect(CI).toMatch(/node tools\/check-readme-test-count\.mjs\s+\/tmp\/vitest-report\.json/);
+  });
+
+  it("the --playwright mode runs in CI", () => {
+    expect(CI).toMatch(/check-readme-test-count\.mjs --playwright/);
+  });
+
+  it("the CI step lists Playwright from example-app's own directory", () => {
+    // `--prefix example-app` changes npm's package resolution and NOT the working
+    // directory. Run from the repo root, `playwright test --list` finds no
+    // `playwright.config.ts`, picks up the ROOT's vitest files instead, and reports
+    // 0 suites with 34 load errors -- exiting 1 before the checker runs. That is how
+    // this step failed in CI on its first push (#121); it passed locally only
+    // because I had run it from inside `example-app`.
+    //
+    // The zero-listing guard in `checkPlaywright` would have caught the 0 as an
+    // exit 2 if `bash -e` had not already failed on the npx exit code first, which
+    // is why both exist.
+    const step = CI.split("\n")
+      .filter((l) => l.includes("playwright test --list"))
+      .join("\n");
+    expect(step, "the CI step no longer lists Playwright tests").not.toBe("");
+    expect(step, "list Playwright from example-app's cwd, not via --prefix").toMatch(
+      /cd example-app && npx playwright test --list/,
+    );
+    expect(step).not.toMatch(/--prefix example-app playwright test --list/);
+  });
+
+  it("no invocation is neutralised by `|| true`", () => {
+    const lines = CI.split("\n").filter((l) => l.includes("check-readme-test-count.mjs"));
+    expect(lines.length, "no invocations found at all").toBeGreaterThan(0);
+    for (const line of lines) {
+      expect(line, `this invocation cannot fail CI: ${line.trim()}`).not.toMatch(/\|\|\s*true/);
+    }
   });
 });
