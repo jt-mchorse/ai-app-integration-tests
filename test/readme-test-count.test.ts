@@ -31,7 +31,9 @@ import {
   README_PATH,
   README_PLAYWRIGHT_RE,
   ROOT,
+  README_EXAMPLE_APP_RE,
   check,
+  checkExampleApp,
   checkPlaywright,
   executedCount,
   fileCount,
@@ -374,6 +376,166 @@ describe("the checks are wired into CI", () => {
     expect(lines.length, "no invocations found at all").toBeGreaterThan(0);
     for (const line of lines) {
       expect(line, `this invocation cannot fail CI: ${line.trim()}`).not.toMatch(/\|\|\s*true/);
+    }
+  });
+});
+
+
+describe("the example-app suite's two numbers (#123)", () => {
+  // #121 concluded: "the fix is to SAY WHICH IS WHICH and state the second
+  // suite's numbers so it exists where a check can see it." The stating half
+  // landed and the check half did not -- nothing under `tools/` mentioned
+  // `example-app` at all, while the README sentence asserted a drift check
+  // could see the suite. These were the only two unpinned numbers left in a
+  // paragraph whose other three #119 and #121 each pinned.
+  const EXAMPLE_APP_CACHE = join(ROOT, "node_modules", ".cache");
+
+  function writeExampleAppReport(tests: number, files: number, name = "ea"): string {
+    const { mkdirSync, writeFileSync } = require("node:fs") as typeof import("node:fs");
+    const path = join(EXAMPLE_APP_CACHE, `${name}-${tests}-${files}.json`);
+    mkdirSync(EXAMPLE_APP_CACHE, { recursive: true });
+    writeFileSync(
+      path,
+      JSON.stringify({
+        numPassedTests: tests,
+        numPendingTests: 0,
+        // Deliberately MORE describe blocks than files, so a version reading
+        // `numTotalTestSuites` would get a different answer and fail the
+        // file-count arms below. #121's near-miss, kept live here.
+        numTotalTestSuites: files * 3,
+        testResults: Array.from({ length: files }, (_, i) => ({ name: `ea${i}.test.ts` })),
+      }),
+      "utf-8",
+    );
+    return path;
+  }
+
+  const claimed = README_EXAMPLE_APP_RE.exec(README);
+
+  it("the README states both numbers in one sentence", () => {
+    expect(claimed, "README.md no longer claims `of <N> tests in <M> files`").not.toBeNull();
+  });
+
+  const claimedTests = Number(claimed?.[1] ?? 0);
+  const claimedFiles = Number(claimed?.[2] ?? 0);
+
+  it("matches a report carrying exactly the claimed numbers", () => {
+    const path = writeExampleAppReport(claimedTests, claimedFiles);
+    expect(checkExampleApp(path, README).code).toBe(0);
+  });
+
+  it("fails when the test count drifts", () => {
+    const path = writeExampleAppReport(claimedTests + 1, claimedFiles);
+    const { code, message } = checkExampleApp(path, README);
+    expect(code).toBe(1);
+    expect(message).toContain(String(claimedTests));
+  });
+
+  it("fails when the FILE count drifts and the test count does not", () => {
+    // The two are separable, and a check reading only the test count would pass
+    // here -- which is the shape #119 left and #121 closed for the root suite.
+    const path = writeExampleAppReport(claimedTests, claimedFiles + 1);
+    expect(checkExampleApp(path, README).code).toBe(1);
+  });
+
+  it("refuses a zero count rather than reporting a match", () => {
+    // `0 == 0` is green while the suite ran nothing. Same reasoning the
+    // playwright mode already applies to an empty listing.
+    const path = writeExampleAppReport(0, 0, "empty");
+    const { code, message } = checkExampleApp(path, README);
+    expect(code).toBe(2);
+    expect(message).toContain("did not run");
+  });
+
+  it("exits 2 on a report with no testResults, rather than skipping", () => {
+    const { mkdirSync, writeFileSync } = require("node:fs") as typeof import("node:fs");
+    const path = join(EXAMPLE_APP_CACHE, "ea-shapeless.json");
+    mkdirSync(EXAMPLE_APP_CACHE, { recursive: true });
+    writeFileSync(path, JSON.stringify({ numPassedTests: 53, numPendingTests: 0 }), "utf-8");
+    expect(checkExampleApp(path, README).code).toBe(2);
+  });
+
+  it("exits 2 when the README sentence is gone, rather than passing", () => {
+    const path = writeExampleAppReport(claimedTests, claimedFiles);
+    const stripped = README.replace(README_EXAMPLE_APP_RE, "of many tests in several files");
+    const { code, message } = checkExampleApp(path, stripped);
+    expect(code).toBe(2);
+    expect(message).toContain("README_EXAMPLE_APP_RE");
+  });
+
+  it("the unit is distinct testResults names, not numTotalTestSuites", () => {
+    // The fixture sets `numTotalTestSuites` to 3x the file count on purpose, so a
+    // version that switched to the convenient field cannot pass this.
+    const path = writeExampleAppReport(claimedTests, claimedFiles);
+    const parsed = JSON.parse(readFileSync(path, "utf-8"));
+    expect(parsed.numTotalTestSuites).not.toBe(claimedFiles);
+    expect(fileCount(parsed)).toBe(claimedFiles);
+  });
+
+  it("does not read the ROOT suite's claim by accident", () => {
+    // The root paragraph claims a different test count in the same README. A
+    // regex that matched the root sentence would pass on a root-shaped report
+    // and silently check the wrong suite.
+    const rootClaim = Number(README_COUNT_RE.exec(README)?.[1]?.replace(/,/g, "") ?? 0);
+    expect(rootClaim).toBeGreaterThan(0);
+    expect(claimedTests).not.toBe(rootClaim);
+    const rootShaped = writeExampleAppReport(rootClaim, claimedFiles, "rootshaped");
+    expect(checkExampleApp(rootShaped, README).code).toBe(1);
+  });
+});
+
+describe("the example-app check is wired into CI (#123)", () => {
+  const CI = readFileSync(join(ROOT, ".github", "workflows", "ci.yml"), "utf-8");
+
+  it("the --example-app mode runs in CI", () => {
+    expect(CI).toMatch(/check-readme-test-count\.mjs --example-app/);
+  });
+
+  /** The lines of one top-level job, by name. */
+  function jobLines(job: string): string[] {
+    const lines = CI.split("\n");
+    const start = lines.findIndex((l) => l === `  ${job}:`);
+    expect(start, `no \`${job}\` job in ci.yml`).toBeGreaterThan(-1);
+    const rest = lines.slice(start + 1);
+    const end = rest.findIndex((l) => /^ {2}\S/.test(l));
+    return end === -1 ? rest : rest.slice(0, end);
+  }
+
+  it("the SAME job that runs the check also produces the report it reads", () => {
+    // #121's Playwright step "referenced a report its job never produces". The
+    // scope of that trap is the JOB, not the file -- jobs do not share /tmp, so
+    // a path written by another job is exactly as absent as one written by
+    // nobody.
+    //
+    // My first version of this arm checked only that *some* line in ci.yml
+    // wrote the path, and it PASSED against a neighbour that pointed the check
+    // at `/tmp/vitest-report.json` -- a real file, produced by the root job,
+    // carrying the wrong suite's numbers. Scoping to the job is what makes it
+    // discriminate.
+    const lines = jobLines("example-app");
+    const consumed = lines.map((l) => /--example-app (\S+)/.exec(l)).find(Boolean);
+    expect(consumed, "the example-app job does not run the --example-app check").toBeTruthy();
+    const path = consumed![1];
+    const produced = lines.some((l) => l.includes(`--outputFile=${path}`));
+    expect(produced, `the example-app job never writes ${path}`).toBe(true);
+  });
+
+  it("the check does not read a report produced by a different job", () => {
+    // The root job writes /tmp/vitest-report.json, so pointing the example-app
+    // check at it yields a readable file with the wrong suite's numbers --
+    // which is the neighbour the arm above exists to reject.
+    const lines = jobLines("example-app");
+    const consumed = lines.map((l) => /--example-app (\S+)/.exec(l)).find(Boolean);
+    expect(consumed![1]).not.toBe("/tmp/vitest-report.json");
+  });
+
+  it("the report is produced by the example-app suite, not the root one", () => {
+    const producing = CI.split("\n").filter((l) => l.includes("--outputFile=/tmp/example-app-report.json"));
+    expect(producing.length).toBeGreaterThan(0);
+    for (const line of producing) {
+      expect(line, `this writes the example-app report from the wrong suite: ${line}`).toContain(
+        "--prefix example-app",
+      );
     }
   });
 });
