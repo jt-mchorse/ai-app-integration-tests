@@ -69,7 +69,16 @@ jobs:
       - name: Build Next.js
         run: npm run build --prefix example-app
       - name: Test example-app routes (in-process, no real Anthropic)
-        run: npm test --prefix example-app
+        # Writes the JSON report the README check below reads. #121's Playwright
+        # step "referenced a report its job never produces", so the producing
+        # command and the consuming command name the same path here, and
+        # `check-readme-test-count.test.mjs` asserts that they do.
+        run: npm test --prefix example-app -- --reporter=json --outputFile=/tmp/example-app-report.json
+      - name: Pin the README's example-app test and file counts
+        # No `|| true` (#121): a step that cannot fail gates nothing, and there
+        # is an arm asserting every invocation of this checker in this file is
+        # unguarded.
+        run: node tools/check-readme-test-count.mjs --example-app /tmp/example-app-report.json
       - name: Job timing
         if: always()
         run: |

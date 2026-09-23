@@ -1376,3 +1376,55 @@ capture and a JT-gated decision-revisit, so the work came from hunting, and the 
 merged two hours earlier in this run was the freshest surface.
 
 **Open questions / blockers:** none.
+
+## 2026-09-22 — Issue #123: the sentence that said a check existed
+**Duration:** see the issue's plan/close comment timestamps · **Branch:** `session/2026-09-22-0827-issue-123`
+
+#122 added two numbers to the Benchmarks paragraph — the example-app suite's
+"53 tests in 5 files" — and a sentence saying they were "stated here so the
+suite exists somewhere a drift check can see, which it previously did not". One
+grep settled it: nothing under `tools/` mentioned `example-app` at all, and both
+invocations of the checker in `ci.yml` read the root suite's artifacts. A
+sentence that claims coverage is checkable in one command.
+
+So the paragraph had gone from three numbers to five while its lock count went
+from one to three. #119 pinned the first number, #121 pinned the other two, and
+#122 added two more in the act of closing the gap. A fix that adds a claim while
+closing a claim gap is worth re-counting.
+
+The numbers are correct today, so this was coverage rather than drift — the same
+framing #121 used for its own finding. Deleting the sentence would have been
+cheaper and wrong: #121's conclusion was "state the second suite's numbers **so
+it exists where a check can see it**", and only the stating half had landed.
+
+The sharpest thing here is that my own wiring arm was wrong in exactly the way
+the defect it guards is. #121's recorded trap is a CI step that "referenced a
+report its job never produces", so I asserted that the producing and consuming
+commands name the same path — and it *passed* against a neighbour that pointed
+the example-app check at `/tmp/vitest-report.json`, a real file produced by the
+root job and carrying the wrong suite's numbers. Jobs do not share `/tmp`, so a
+path written by another job is exactly as absent as one written by nobody. The
+unit of that trap is the **job**, not the file. Scoped to the job, the neighbour
+goes two arms red.
+
+That is the third time today that a non-vacuity or wiring arm of mine walked a
+wider population than the property actually discriminates — `llm-eval-harness`
+#248 guarded on golden-emptiness instead of candidate mass, and
+`python-async-llm-pipelines` #113's dropped-flag perturbation turned out to be a
+no-op. The standing move is to build the neighbour *first* and keep the arm only
+if the neighbour reddens it.
+
+One thing that needed no work: #121 wrote the `|| true` arm as a *discovery* —
+it scans `ci.yml` for the checker's filename rather than listing known steps —
+so the new step was covered the moment it landed. Wiring arms written as
+discoveries cover the steps that do not exist yet.
+
+The README's root count moved 519 → 532 because this change adds thirteen tests
+to the suite that count pins. That is the #119 lock working, and the second time
+this repo has done it to me; the file count (29) and the example-app numbers (53
+and 5) did not move.
+
+Suite 519 → 532, lint and typecheck clean. No decision recorded: this completes
+the half of #121's own stated conclusion that did not land.
+
+**Open questions:** none.

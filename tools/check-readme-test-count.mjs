@@ -79,6 +79,17 @@ export function executedCount(report) {
 export const README_FILES_RE = /\((\d[\d,]*)\s+files\b/;
 export const README_PLAYWRIGHT_RE = /the\s+(\d[\d,]*)\s+Playwright\b/;
 
+// The SECOND vitest suite -- `example-app/`, the demo application the harness is
+// pointed at (#123). Two claims in one sentence: "of 53 tests in 5 files".
+//
+// #121 stated these numbers deliberately, concluding "the fix is to SAY WHICH IS
+// WHICH and state the second suite's numbers so it exists where a check can
+// see it". The stating half landed; nothing under `tools/` mentioned
+// `example-app` at all, so the README sentence asserting a drift check could see
+// the suite was false. These two were the only unpinned numbers left in the
+// paragraph whose other three #119 and #121 each pinned.
+export const README_EXAMPLE_APP_RE = /of\s+(\d[\d,]*)\s+tests\s+in\s+(\d[\d,]*)\s+files\b/;
+
 /** Distinct test FILES in a vitest JSON report. */
 export function fileCount(report) {
   // `testResults` is one entry per file. NOT `numTotalTestSuites`, which counts
@@ -166,6 +177,82 @@ export function checkPlaywright(listingPath, readme = readFileSync(README_PATH, 
   }
   return { code: 0, message: `check-readme-test-count: README's ${claimed} playwright match` };
 }
+
+/**
+ * Check only the README's example-app claims, against that suite's own report.
+ *
+ * A separate entry point for the reason `checkPlaywright` is one: the report
+ * exists only in the `example-app` CI job, and the root job's vitest report is a
+ * different suite entirely. Folding it into `check()` as another optional
+ * argument is what #121 warned makes "optional" mean "never checked in CI" --
+ * and #121's own first draft additionally "referenced a report its job never
+ * produces", so the `example-app` job now writes the report this reads.
+ *
+ * Both claims come from one sentence and are checked together, because a run
+ * that moved the test count almost always moved the file count too and
+ * reporting one at a time would cost two CI cycles.
+ */
+export function checkExampleApp(reportPath, readme = readFileSync(README_PATH, "utf8")) {
+  let report;
+  try {
+    report = JSON.parse(readFileSync(reportPath, "utf8"));
+  } catch (e) {
+    return {
+      code: 2,
+      message: `cannot read the example-app vitest report at ${reportPath}: ${e.message}`,
+    };
+  }
+  let ran;
+  let files;
+  try {
+    ran = executedCount(report);
+    files = fileCount(report);
+  } catch (e) {
+    return { code: 2, message: `${reportPath}: ${e.message}` };
+  }
+  // `0 == 0` is green while the suite ran nothing -- the same reason the
+  // playwright mode refuses an empty listing. A suite that failed to load
+  // reports zero, and zero is exactly the number a deleted claim would match.
+  if (ran === 0 || files === 0) {
+    return {
+      code: 2,
+      message:
+        `${reportPath} reports ${ran} tests in ${files} files. A zero count means the ` +
+        "suite did not run, not that it passed; refusing to compare it against the README.",
+    };
+  }
+  const claimed = README_EXAMPLE_APP_RE.exec(readme);
+  if (!claimed) {
+    return {
+      code: 2,
+      message:
+        "README.md no longer contains an `of <N> tests in <M> files` claim for the " +
+        "example-app suite. If the sentence moved, update README_EXAMPLE_APP_RE; if it " +
+        "was removed on purpose, remove this check -- but see #121 on why the second " +
+        "suite is stated separately rather than folded into the harness's headline.",
+    };
+  }
+  const claimedTests = Number(claimed[1].replace(/,/g, ""));
+  const claimedFiles = Number(claimed[2].replace(/,/g, ""));
+  if (claimedTests !== ran || claimedFiles !== files) {
+    return {
+      code: 1,
+      message:
+        `README.md claims the example-app suite is ${claimedTests} tests in ` +
+        `${claimedFiles} files; ${ran} tests in ${files} files ran.\n` +
+        "The units are executed, non-skipped cases and distinct files in the report's " +
+        "`testResults` -- not `numTotalTestSuites`, which counts `describe` blocks. " +
+        "Update the README's Benchmarks section to the measured numbers.",
+    };
+  }
+  return {
+    code: 0,
+    message:
+      `check-readme-test-count: README's example-app ${claimedTests} tests / ` +
+      `${claimedFiles} files match`,
+  };
+}
+
 
 export function check(
   reportPath,
@@ -275,6 +362,18 @@ export function check(
 }
 
 function main(argv) {
+  if (argv[0] === "--example-app") {
+    const reportPath = argv[1];
+    if (!reportPath) {
+      process.stderr.write(
+        "usage: node tools/check-readme-test-count.mjs --example-app <vitest-report-json>\n",
+      );
+      return 2;
+    }
+    const { code, message } = checkExampleApp(reportPath);
+    process.stdout.write(`${message}\n`);
+    return code;
+  }
   if (argv[0] === "--playwright") {
     const [, listingPath] = argv;
     if (!listingPath) {
