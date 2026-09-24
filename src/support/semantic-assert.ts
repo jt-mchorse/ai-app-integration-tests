@@ -12,6 +12,8 @@
 // approximately the right thing", with a clear failure message when
 // it isn't.
 
+import { renderComparison } from "./render-comparison.js";
+
 const DEFAULT_THRESHOLD = 0.6;
 
 // A small, English-language stopword seed. Callers customize via
@@ -75,8 +77,20 @@ export class SemanticMismatchError extends Error {
     label: string | undefined,
   ) {
     const labelPart = label ? `${label}: ` : "";
+    // Both sides through `renderComparison` (#125). The gate is `similarity <
+    // threshold` at full precision while this message rendered the two sides at
+    // *different* fixed widths -- `toFixed(3)` against `toFixed(2)` -- so at
+    // `similarity = 0.7449` and `threshold = 0.745` it printed "0.745 below
+    // threshold 0.74", naming the larger number as the smaller one. Starting
+    // width is 3, the similarity's existing precision: matching the widths must
+    // not be done by narrowing to 2.
+    const [renderedSimilarity, renderedThreshold] = renderComparison(
+      similarity,
+      threshold,
+      3,
+    );
     super(
-      `${labelPart}semantic similarity ${similarity.toFixed(3)} below threshold ${threshold.toFixed(2)}.\n` +
+      `${labelPart}semantic similarity ${renderedSimilarity} below threshold ${renderedThreshold}.\n` +
         `  actual:   ${actual}\n` +
         `  expected: ${expected}`,
     );

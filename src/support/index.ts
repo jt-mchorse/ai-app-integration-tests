@@ -21,6 +21,8 @@ export {
   type WaitForOptions,
 } from "./wait-for.js";
 
+export { renderComparison } from "./render-comparison.js";
+
 export {
   SemanticMismatchError,
   expectSemanticallySimilar,
