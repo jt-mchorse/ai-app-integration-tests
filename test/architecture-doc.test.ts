@@ -247,6 +247,11 @@ const { SOURCE_DIRS } = SHARED;
 const EXTERNAL_SYMBOLS: ReadonlyArray<string> = [
   "ReadableStream", // web streams API (replayer rebuilds SSE Response bodies)
   "globalThis", // JS global (the recorder/replayer wrap `globalThis.fetch`)
+  // `Number.prototype.toFixed` — a language builtin, not a repo declaration.
+  // Named in the D-013 section because the defect it documents *is* a pair of
+  // `toFixed` calls at mismatched widths, so the prose cannot describe the bug
+  // without naming the method (#125).
+  "toFixed",
 ] as const;
 
 // Illustrative pseudo-code identifiers the doc uses to *describe* behavior but
@@ -362,7 +367,15 @@ describe("docs/architecture.md names only symbols that exist (#72 / portfolio-op
   });
 
   it("EXTERNAL_SYMBOLS is the exact pinned set", () => {
-    expect([...EXTERNAL_SYMBOLS]).toEqual(["ReadableStream", "globalThis"]);
+    // `toFixed` added for D-013 (#125): the defect that decision documents *is*
+    // a pair of `toFixed` calls at mismatched widths, so the prose cannot
+    // describe it without naming the method. This meta-lock is why that addition
+    // is a visible edit rather than silent allowlist growth — exactly its job.
+    expect([...EXTERNAL_SYMBOLS]).toEqual([
+      "ReadableStream",
+      "globalThis",
+      "toFixed",
+    ]);
   });
 
   it("DOC_ILLUSTRATIVE is the exact pinned set", () => {

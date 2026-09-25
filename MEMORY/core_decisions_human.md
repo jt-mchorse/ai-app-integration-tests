@@ -203,3 +203,22 @@ shifts.
 `nextjs-streaming-ai-patterns#95` and `#106` earlier the same session. Same
 single-form separator scan; the outcome differed (that repo *dropped* the stream,
 this one *merged* it) only because of the trailing tail push.
+
+## D-013 — A decided comparison is rendered so the decision stays readable
+**Date:** 2026-09-24 · **Reversibility:** cheap · **Issues:** #125 (with #119, #123)
+
+`expectSemanticallySimilar` decides at full precision — `similarity < threshold` — and `SemanticMismatchError` explained the decision at **two different** fixed widths: `similarity.toFixed(3)` against `threshold.toFixed(2)`. A mismatch is worse than a collision. At a similarity of `0.7449` against a threshold of `0.745` the message read `semantic similarity 0.745 below threshold 0.74`, because the threshold's two places truncate `0.745` to `0.74` — which is *below* the similarity as rendered. The message named the larger number as the smaller one. At `0.74999` against `0.75` it read `0.750 below threshold 0.75`, the milder form where the two look equal.
+
+**No test could have caught it**, and that is structural rather than an oversight: the gate is correct in every colliding case, so nothing asserting on pass/fail can fire. The only thing wrong was that the sentence disagreed with itself.
+
+**The file's own header is the prose claim that falsified it.** The module comment calls this "the test-runtime smoke check … with a clear failure message when it isn't". A near-threshold similarity is the one case where that claim mattered most and was false: a developer reading `0.745 below threshold 0.74` goes to debug the assertion helper rather than the response.
+
+`renderComparison` widens from the caller's width only while the two values render identically, always returns both sides at the same width, and never narrows.
+
+**`places` is a required parameter, deliberately.** Matching the two widths must not be done by narrowing the similarity to the threshold's two places, which trades one wrong message for a less precise one. `llm-eval-harness#252` shipped exactly that regression the same week — a helper hardcoding a narrower default across call sites that disagreed with it — and only that repo's published-values lock caught it. There is no equivalent lock here, so an arm stands in for one. That neighbour was built and run: 27 arms red.
+
+**Both orientations are swept, and one is not enough.** `prompt-regression-suite#175` measured that the widen-one-side neighbour passes a sweep in which the *value* always carries the long decimal expansion, and only reddens when the *threshold* carries it. So the arms here sweep both from the start; that neighbour is 16 arms red.
+
+The structured `similarity` and `threshold` fields stay at full precision and are pinned by an arm, so a future change cannot "fix" the message by rounding the fields and taking the real numbers away from a consumer.
+
+**Duplicated from three sibling repos, not shared** — `prompt-regression-suite` D-012, `llm-eval-harness` D-026, and `rag-production-kit#225`. Four separate distributions with no dependency between them; a new shared package for a twelve-line formatter is the worse trade.

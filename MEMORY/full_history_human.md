@@ -1428,3 +1428,17 @@ Suite 519 → 532, lint and typecheck clean. No decision recorded: this complete
 the half of #121's own stated conclusion that did not land.
 
 **Open questions:** none.
+
+## 2026-09-24 — Issue #125: the mismatch message rendered the two sides at different widths
+**Duration:** ~5 min · **Branch:** `session/2026-09-24-0809-issue-125` · **Decision:** D-013
+
+- `SemanticMismatchError` rendered the similarity at three places and the threshold at two. A mismatch is worse than a collision: at a similarity of `0.7449` against a threshold of `0.745`, the threshold's two places truncate to `0.74`, so the message read `semantic similarity 0.745 below threshold 0.74` — it named the larger number as the smaller one. A collision *looks* wrong; a mismatch looks fine and says the reverse.
+- The claim it falsified is in the file's own header, which calls this the test-runtime smoke check "with a clear failure message when it isn't". The near-threshold case is the one where that mattered most.
+- `renderComparison` widens from the caller's width only while the two render identically, always returns both sides at the same width, and never narrows. `places` is required rather than defaulted, carrying forward the narrowing regression `llm-eval-harness#252` shipped earlier in this same run — caught there only by a published-values lock this repo does not have, so an arm stands in for one.
+- Arms sweep both orientations from the start, because `prompt-regression-suite#175` measured that a value-long-only sweep passes the widen-one-side neighbour. Here that neighbour is 16 arms red rather than 0.
+
+**Why this work, this session:** hunted. The first portfolio sweep for this class searched for `:.Nf`, which is Python-only, so all four TypeScript repos came back empty; a second sweep for `toFixed` found this immediately.
+
+**Open questions / blockers:** none.
+
+**Next session:** the transferable note is that a cross-repo sweep's pattern can be language-specific, and half this portfolio is TypeScript. Also: three locks fired in sequence here and all three were right, including a meta-lock pinning the doc-symbol allowlist itself — budget four lock fixes into any new module in this repo.

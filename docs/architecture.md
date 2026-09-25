@@ -296,3 +296,48 @@ in the Actions UI without scrolling logs or shelling out to `jq`.
   is a one-file swap (`fetch-recorder.ts`) — but the public API is
   pinned to "Anthropic SDK call deterministic," not "any fetch
   deterministic." MSW remains the right tool for the generic case.
+
+## Rendering a decided comparison (#125, D-013)
+
+`expectSemanticallySimilar` decides at full precision —
+`similarity < threshold` — and `SemanticMismatchError` explained the
+decision at two *different* fixed widths, `similarity.toFixed(3)`
+against `threshold.toFixed(2)`. A mismatch is worse than a collision: at
+a similarity of `0.7449` against a threshold of `0.745`, the threshold's
+two places truncate `0.745` to `0.74`, so the message read `semantic
+similarity 0.745 below threshold 0.74` — naming the larger number as the
+smaller one. At `0.74999` against `0.75` it read `0.750 below threshold
+0.75`, the milder form where the two look equal.
+
+No test could have caught it. The gate is correct in every colliding
+case, so nothing asserting on pass/fail can fire; the only thing wrong
+was that the sentence disagreed with itself. The claim it falsified was
+in `semantic-assert.ts`'s own header, which calls this the test-runtime
+smoke check "with a clear failure message when it isn't."
+
+`src/support/render-comparison.ts` holds `renderComparison`, which
+widens from the caller's width only while the two values render
+identically, always returns both sides at the same width, and never
+narrows. `places` is a required parameter rather than a default,
+because matching the two widths must not be done by narrowing the
+similarity to the threshold's two places — that trades one wrong
+message for a less precise one, and it is the regression
+`llm-eval-harness#252` shipped and its own published-values lock caught.
+This repo has no equivalent lock over that message, so an arm stands in
+for one.
+
+The rule is on the rendered strings rather than on a width, because a
+wider fixed width relocates the collision instead of removing it:
+`toFixed(6)` on both sides still collides at `0.7499999995`. The arms
+sweep **both** orientations — the similarity carrying the extra digits
+and the threshold carrying them — because a one-orientation sweep passes
+the widen-one-side neighbour, which is the shipped shape generalised.
+
+`SemanticMismatchError.similarity` and `.threshold` stay at full
+precision. The data was never wrong, only the prose, and an arm pins
+that so a later change cannot "fix" the message by rounding the fields.
+
+Duplicated from `prompt-regression-suite` (D-012), `llm-eval-harness`
+(D-026) and `rag-production-kit#225` rather than shared: four separate
+distributions with no dependency between them, and a new shared package
+for a twelve-line formatter is the worse trade.
