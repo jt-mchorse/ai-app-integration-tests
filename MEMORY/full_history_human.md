@@ -1442,3 +1442,37 @@ the half of #121's own stated conclusion that did not land.
 **Open questions / blockers:** none.
 
 **Next session:** the transferable note is that a cross-repo sweep's pattern can be language-specific, and half this portfolio is TypeScript. Also: three locks fired in sequence here and all three were right, including a meta-lock pinning the doc-symbol allowlist itself — budget four lock fixes into any new module in this repo.
+
+## 2026-09-29 — #127: the mismatch message named a threshold nobody configured (~20 min)
+
+Fourth repo in this class today, and the one I had already recorded as clean.
+
+`renderComparison`'s loop stops as soon as the two rendered strings differ —
+D-013's contract, right for an ordering, silent about whether either number is
+the one in force. `threshold` is caller-supplied, so
+`{ threshold: 0.85004 }` produced *"below threshold 0.8500"*: a gate the assertion
+was not run at, in the message a developer copies a number back out of while
+tuning. Not #125's inversion — both sides share a width and the ordering reads
+correctly, which is why no existing arm could see it.
+
+**The lesson is about my own sweep.** The grep that found this class in
+`llm-eval-harness`, `prompt-regression-suite` and `vector-search-at-scale` piped
+through `grep -v test` to drop test files — and every path in this repo contains
+`test`, because it is in the repo name. The sweep reported zero sites and I
+recorded the repo clean. A population filter keyed on a substring of the *full
+path* cannot be trusted when that substring can appear in the repo or directory
+name. And the false negative is silent: a repo with zero hits looks exactly like a
+clean repo.
+
+Four repos, four signatures: leh took one flag plus a standalone helper, prs took
+two because one site compares two configured numbers, vsas took two composed with
+a pre-existing `render_exact`, and this one takes two as an options object because
+`places` is already a required positional. The class is one thing; the remedy is
+not. leh's one-flag scoping claim — "value is the measured side at all six call
+sites" — was true when written and falsified in a sibling repo the same day, which
+is now the standing argument for a symmetric signature.
+
+Reverts: the call-site marking 5 red, both flags inert 12 red. Three neighbours:
+widen-only-the-marked-side 13 red, `toFixed(6)` 11 red, `String(other)` 16 red.
+The ordinary message is byte-identical. `check:readme-test-count` fired on its own
+diff for the fourth time (572 → 595). Recorded as D-014.
