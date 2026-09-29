@@ -222,3 +222,59 @@ this one *merged* it) only because of the trailing tail push.
 The structured `similarity` and `threshold` fields stay at full precision and are pinned by an arm, so a future change cannot "fix" the message by rounding the fields and taking the real numbers away from a consumer.
 
 **Duplicated from three sibling repos, not shared** — `prompt-regression-suite` D-012, `llm-eval-harness` D-026, and `rag-production-kit#225`. Four separate distributions with no dependency between them; a new shared package for a twelve-line formatter is the worse trade.
+
+---
+
+## D-014 — a configured operand reads back as itself (2026-09-29)
+
+D-013 made the ordering readable. It says nothing about whether either number is
+the one in force — and `threshold` here is caller-supplied
+(`opts?.threshold ?? DEFAULT_THRESHOLD`), so a test author writing
+`{ threshold: 0.85004 }` got a `SemanticMismatchError` reading *"below threshold
+0.8500"*. That is a gate the assertion was not run at, in the one message a
+developer copies a number back out of while tuning.
+
+**Not the inversion #125 fixed**, which is why nothing caught it. That one is two
+*different* widths — `toFixed(3)` against `toFixed(2)` — naming the larger number
+as the smaller. Here both sides share a width and the ordering reads correctly, so
+an assertion on the ordering, or on the two rendering differently, is satisfied in
+every failing case. Invisible while the threshold is round, which
+`DEFAULT_THRESHOLD` is.
+
+**Decision.** `renderComparison` takes `{ exactValue?, exactOther? }`. A marked
+operand widens the pair until it reads back as itself, still at one shared width.
+
+**Both flags, though only `other` is configured at today's one call site.**
+`llm-eval-harness` D-029 shipped a single `exactOther` on the grounds that "value
+is the measured side at all six call sites" — a true statement about that repo's
+callers, promoted to a contract, and falsified the same day by
+`prompt-regression-suite`#181, whose tolerance note compares two configured
+numbers. `vector-search-at-scale`#152 then took both. A symmetric signature makes
+no claim a later caller can disprove, and costs one parameter.
+
+An options object rather than two positional booleans: `places` is already a
+required third positional by D-013, and `renderComparison(v, o, 3, true, false)`
+is unreadable at the call site. The object also keeps the flags off by default
+without adding a second defaulted positional.
+
+**How this repo was missed, which is worth more than the fix.** The portfolio
+sweep that found this class in three sibling repos ran
+`grep -rn "render_comparison\|renderComparison" … | grep -v test`. Every path here
+contains `test` — it is in the repo name — so the sweep reported zero sites and
+this repo was recorded clean. A population filter keyed on a substring of the
+*full path* is untrustworthy when that substring can appear in the repo or
+directory name, and the false negative is silent: zero hits looks exactly like a
+clean repo.
+
+**Rejected.** `exactOther` alone — sufficient today, and rejected on the evidence
+that the identical scoping claim was falsified in a sibling repo within a day.
+Widening only the marked side (13 red): the pre-#125 mixed-width shape.
+A wider fixed width, `toFixed(6)` (11 red): `0.123456789` needs nine.
+`String(other)` for the marked operand (16 red): it round-trips and breaks the
+shared-width invariant, and would narrow the ordinary `0.900` to `0.9`. Rounding
+the gate to match the message: rejected on principle, in a sixth portfolio repo
+now, and D-013 already pins that the structured fields stay full precision.
+
+**Reversibility:** Cheap.
+
+**Related issues:** #127, #125, #119
