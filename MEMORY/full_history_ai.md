@@ -1489,3 +1489,21 @@ context_for_next_session:
   - BRANCH_NOTE_130_ALSO_OPEN_both_edit_the_README_count_line_130_says_597_30_this_says_600_31_after_both_merge_it_is_602_31_rebase_and_rerun_check_readme_test_count
 followups: []
 ---
+
+---
+session: 2026-09-30T09:54:05Z
+issue: 133
+focus: env_example_and_the_two_variables_that_existed_only_in_comments
+phase: shipped
+duration_min: 1
+delta:
+  files_changed: 3
+  tests_added: 4
+  suite: "599 vitest across 31 files; check-readme-test-count matches; eslint and tsc clean"
+decisions_made: []
+measured: "operator reads after stripping comments: ANTHROPIC_TEST_MODE, ANTHROPIC_API_KEY; excluded with reasons: CI, MISSING_CASSETTE_DEMO_FIXTURES. Probes: file absent 2 red of 4; comment stripping removed 2 red of 4 (the unit arm and the repo equality)."
+context_for_next_session:
+  - portfolio_ops_80s_TABLE_LISTED_RECORD_HOSTS_AND_SEMANTIC_THRESHOLD_FOR_THIS_REPO_BOTH_ARE_ONLY_NAMED_IN_COMMENTS_src_fetch_recorder_ts_239_and_src_support_semantic_assert_ts_142_THE_TABLE_WAS_A_GREP_a_lock_without_comment_stripping_would_have_demanded_both
+  - ANTHROPIC_TEST_MODE_HAS_TWO_DEFAULTS_ON_PURPOSE_replay_in_installFromEnv_live_in_example_app_instrumentation_the_env_example_explains_both
+  - README_COUNT_MERGE_ARITHMETIC_main_595_30_this_PR_plus_4_tests_plus_1_file_130_and_132_are_also_open_on_the_same_line_recompute_from_the_json_reporter_after_merging_do_not_add_by_hand
+followups: []
