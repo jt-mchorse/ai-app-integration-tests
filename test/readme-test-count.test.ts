@@ -539,3 +539,38 @@ describe("the example-app check is wired into CI (#123)", () => {
     }
   });
 });
+
+describe("the example-app paragraph restates no other count (#129)", () => {
+  // "532 is the harness's coverage" sat in this paragraph two lines below the
+  // pinned root count (595) and went stale: #124 pinned "the example-app
+  // suite's two numbers" as "the only unpinned ones in the paragraph", and a
+  // third number was a restatement of the root count that no lock could see.
+  // Every integer here must now be one of the two pinned example-app numbers or
+  // an issue reference.
+  const paragraph = (text: string): string => {
+    const start = text.indexOf("Those numbers are the **harness library's own** suite");
+    expect(start, "the example-app paragraph moved").toBeGreaterThan(-1);
+    return text.slice(start, text.indexOf("\n\n", start));
+  };
+  const strayIntegers = (text: string): number[] => {
+    const para = paragraph(text).replace(/#\d+/g, "");
+    const m = README_EXAMPLE_APP_RE.exec(para);
+    const allowed = new Set([Number(m?.[1] ?? NaN), Number(m?.[2] ?? NaN)]);
+    return (para.match(/\d[\d,]*/g) ?? [])
+      .map((n) => Number(n.replace(/,/g, "")))
+      .filter((n) => !allowed.has(n));
+  };
+
+  it("contains only the pinned example-app numbers and issue refs", () => {
+    expect(strayIntegers(README)).toEqual([]);
+  });
+
+  it("would catch a restated count (non-vacuity)", () => {
+    const restated = README.replace(
+      "the root count above is the harness's coverage",
+      "595 is the harness's coverage",
+    );
+    expect(restated).not.toBe(README);
+    expect(strayIntegers(restated)).toEqual([595]);
+  });
+});
