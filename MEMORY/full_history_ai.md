@@ -1453,3 +1453,21 @@ context_for_next_session:
   - check_readme_test_count_FIRED_ON_MY_OWN_DIFF_FOR_THE_FOURTH_TIME_572_to_595_D_013_RECORDS_THE_THIRD_it_is_not_a_surprise_any_more_RUN_IT_BEFORE_COMMITTING_IN_THIS_REPO
 followups: []
 ---
+
+---
+session: 2026-09-30T09:02Z
+issue: 129
+focus: A_LOCK_PINNED_THE_FIRST_STATEMENT_OF_A_COUNT_AND_A_RESTATEMENT_TWO_LINES_LATER_WENT_STALE
+phase: shipped
+duration_min: 0   # computed from the plan comment timestamp and date -u
+delta:
+  files_changed: 2
+  tests_added: 2
+  suite: "595 -> 597 vitest green; check-readme-test-count rc 0 against a real report"
+decisions_made: []
+measured: "old README: 2 red"
+context_for_next_session:
+  - A_NUMBER_LOCK_PINS_ONE_OCCURRENCE_grep_the_same_paragraph_for_a_RESTATEMENT_124_claimed_the_only_unpinned_numbers_and_missed_a_third
+  - HISTORICAL_NUMBERS_49_492_292_200_IN_THE_NEXT_PARAGRAPH_ARE_PAST_TENSE_NARRATIVE_AND_WERE_LEFT
+followups: []
+---

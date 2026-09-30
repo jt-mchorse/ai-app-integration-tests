@@ -1476,3 +1476,14 @@ Reverts: the call-site marking 5 red, both flags inert 12 red. Three neighbours:
 widen-only-the-marked-side 13 red, `toFixed(6)` 11 red, `String(other)` 16 red.
 The ordinary message is byte-identical. `check:readme-test-count` fired on its own
 diff for the fourth time (572 → 595). Recorded as D-014.
+
+## 2026-09-30 — Issue #129: the README stops restating the test count
+**Duration:** ~0 min · **Branch:** session/2026-09-30-0902-issue-129
+
+- "532 is the harness's coverage" restated the root test count two lines below the pinned 595 and had gone stale. The sentence no longer restates it, and an arm limits that paragraph's integers to the pinned example-app numbers and issue refs.
+
+**Why this work, this session:** found scanning README test-count claims across the portfolio.
+
+**Open questions / blockers:** none.
+
+**Next session:** none.
