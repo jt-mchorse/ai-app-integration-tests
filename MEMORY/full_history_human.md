@@ -1487,3 +1487,14 @@ diff for the fourth time (572 → 595). Recorded as D-014.
 **Open questions / blockers:** none.
 
 **Next session:** none.
+
+## 2026-09-30 — Issue #131: the documented local run paths work on a fresh Mac
+**Duration:** ~1 min · **Branch:** session/2026-09-30-0907-issue-131
+
+- The README's local e2e run and `capture_demo.sh` surface 3 now build first (`next start` needs a build); chromium detection covers macOS and `PLAYWRIGHT_BROWSERS_PATH`; the README says how to run the example app without a key. Surface 3 ran and passed on a Mac for the first time.
+
+**Why this work, this session:** found by the fresh-clone Quickstart audit.
+
+**Open questions / blockers:** #130 edits the same README count line (597 there, 600 here; 602 once both merge).
+
+**Next session:** none.
