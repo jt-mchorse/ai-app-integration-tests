@@ -84,10 +84,14 @@ export class SemanticMismatchError extends Error {
     // threshold 0.74", naming the larger number as the smaller one. Starting
     // width is 3, the similarity's existing precision: matching the widths must
     // not be done by narrowing to 2.
+    // `exactOther`: `threshold` is `opts.threshold` as the test author wrote it
+    // (#127). At three places a gate of 0.85004 printed "below threshold 0.850",
+    // and this message is the one a developer copies a number back out of.
     const [renderedSimilarity, renderedThreshold] = renderComparison(
       similarity,
       threshold,
       3,
+      { exactOther: true },
     );
     super(
       `${labelPart}semantic similarity ${renderedSimilarity} below threshold ${renderedThreshold}.\n` +

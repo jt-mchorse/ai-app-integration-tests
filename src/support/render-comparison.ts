@@ -61,19 +61,51 @@ const MAX_PLACES = 17;
  * Equal inputs return the narrow rendering unwidened — there is nothing to
  * distinguish, and widening would imply a difference that is not there. The
  * caller only reaches its message on a strict `<`, so it does not depend on
- * that, but the function is total and says what it does.
+ * that, but the function is total and says what it does. A *marked* operand
+ * overrides that: misreporting the configuration is a false claim whether or not
+ * the measurement happens to equal it.
+ *
+ * ## Marking a configured operand (#127, D-014)
+ *
+ * The loop stops as soon as the two strings differ, which makes the ordering
+ * readable and says nothing about whether either number is the one in force.
+ * `threshold` here is caller-supplied — `opts?.threshold ?? DEFAULT_THRESHOLD` —
+ * so `{ threshold: 0.85004 }` produced "below threshold 0.8500", a number the
+ * assertion was not gated at and the one a developer would copy back while
+ * tuning. Marking an operand widens the pair until it reads back as itself,
+ * still at one shared width.
+ *
+ * Not the inversion #125 fixed: that was two *different* widths naming the
+ * larger number as the smaller. Here both sides share a width and the ordering
+ * reads correctly, so nothing asserting on the ordering or on the two rendering
+ * differently can see it. Invisible while the threshold is round, which
+ * `DEFAULT_THRESHOLD` is.
+ *
+ * **Both flags, though only `other` is configured at today's one call site.**
+ * `llm-eval-harness` D-029 shipped a single `exact_other` on the grounds that
+ * "value is the measured side at all six call sites" — a true statement about
+ * that repo's callers, promoted to a contract, and falsified the same day by
+ * `prompt-regression-suite`#181, whose tolerance note compares two configured
+ * numbers. `vector-search-at-scale`#152 then took both for the same reason. A
+ * symmetric signature makes no claim a later caller can disprove, and costs one
+ * parameter; the arms name which side is which instead.
  */
 export function renderComparison(
   value: number,
   other: number,
   places: number,
+  opts?: { exactValue?: boolean; exactOther?: boolean },
 ): [string, string] {
-  if (value === other) {
-    return [value.toFixed(places), other.toFixed(places)];
-  }
+  const exactValue = opts?.exactValue ?? false;
+  const exactOther = opts?.exactOther ?? false;
   for (let width = places; width <= MAX_PLACES; width++) {
     const rendered: [string, string] = [value.toFixed(width), other.toFixed(width)];
-    if (rendered[0] !== rendered[1]) return rendered;
+    // Round-tripping is monotone in width — a wider rendering is at least as
+    // close, and the intervals that round to a given double nest — so skipping a
+    // width cannot skip past a narrower acceptable one.
+    if (exactValue && Number(rendered[0]) !== value) continue;
+    if (exactOther && Number(rendered[1]) !== other) continue;
+    if (value === other || rendered[0] !== rendered[1]) return rendered;
   }
   // Two distinct doubles too small for any fixed-point rendering to separate.
   // `toExponential` keeps full significand, so it always distinguishes them.

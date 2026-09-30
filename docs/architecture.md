@@ -341,3 +341,41 @@ Duplicated from `prompt-regression-suite` (D-012), `llm-eval-harness`
 (D-026) and `rag-production-kit#225` rather than shared: four separate
 distributions with no dependency between them, and a new shared package
 for a twelve-line formatter is the worse trade.
+
+### Marking a configured operand (#127, D-014)
+
+D-013 made the ordering readable. It says nothing about whether either
+number is the one in force — and `threshold` is caller-supplied
+(`opts?.threshold ?? DEFAULT_THRESHOLD`), so
+`{ threshold: 0.85004 }` produced *"below threshold 0.8500"*: a gate the
+assertion was not run at, in the message a developer copies a number back
+out of while tuning.
+
+Not the inversion #125 fixed. That one is two *different* widths naming
+the larger number as the smaller; here both sides share a width and the
+ordering reads correctly, so nothing asserting on the ordering can see it.
+Invisible while the threshold is round, which `DEFAULT_THRESHOLD` is.
+
+`renderComparison` takes `{ exactValue?, exactOther? }`. A marked operand
+widens the pair until it reads back as itself, still at one shared width —
+widening only the marked side is the pre-#125 shape (13 red).
+
+**Both flags, though only `other` is configured at today's one call
+site.** `llm-eval-harness` D-029 shipped a single flag because "value is
+the measured side at all six call sites" — true of that repo, promoted to
+a contract, and falsified the same day by `prompt-regression-suite`#181,
+whose tolerance note compares two configured numbers.
+`vector-search-at-scale`#152 then took both. A symmetric signature makes
+no claim a later caller can disprove.
+
+An options object rather than two positional booleans: `places` is already
+a required third positional by D-013, and `renderComparison(v, o, 3, true,
+false)` is unreadable at the call site.
+
+**How this repo was missed.** The portfolio sweep that found the class in
+three sibling repos piped `grep -rn renderComparison` through
+`grep -v test` to drop test files — and every path here contains `test`,
+because it is in the repo name. The sweep reported zero sites and this
+repo was recorded clean. A population filter keyed on a substring of the
+*full path* is untrustworthy when that substring can appear in the repo or
+directory name; filter on the basename or on a path segment.
