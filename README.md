@@ -146,7 +146,7 @@ const surfaced = await waitFor(() => readUiResponse(), { timeoutMs: 5000, interv
 ## Benchmarks / Results
 
 The relevant metric for this layer is "tests stay green and fast" —
-595 vitest tests run in a few seconds locally with zero network access
+597 vitest tests run in a few seconds locally with zero network access
 (30 files, ~5.5 s on an M-series Mac); the 3 Playwright streaming tests
 run in ~5 s (CI target: <60 s per the issue acceptance criteria,
 comfortably met).
@@ -155,8 +155,8 @@ Those numbers are the **harness library's own** suite, at the repository
 root. CI runs a second vitest suite inside `example-app/` — the demo
 application the harness is pointed at — of 53 tests in 5 files
 (`npm test --prefix example-app`, the `example-app` job). It is counted
-separately on purpose: 532 is the harness's coverage, and mixing the
-application's tests into that number would overstate it. Stated here so
+separately on purpose: the root count above is the harness's coverage, and
+mixing the application's tests into that number would overstate it. Stated here so
 the suite exists somewhere a drift check can see, which it previously did
 not (#121).
 
