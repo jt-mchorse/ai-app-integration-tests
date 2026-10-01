@@ -32,7 +32,10 @@ replay (#1), Playwright streaming tests (#2), flake-reduction helpers
 (#3), the example Next.js app (#4), and the sub-5-minute CI workflow
 (#5). The **example Next.js app** under `example-app/` has three
 screens (streaming, tool use, error path), runnable with
-`npm run example:dev`. Playwright tests drive those screens through
+`ANTHROPIC_TEST_MODE=replay npm run example:dev` without an API key (the
+deterministic stub the Playwright tests use), or `npm run example:dev` with
+`ANTHROPIC_API_KEY` set. The app defaults to `live` on purpose (#101), so
+without either every screen streams a `401` (#131). Playwright tests drive those screens through
 deterministic UI states (see the "Playwright tests for streaming UI"
 section below); the flake-reduction helpers under `src/support/` cover
 retry budgets, time-bounded waits, and semantic equality.
@@ -104,6 +107,7 @@ unset.
 Local run (after `npm install --prefix example-app && npx --prefix example-app playwright install chromium`):
 
 ```bash
+npm run example:build          # Playwright's webServer is `next start`, which needs a build
 npm run test:e2e --prefix example-app
 # 3 passed in ~5 s
 ```
@@ -146,8 +150,8 @@ const surfaced = await waitFor(() => readUiResponse(), { timeoutMs: 5000, interv
 ## Benchmarks / Results
 
 The relevant metric for this layer is "tests stay green and fast" —
-597 vitest tests run in a few seconds locally with zero network access
-(30 files, ~5.5 s on an M-series Mac); the 3 Playwright streaming tests
+602 vitest tests run in a few seconds locally with zero network access
+(31 files, ~5.5 s on an M-series Mac); the 3 Playwright streaming tests
 run in ~5 s (CI target: <60 s per the issue acceptance criteria,
 comfortably met).
 

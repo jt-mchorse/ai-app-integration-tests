@@ -1471,3 +1471,21 @@ context_for_next_session:
   - HISTORICAL_NUMBERS_49_492_292_200_IN_THE_NEXT_PARAGRAPH_ARE_PAST_TENSE_NARRATIVE_AND_WERE_LEFT
 followups: []
 ---
+
+---
+session: 2026-09-30T09:09Z
+issue: 131
+focus: THREE_DOCUMENTED_RUN_PATHS_FAILED_ON_A_FRESH_MAC_CLONE_AND_THE_DEMO_SAID_ALL_SURFACES_HERMETIC
+phase: shipped
+duration_min: 1   # computed from the plan comment timestamp and date -u
+delta:
+  files_changed: 3
+  tests_added: 5
+  suite: "595 -> 600 vitest, 30 -> 31 files; capture_demo surface 3: 3 passed on macOS"
+decisions_made: []
+measured: "old README+script: 4 of 5 new arms red"
+context_for_next_session:
+  - FOUND_BY_A_FRESH_CLONE_AUDIT_SUBAGENT_the_ci_path_builds_first_so_only_the_documented_local_path_broke
+  - BRANCH_NOTE_130_ALSO_OPEN_both_edit_the_README_count_line_130_says_597_30_this_says_600_31_after_both_merge_it_is_602_31_rebase_and_rerun_check_readme_test_count
+followups: []
+---

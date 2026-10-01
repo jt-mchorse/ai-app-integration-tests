@@ -111,17 +111,42 @@ if [ "$SURFACE2_RC" != "0" ]; then
 fi
 pace
 
+# Where Playwright keeps browsers (#131): an explicit PLAYWRIGHT_BROWSERS_PATH,
+# else the per-OS default -- ~/Library/Caches/ms-playwright on macOS and
+# ~/.cache/ms-playwright on Linux -- or the package-local .local-browsers. This
+# checked only the Linux path, so on a Mac surface 3 always skipped and told
+# the operator to run an install that lands in the directory it never looked at.
+PLAYWRIGHT_BROWSER_DIRS=(
+  ${PLAYWRIGHT_BROWSERS_PATH:+"$PLAYWRIGHT_BROWSERS_PATH"}
+  "$HOME/Library/Caches/ms-playwright"
+  "$HOME/.cache/ms-playwright"
+  "example-app/node_modules/@playwright/test/.local-browsers"
+)
+chromium_installed() {
+  local dir
+  for dir in "${PLAYWRIGHT_BROWSER_DIRS[@]}"; do
+    if compgen -G "$dir/chromium*" >/dev/null 2>&1; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 # ─── surface 3 ────────────────────────────────────────────────────────
 banner "surface 3: Playwright e2e against the instrumentation stub (D-008)"
 
 if [ "${CAPTURE_SKIP_E2E:-0}" = "1" ]; then
   printf 'surface 3 skipped: CAPTURE_SKIP_E2E=1 set (smoke-test mode).\n'
   printf 'run `npm run test:e2e --prefix example-app` directly for the full recording.\n'
-elif ! [ -d "$HOME/.cache/ms-playwright" ] && ! [ -d "example-app/node_modules/@playwright/test/.local-browsers" ]; then
-  printf 'surface 3 skipped: Playwright chromium not detected at ~/.cache/ms-playwright\n'
-  printf 'or example-app/node_modules/@playwright/test/.local-browsers.\n'
+elif ! chromium_installed; then
+  printf 'surface 3 skipped: Playwright chromium not detected in any of:\n'
+  printf '  %s\n' "${PLAYWRIGHT_BROWSER_DIRS[@]}"
   printf 'install once with: npx --prefix example-app playwright install chromium\n'
 else
+  # `test:e2e`'s webServer is `next start`, which needs a production build;
+  # without this step surface 3 failed on every fresh clone (#131).
+  printf 'npm run example:build\n'
+  npm run example:build
   printf 'npm run test:e2e --prefix example-app\n'
   printf '(three streaming-UI states against the deterministic Anthropic stub installed by example-app/instrumentation.ts)\n\n'
   npm run test:e2e --prefix example-app
