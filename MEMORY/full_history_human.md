@@ -1498,3 +1498,14 @@ diff for the fourth time (572 → 595). Recorded as D-014.
 **Open questions / blockers:** #130 edits the same README count line (597 there, 600 here; 602 once both merge).
 
 **Next session:** none.
+
+## 2026-09-30T09:54:05Z — #133: added .env.example
+
+The portfolio handoff asks every repo for a `.env.example`; this one had none. Two
+variables are real operator settings: `ANTHROPIC_TEST_MODE` and
+`ANTHROPIC_API_KEY`. The mode defaults to `replay` in the library and to `live`
+in the example app's server, which is deliberate, and the file explains both. The
+portfolio-ops#80 table also listed `RECORD_HOSTS` and `SEMANTIC_THRESHOLD` for
+this repo, but those appear only in code comments as examples, and nothing reads
+them. So the new test strips comments before deriving names, and a probe showed it
+fails without that step. README test count is now 599 across 31 files.

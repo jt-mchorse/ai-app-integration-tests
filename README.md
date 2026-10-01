@@ -86,6 +86,8 @@ ANTHROPIC_TEST_MODE=record ANTHROPIC_API_KEY=sk-... npm test
 ANTHROPIC_TEST_MODE=live ANTHROPIC_API_KEY=sk-... npm test
 ```
 
+Both variables, with what each defaults to, are in [`.env.example`](.env.example).
+
 ### Playwright tests for streaming UI (#2)
 
 `example-app/e2e/streaming.spec.ts` drives the example app's
@@ -150,8 +152,8 @@ const surfaced = await waitFor(() => readUiResponse(), { timeoutMs: 5000, interv
 ## Benchmarks / Results
 
 The relevant metric for this layer is "tests stay green and fast" —
-602 vitest tests run in a few seconds locally with zero network access
-(31 files, ~5.5 s on an M-series Mac); the 3 Playwright streaming tests
+606 vitest tests run in a few seconds locally with zero network access
+(32 files, ~5.5 s on an M-series Mac); the 3 Playwright streaming tests
 run in ~5 s (CI target: <60 s per the issue acceptance criteria,
 comfortably met).
 
