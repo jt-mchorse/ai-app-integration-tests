@@ -91,12 +91,13 @@ Both variables, with what each defaults to, are in [`.env.example`](.env.example
 ### Playwright tests for streaming UI (#2)
 
 `example-app/e2e/streaming.spec.ts` drives the example app's
-`/streaming` page through three deterministic UI states using
+`/streaming` page through these deterministic UI states using
 `@playwright/test`:
 
 1. **short stream** — prompt contains "short" → `idle → loading → first-token → done` in ≤ 1 s.
 2. **long stream** — 32 chunks ~12 ms apart → `idle → loading → first-token → streaming → done`; asserted text landmarks across the stream.
 3. **error stream** — prompt contains "error" → `idle → loading → error`; error card visible.
+4. **no terminal frame** (three cases: two data frames, one data frame, an empty body, served with `page.route`) → `error` with "stream ended before a done or error event", and Run is enabled again (#135). The route always sends `done` or `error`; a proxy timeout or a cut connection does not.
 
 A Next.js `instrumentation.ts` hook installs a deterministic
 Anthropic-API stub (`example-app/instrumentation-stub.ts`) when the
@@ -153,13 +154,13 @@ const surfaced = await waitFor(() => readUiResponse(), { timeoutMs: 5000, interv
 
 The relevant metric for this layer is "tests stay green and fast" —
 606 vitest tests run in a few seconds locally with zero network access
-(32 files, ~5.5 s on an M-series Mac); the 3 Playwright streaming tests
+(32 files, ~5.5 s on an M-series Mac); the 6 Playwright streaming tests
 run in ~5 s (CI target: <60 s per the issue acceptance criteria,
 comfortably met).
 
 Those numbers are the **harness library's own** suite, at the repository
 root. CI runs a second vitest suite inside `example-app/` — the demo
-application the harness is pointed at — of 53 tests in 5 files
+application the harness is pointed at — of 78 tests in 6 files
 (`npm test --prefix example-app`, the `example-app` job). It is counted
 separately on purpose: the root count above is the harness's coverage, and
 mixing the application's tests into that number would overstate it. Stated here so

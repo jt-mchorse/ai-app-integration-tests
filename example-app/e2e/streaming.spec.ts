@@ -79,4 +79,26 @@ test.describe("streaming UI", () => {
     // exact text comes from `e2e/_stub.ts` overloaded_error message.
     await expect(page.getByTestId("error-card")).toContainText(/error/i);
   });
+
+  // #135: a body that ends without a `done`/`error` frame used to leave the
+  // phase at `streaming` (or `first-token`) for good, with Run disabled. The
+  // route always sends one, so the response is substituted with page.route --
+  // the shape a proxy timeout or a cut connection produces.
+  for (const [label, body] of [
+    ["two data frames, then close", 'data: {"text":"Hello"}\n\ndata: {"text":" world"}\n\n'],
+    ["one data frame, then close", 'data: {"text":"Hello"}\n\n'],
+    ["empty body", ""],
+  ] as const) {
+    test(`no terminal frame (${label}): lands in error and Run is enabled again`, async ({ page }) => {
+      await page.route("**/api/streaming", (route) =>
+        route.fulfill({ status: 200, contentType: "text/event-stream", body }),
+      );
+      await page.getByTestId("run-button").click();
+      await expect(page.getByTestId("phase-indicator")).toHaveText(PHASE("error"), {
+        timeout: 5_000,
+      });
+      await expect(page.getByTestId("error-card")).toContainText("stream ended before");
+      await expect(page.getByTestId("run-button")).toBeEnabled();
+    });
+  }
 });
