@@ -1509,3 +1509,16 @@ portfolio-ops#80 table also listed `RECORD_HOSTS` and `SEMANTIC_THRESHOLD` for
 this repo, but those appear only in code comments as examples, and nothing reads
 them. So the new test strips comments before deriving names, and a probe showed it
 fails without that step. README test count is now 599 across 31 files.
+
+## 2026-10-01T08:52Z — #137: cassettes keep the umask and an existing file's mode
+
+`CassetteStore.write` goes through a private `atomicWriteFile` that opened its
+temp file with an explicit `0o600`, and `fs.rename` carried that mode onto the
+cassette. So every recorded cassette was owner-only regardless of umask, and
+re-recording over a 0644 cassette made it 0600. The temp is now opened `0o666`,
+so the kernel applies the umask, and it is chmodded to an existing cassette's
+mode before the rename. Six new tests, all through the public API: umask 022 and
+077, overwrites of 0644/0600/0640, and a recorder-fetch run. Restoring the
+original file turns 4 of them red. Part of portfolio-ops#81. README count is now
+612 across 33 files. #136 edits the same README line (the Playwright count), so
+whichever PR merges second needs a rebase.
