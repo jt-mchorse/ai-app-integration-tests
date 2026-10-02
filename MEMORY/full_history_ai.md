@@ -1525,3 +1525,23 @@ context_for_next_session:
   - README_COUNTS_RECOMPUTED_FROM_THE_RUNTIME_REPORTS_with_tools_check_readme_test_count_mjs_all_three_modes_match
 followups: []
 ---
+
+---
+session: 2026-10-01T08:52Z
+issue: 137
+focus: CASSETTESTORE_WRITE_ATOMICWRITEFILE_OPENED_ITS_TEMP_0o600_AND_RENAME_CARRIED_IT_ONTO_THE_TARGET_NEW_CASSETTES_OWNER_ONLY_AND_AN_OVERWRITE_DEMOTED_0644
+phase: shipped
+duration_min: 1   # computed from the plan comment timestamp and date -u
+delta:
+  files_changed: 3
+  tests_added: 6
+  suite: "606 -> 612 vitest, 32 -> 33 files; check-readme-test-count matches; eslint, tsc and build clean"
+decisions_made: []
+measured: "repro umask 022 via CassetteStore: plain writeFile 0644, write new 0600, overwrite of 0644 -> 0600. Revert probes: original file 4 failed of 612; 0o600 with chmod kept 2 of 612; 0o666 without chmod 2 of 612"
+context_for_next_session:
+  - FIX_OPEN_TEMP_0o666_SO_THE_KERNEL_APPLIES_THE_UMASK_THEN_CHMOD_TEMP_TO_EXISTING_TARGET_MODE_AND_0o7777_BEFORE_RENAME_ENOENT_MEANS_NEW_FILE_NEVER_TOUCH_PROCESS_UMASK
+  - VITEST_2_DEFAULT_POOL_IS_FORKS_SO_process_umask_mask_IS_SETTABLE_IN_TESTS_it_throws_in_worker_threads
+  - atomicWriteFile_IS_PRIVATE_so_every_arm_goes_through_the_public_CassetteStore_write_plus_one_createRecorderFetch_arm
+  - BRANCH_NOTE_136_ALSO_OPEN_and_edits_the_SAME_README_line_156_Playwright_3_to_6_this_PR_edits_its_32_to_33_files_rebase_and_rerun_check_readme_test_count_do_not_add_by_hand
+followups: ["portfolio-ops#81"]
+---
