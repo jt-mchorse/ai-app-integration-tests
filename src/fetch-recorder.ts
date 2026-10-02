@@ -205,6 +205,11 @@ async function readBodyAsText(
     return null;
   }
   if (typeof input === "object" && "clone" in input && typeof input.clone === "function") {
+    // A bodyless Request -- every GET/HEAD -- has `body === null`, but
+    // `clone().text()` reads it as "": the recorder then re-sent `body: ""`
+    // with method GET (TypeError from fetch), and hashed "" where `fetch(url)`
+    // hashes null, so the two call shapes were two cassettes (#143).
+    if ((input as Request).body === null) return null;
     try {
       const cloned = (input as Request).clone();
       return await cloned.text();
