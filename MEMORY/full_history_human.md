@@ -1510,6 +1510,19 @@ this repo, but those appear only in code comments as examples, and nothing reads
 them. So the new test strips comments before deriving names, and a probe showed it
 fails without that step. README test count is now 599 across 31 files.
 
+## 2026-10-01 — Issue #135: the example app gets the two fixes just shipped in nextjs-streaming-ai-patterns
+**Duration:** ~7 min · **Branch:** session/2026-10-01-0820-issue-135
+
+- All three API routes threw a TypeError on a `null` JSON body, which became a 500 instead of their 400. They now refuse any non-object body with their own 400 envelope.
+- The streaming page stayed at `streaming` with Run disabled when the body ended without a `done` or `error` event. It now lands in `error`, and a rejected read is caught. Three Playwright cases serve such bodies with `page.route`.
+- 25 vitest and 3 Playwright tests added. README counts were recomputed from the runtime reports. Both revert probes went red.
+
+**Why this work, this session:** a post-fix portfolio sweep after nextjs #139/#141.
+
+**Open questions / blockers:** none.
+
+**Next session:** none queued.
+
 ## 2026-10-01T08:52Z — #137: cassettes keep the umask and an existing file's mode
 
 `CassetteStore.write` goes through a private `atomicWriteFile` that opened its

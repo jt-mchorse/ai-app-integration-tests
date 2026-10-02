@@ -1509,6 +1509,24 @@ context_for_next_session:
 followups: []
 
 ---
+session: 2026-10-01T08:23Z
+issue: 135
+focus: THE_TWO_BUGS_JUST_FIXED_IN_nextjs_138_140_WERE_HERE_TOO_null_BODY_500_AND_A_STREAM_WITHOUT_ITS_TERMINAL_FRAME_WEDGES_THE_PAGE
+phase: shipped
+duration_min: 7   # 08:16 plan -> 08:23 close, from date -u
+delta:
+  files_changed: 7
+  tests_added: 28   # 25 example-app vitest + 3 playwright
+  suite: "example-app 53 -> 78 (5 -> 6 files); playwright 3 -> 6; root 606 unchanged"
+decisions_made: []
+measured: "hunt agent: null body -> TypeError on all three routes; page.route body without done -> phase streaming, Run disabled. Revert probes: old page.tsx against the new e2e = 3 failed / 3 passed (rebuilt); old tools route = 7 failed of 78. Playwright 6/6 green locally on next start :3100."
+context_for_next_session:
+  - AFTER_SHIPPING_A_FIX_GREP_THE_PORTFOLIO_FOR_THE_PATTERN_PAID_AGAIN_both_nextjs_bugs_were_here_found_by_a_hunt_agent_told_to_look_for_them
+  - README_COUNTS_RECOMPUTED_FROM_THE_RUNTIME_REPORTS_with_tools_check_readme_test_count_mjs_all_three_modes_match
+followups: []
+---
+
+---
 session: 2026-10-01T08:52Z
 issue: 137
 focus: CASSETTESTORE_WRITE_ATOMICWRITEFILE_OPENED_ITS_TEMP_0o600_AND_RENAME_CARRIED_IT_ONTO_THE_TARGET_NEW_CASSETTES_OWNER_ONLY_AND_AN_OVERWRITE_DEMOTED_0644

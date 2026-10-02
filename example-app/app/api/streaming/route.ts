@@ -16,12 +16,19 @@ import { readApiKey } from "../../../api-key";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  let body: { prompt?: unknown };
+  let parsed: unknown;
   try {
-    body = (await req.json()) as { prompt?: unknown };
+    parsed = await req.json();
   } catch {
     return Response.json({ error: "invalid JSON body" }, { status: 400 });
   }
+  // Valid JSON is not necessarily an object (#135): `null` passed the parse
+  // and then threw on the field read below -- a TypeError 500 -- while an
+  // array, string or number was refused only because its property is undefined.
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return Response.json({ error: "body must be a JSON object" }, { status: 400 });
+  }
+  const body = parsed as { prompt?: unknown };
   if (typeof body.prompt !== "string" || body.prompt.length === 0) {
     return Response.json({ error: "prompt is required" }, { status: 400 });
   }
