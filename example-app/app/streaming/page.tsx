@@ -5,6 +5,8 @@ import { useState } from "react";
 
 type Phase = "idle" | "loading" | "first-token" | "streaming" | "done" | "error";
 
+const STREAM_ENDED_WITHOUT_TERMINAL = "stream ended before a done or error event";
+
 export default function StreamingPage() {
   const [prompt, setPrompt] = useState("Write a one-sentence haiku about server-side rendering.");
   const [text, setText] = useState("");
@@ -40,32 +42,50 @@ export default function StreamingPage() {
     const decoder = new TextDecoder();
     let buf = "";
     let firstSeen = false;
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      let idx: number;
-      while ((idx = buf.indexOf("\n\n")) !== -1) {
-        const frame = buf.slice(0, idx);
-        buf = buf.slice(idx + 2);
-        const parsed = parseFrame(frame);
-        if (!parsed) continue;
-        if (parsed.kind === "data" && typeof parsed.data.text === "string") {
-          if (!firstSeen) {
-            firstSeen = true;
-            setPhase("first-token");
-          } else {
-            setPhase("streaming");
+    // The terminal phases are reached only from a `done` or `error` frame, so a
+    // body that ended without one -- a proxy timeout, a cut connection -- left
+    // the phase at `streaming`/`first-token` for good, with Run disabled (#135).
+    let terminal = false;
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buf.indexOf("\n\n")) !== -1) {
+          const frame = buf.slice(0, idx);
+          buf = buf.slice(idx + 2);
+          const parsed = parseFrame(frame);
+          if (!parsed) continue;
+          if (parsed.kind === "data" && typeof parsed.data.text === "string") {
+            if (!firstSeen) {
+              firstSeen = true;
+              setPhase("first-token");
+            } else {
+              setPhase("streaming");
+            }
+            setText((prev) => prev + parsed.data.text);
+          } else if (parsed.kind === "done") {
+            terminal = true;
+            setPhase("done");
+            if (typeof parsed.data.ms === "number") setMs(parsed.data.ms);
+          } else if (parsed.kind === "error") {
+            terminal = true;
+            setPhase("error");
+            setErrorMessage(typeof parsed.data.message === "string" ? parsed.data.message : "unknown");
           }
-          setText((prev) => prev + parsed.data.text);
-        } else if (parsed.kind === "done") {
-          setPhase("done");
-          if (typeof parsed.data.ms === "number") setMs(parsed.data.ms);
-        } else if (parsed.kind === "error") {
-          setPhase("error");
-          setErrorMessage(typeof parsed.data.message === "string" ? parsed.data.message : "unknown");
         }
       }
+    } catch (err) {
+      // A rejected read (the connection dropped mid-stream) was an unhandled
+      // rejection with the phase still non-terminal.
+      setPhase("error");
+      setErrorMessage(`stream failed: ${(err as Error).message}`);
+      return;
+    }
+    if (!terminal) {
+      setPhase("error");
+      setErrorMessage(STREAM_ENDED_WITHOUT_TERMINAL);
     }
   }
 
