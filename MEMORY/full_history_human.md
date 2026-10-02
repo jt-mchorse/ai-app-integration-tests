@@ -1535,3 +1535,11 @@ mode before the rename. Six new tests, all through the public API: umask 022 and
 original file turns 4 of them red. Part of portfolio-ops#81. README count is now
 612 across 33 files. #136 edits the same README line (the Playwright count), so
 whichever PR merges second needs a rebase.
+
+## 2026-10-02 — the recorder handles a GET passed as a Request object (#143)
+
+`fetch(new Request(url))` under the recorder crashed. A body-less request read
+back as an empty string, which the recorder then re-sent as a body on a GET,
+and fetch rejects that. The same request also hashed differently from
+`fetch(url)`, so it missed its cassette on replay. A request with no body is
+now treated as having no body. 5 new tests against a real local server.

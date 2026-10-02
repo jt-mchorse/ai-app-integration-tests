@@ -1545,3 +1545,20 @@ context_for_next_session:
   - BRANCH_NOTE_136_ALSO_OPEN_and_edits_the_SAME_README_line_156_Playwright_3_to_6_this_PR_edits_its_32_to_33_files_rebase_and_rerun_check_readme_test_count_do_not_add_by_hand
 followups: ["portfolio-ops#81"]
 ---
+
+---
+session: 2026-10-02T14:45Z
+issue: 143
+focus: A_GET_OR_HEAD_REQUEST_OBJECT_COULD_NOT_BE_RECORDED_CLONE_TEXT_READ_EMPTY_STRING_NOT_NULL
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 5
+  suite: "612 -> 617 (33 -> 34 files); lint, tsc clean; check-readme-test-count ok"
+decisions_made: []
+measured: "real fetch vs local server: recorder fetch(new Request(url)) -> TypeError 'GET/HEAD cannot have body'; replay of a Request GET recorded via URL -> MissingCassetteError. Revert: 4 of 5 red; the POST control stays green."
+context_for_next_session:
+  - THE_TESTS_USE_REAL_fetch_AGAINST_A_PORT_0_SERVER_because_the_TypeError_is_fetchs_own_a_stub_upstream_would_not_raise_it
+  - README_COUNT_CONFLICT_142_ALSO_SETS_617_34_after_both_merge_the_true_number_is_622_35_RECOMPUTE_check_readme_test_count_WILL_FAIL_THE_SECOND
+followups: []
+---
