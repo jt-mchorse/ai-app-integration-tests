@@ -54,6 +54,20 @@ export function tokenize(text: string, stopwords?: ReadonlySet<string>): string[
 // the convention matches `set.equals` semantics; documented here
 // because the implicit choice would otherwise confuse callers.
 export function jaccardSimilarity(a: string[], b: string[]): number {
+  if (typeof a === "string" || a instanceof String) {
+    throw new TypeError(
+      `expected token array for parameter 'a', got string ${JSON.stringify(String(a))}; ` +
+        `strings are iterable and would be compared character by character. ` +
+        `Use jaccardSimilarity(tokenize(a), tokenize(b))`,
+    );
+  }
+  if (typeof b === "string" || b instanceof String) {
+    throw new TypeError(
+      `expected token array for parameter 'b', got string ${JSON.stringify(String(b))}; ` +
+        `strings are iterable and would be compared character by character. ` +
+        `Use jaccardSimilarity(tokenize(a), tokenize(b))`,
+    );
+  }
   const setA = new Set(a);
   const setB = new Set(b);
   if (setA.size === 0 && setB.size === 0) return 1.0;

@@ -505,4 +505,103 @@ describe("support — finiteness validation (issue #24)", () => {
       ).toThrow(/threshold must be a finite number in \(0, 1\]/);
     });
   });
+
+  describe("jaccardSimilarity — bare string validation (issue #139)", () => {
+    test("rejects bare string for parameter a", () => {
+      expect(() =>
+        // @ts-expect-error testing runtime guard for untyped callers
+        jaccardSimilarity("refund approved", ["deposit", "pending"]),
+      ).toThrowError(TypeError);
+
+      expect(() =>
+        // @ts-expect-error testing runtime guard
+        jaccardSimilarity("refund approved", ["deposit", "pending"]),
+      ).toThrow(/parameter 'a'/);
+
+      expect(() =>
+        // @ts-expect-error testing runtime guard
+        jaccardSimilarity("refund approved", ["deposit", "pending"]),
+      ).toThrow(/"refund approved"/);
+
+      expect(() =>
+        // @ts-expect-error testing runtime guard
+        jaccardSimilarity("refund approved", ["deposit", "pending"]),
+      ).toThrow(/character by character/);
+
+      expect(() =>
+        // @ts-expect-error testing runtime guard
+        jaccardSimilarity("refund approved", ["deposit", "pending"]),
+      ).toThrow(/jaccardSimilarity\(tokenize\(a\), tokenize\(b\)\)/);
+    });
+
+    test("rejects bare string for parameter b", () => {
+      expect(() =>
+        // @ts-expect-error testing runtime guard for untyped callers
+        jaccardSimilarity(["refund", "approved"], "deposit pending"),
+      ).toThrowError(TypeError);
+
+      expect(() =>
+        // @ts-expect-error testing runtime guard
+        jaccardSimilarity(["refund", "approved"], "deposit pending"),
+      ).toThrow(/parameter 'b'/);
+
+      expect(() =>
+        // @ts-expect-error testing runtime guard
+        jaccardSimilarity(["refund", "approved"], "deposit pending"),
+      ).toThrow(/"deposit pending"/);
+
+      expect(() =>
+        // @ts-expect-error testing runtime guard
+        jaccardSimilarity(["refund", "approved"], "deposit pending"),
+      ).toThrow(/character by character/);
+
+      expect(() =>
+        // @ts-expect-error testing runtime guard
+        jaccardSimilarity(["refund", "approved"], "deposit pending"),
+      ).toThrow(/jaccardSimilarity\(tokenize\(a\), tokenize\(b\)\)/);
+    });
+
+    test("rejects when both arguments are bare strings, failing on parameter a first", () => {
+      expect(() =>
+        // @ts-expect-error testing runtime guard
+        jaccardSimilarity("listen", "silent"),
+      ).toThrow(/parameter 'a'/);
+    });
+
+    test("anagrams no longer silently score 1.0 (#139)", () => {
+      expect(() =>
+        // @ts-expect-error testing runtime guard
+        jaccardSimilarity("listen", "silent"),
+      ).toThrowError(TypeError);
+    });
+
+    test("unrelated sentences no longer silently score character-set overlap (#139)", () => {
+      expect(() =>
+        // @ts-expect-error testing runtime guard
+        jaccardSimilarity("refund approved", "deposit pending"),
+      ).toThrowError(TypeError);
+    });
+
+    test("tokenized arrays continue to work correctly", () => {
+      expect(
+        jaccardSimilarity(tokenize("refund approved"), tokenize("deposit pending")),
+      ).toBe(0);
+      expect(
+        jaccardSimilarity(tokenize("listen"), tokenize("silent")),
+      ).toBe(0);
+      expect(
+        jaccardSimilarity(["a", "b"], ["b", "a"]),
+      ).toBe(1.0);
+    });
+
+    test("non-string iterables like Set continue to work", () => {
+      expect(
+        jaccardSimilarity(
+          new Set(["a", "b"]) as unknown as string[],
+          new Set(["b", "c"]) as unknown as string[],
+        ),
+      ).toBeCloseTo(1 / 3, 6);
+    });
+  });
 });
+
