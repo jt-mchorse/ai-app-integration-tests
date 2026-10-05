@@ -1535,3 +1535,13 @@ mode before the rename. Six new tests, all through the public API: umask 022 and
 original file turns 4 of them red. Part of portfolio-ops#81. README count is now
 612 across 33 files. #136 edits the same README line (the Playwright count), so
 whichever PR merges second needs a rebase.
+
+## 2026-10-02 — the e2e and suite counts in the docs are right, and checked (#141)
+
+Directly under the documented e2e command, the README said "3 passed", but
+Playwright runs 6 tests. The count checker read only the first Playwright
+claim in the README, and that one was correct, so it never saw the stale
+line. The architecture doc said three example-app test suites, and there are
+six. Both are fixed. The checker now compares every Playwright count the README
+states, and a new test locks the suite count and the suite names against the
+test directory. 5 new tests.

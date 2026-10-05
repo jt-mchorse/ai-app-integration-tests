@@ -112,7 +112,7 @@ Local run (after `npm install --prefix example-app && npx --prefix example-app p
 ```bash
 npm run example:build          # Playwright's webServer is `next start`, which needs a build
 npm run test:e2e --prefix example-app
-# 3 passed in ~5 s
+# 6 passed in ~5 s
 ```
 
 The `playwright` CI job caches the Chromium download keyed on the
@@ -153,8 +153,8 @@ const surfaced = await waitFor(() => readUiResponse(), { timeoutMs: 5000, interv
 ## Benchmarks / Results
 
 The relevant metric for this layer is "tests stay green and fast" —
-612 vitest tests run in a few seconds locally with zero network access
-(33 files, ~5.5 s on an M-series Mac); the 6 Playwright streaming tests
+617 vitest tests run in a few seconds locally with zero network access
+(34 files, ~5.5 s on an M-series Mac); the 6 Playwright streaming tests
 run in ~5 s (CI target: <60 s per the issue acceptance criteria,
 comfortably met).
 
