@@ -1580,3 +1580,23 @@ context_for_next_session:
   - README_COUNT_CONFLICT_142_ALSO_SETS_617_34_after_both_merge_the_true_number_is_622_35_RECOMPUTE_check_readme_test_count_WILL_FAIL_THE_SECOND
 followups: []
 ---
+
+---
+session: 2026-10-05T08:18Z
+duration_min: 5   # computed: started 08:14Z -> 08:18Z
+issue: 147
+branch: session/2026-10-05-0815-issue-147
+focus: NON_UTF_8_BINARY_BODIES_HASH_COLLIDED_THROUGH_A_LENIENT_TextDecoder_NOW_TAGGED_BASE64_AND_VALID_UTF_8_HASHES_PINNED_UNCHANGED
+phase: shipped
+delta:
+  files_changed: 8
+  tests_added: 17
+  suite: "622 -> 639 vitest (35 -> 36 files), check-readme-test-count run locally; lint, typecheck clean; decision-range + architecture + doc-symbol locks green AFTER D-015 went into MEMORY first"
+decisions_made: [D-015]
+measured: "7 body types: 1 cassette and replay(a) served b on main, 2 and a after. Eight valid-UTF-8 hashes captured from main and pinned. Probes: lenient decoder 7 red, base64 not folded 1 red (JSON forge arm only), tagged-raw neighbour 1 red, all-base64 neighbour 8 red"
+context_for_next_session:
+  - MERGE_ORDER_146_AND_148_BOTH_BUMP_THE_README_COUNT_LINE_combined_expected_643_37_RE_RUN_check_readme_test_count_on_the_second
+  - A_FORGE_ARM_MUST_USE_THE_ENCODING_THAT_IS_NOT_FOLDED_raw_is_folded_either_way_so_only_the_JSON_string_arm_catches_a_missing_fold
+  - PIN_HASHES_BY_CAPTURING_THEM_FROM_MAIN_BEFORE_THE_CHANGE_recording_each_body_type_and_reading_the_cassette_file_name
+followups: []
+---
