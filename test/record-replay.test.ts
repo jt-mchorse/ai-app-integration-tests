@@ -773,11 +773,14 @@ describe("the recorder forwards the caller's own body upstream (#93)", () => {
   });
 
   it("still forwards a body that came from a Request input", async () => {
-    // The clone path is the one case `bodyText` was written for: `init` has no
-    // body, so the fallback has to fire or the upstream request loses it.
+    // A Request input carries its own body. This stub used to read only
+    // `init.body`, which no conforming fetch does -- `fetch(request, init)`
+    // without an `init.body` sends the Request's own -- and so it pinned the
+    // `bodyText` fallback, the decoding that corrupted binary bytes (#145).
+    // Read what a real fetch would send instead.
     let seen: unknown;
-    const capturing: typeof fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-      seen = init?.body;
+    const capturing: typeof fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      seen = await new Request(input, init).text();
       return new Response("ok", { status: 200 });
     }) as typeof fetch;
     const request = new Request(URL_, { method: "POST", body: "from-request-input" });
