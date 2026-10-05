@@ -1553,3 +1553,11 @@ back as an empty string, which the recorder then re-sent as a body on a GET,
 and fetch rejects that. The same request also hashed differently from
 `fetch(url)`, so it missed its cassette on replay. A request with no body is
 now treated as having no body. 5 new tests against a real local server.
+
+## 2026-10-05 — the leak scanner says where the secret is (#151)
+
+When the recorder refuses to save a cassette containing a credential, it told
+you to update `redactHeaders()`. That only helps for headers, and only if you
+edit the library. A key in the URL or request body stayed put no matter what.
+The message now says whether the key is in the URL, headers, body or response,
+and what to change for that case: for a URL key, send it as a header instead.
