@@ -228,7 +228,7 @@ Run locally:
 
 ```bash
 npm run example:install     # one-time: install example-app deps
-npm run example:dev         # http://localhost:3000
+ANTHROPIC_TEST_MODE=replay npm run example:dev   # http://localhost:3000, no API key (as the README, #131)
 npm run example:test        # route-handler vitest suites, no real API needed
 ```
 
