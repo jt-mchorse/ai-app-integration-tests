@@ -1580,3 +1580,23 @@ context_for_next_session:
   - README_COUNT_CONFLICT_142_ALSO_SETS_617_34_after_both_merge_the_true_number_is_622_35_RECOMPUTE_check_readme_test_count_WILL_FAIL_THE_SECOND
 followups: []
 ---
+
+---
+session: 2026-10-05T08:59Z
+duration_min: 2   # computed: started 08:57Z -> 08:59Z
+issue: 149
+branch: session/2026-10-05-0858-issue-149
+focus: CAPTURE_DEMO_SURFACE_3_BUILT_EXAMPLE_APP_WITHOUT_INSTALLING_IT_WHEN_A_GLOBAL_CHROMIUM_PASSED_THE_GATE_exit_127
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 3
+  suite: "622 -> 625 vitest (35 -> 36 files), README count checked locally; lint, tsc clean"
+decisions_made: []
+measured: "fresh clone + global chromium: exit 127 next: command not found (hunt agent, two clones). Test runs the real script with stub npm/npx and a fake chromium cache; main's script 2 red."
+context_for_next_session:
+  - FOUND_BY_RUNNING_EVERY_DOCUMENTED_COMMAND_ON_A_FRESH_CLONE_a_gate_that_accepts_a_GLOBAL_cache_is_satisfied_by_a_different_project
+  - A_BASH_SCRIPT_BRANCH_IS_TESTABLE_WITH_PATH_STUBS_THAT_LOG_CALLS_run_the_real_script_in_a_temp_tree
+  - MERGE_ORDER_146_148_149_ALL_BUMP_THE_README_COUNT_LINE_recount_on_each
+followups: []
+---

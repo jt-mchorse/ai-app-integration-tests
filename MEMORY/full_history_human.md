@@ -1553,3 +1553,14 @@ back as an empty string, which the recorder then re-sent as a body on a GET,
 and fetch rejects that. The same request also hashed differently from
 `fetch(url)`, so it missed its cassette on replay. A request with no body is
 now treated as having no body. 5 new tests against a real local server.
+
+## 2026-10-05 — the demo script works on a fresh clone (#149)
+
+`scripts/capture_demo.sh` checks whether Playwright's browser is installed
+before running its third surface. It also counted a browser installed for any
+other project, so on such a machine it tried to build the example app without
+installing its dependencies and failed with "next: command not found". It now
+installs them first when they're missing, and its "how to install" hint
+includes that step. A test runs the real script with fake npm commands to
+check the order. The architecture doc's dev-server command also gained the
+replay setting it needs to run without an API key.
