@@ -1545,3 +1545,11 @@ line. The architecture doc said three example-app test suites, and there are
 six. Both are fixed. The checker now compares every Playwright count the README
 states, and a new test locks the suite count and the suite names against the
 test directory. 5 new tests.
+
+## 2026-10-02 — the recorder handles a GET passed as a Request object (#143)
+
+`fetch(new Request(url))` under the recorder crashed. A body-less request read
+back as an empty string, which the recorder then re-sent as a body on a GET,
+and fetch rejects that. The same request also hashed differently from
+`fetch(url)`, so it missed its cassette on replay. A request with no body is
+now treated as having no body. 5 new tests against a real local server.
