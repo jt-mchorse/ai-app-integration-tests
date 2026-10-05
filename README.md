@@ -112,7 +112,7 @@ Local run (after `npm install --prefix example-app && npx --prefix example-app p
 ```bash
 npm run example:build          # Playwright's webServer is `next start`, which needs a build
 npm run test:e2e --prefix example-app
-# 3 passed in ~5 s
+# 6 passed in ~5 s
 ```
 
 The `playwright` CI job caches the Chromium download keyed on the

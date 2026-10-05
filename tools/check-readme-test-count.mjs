@@ -78,6 +78,8 @@ export function executedCount(report) {
 // count and derivable from artifacts CI already produces.
 export const README_FILES_RE = /\((\d[\d,]*)\s+files\b/;
 export const README_PLAYWRIGHT_RE = /the\s+(\d[\d,]*)\s+Playwright\b/;
+/** The `# N passed` comment under each documented `test:e2e` command (#141). */
+export const README_E2E_PASSED_RE = /test:e2e[^\n]*\n#\s*(\d+) passed\b/g;
 
 // The SECOND vitest suite -- `example-app/`, the demo application the harness is
 // pointed at (#123). Two claims in one sentence: "of 53 tests in 5 files".
@@ -157,16 +159,6 @@ export function checkPlaywright(listingPath, readme = readFileSync(README_PATH, 
         "moved, update README_PLAYWRIGHT_RE; if it was removed on purpose, remove this check.",
     };
   }
-  const claimed = Number(m[1].replace(/,/g, ""));
-  if (claimed !== listed) {
-    return {
-      code: 1,
-      message:
-        `README.md claims ${claimed} Playwright tests; Playwright lists ${listed}.\n` +
-        "The unit is what `playwright test --list` reports, not a grep for `test(` -- " +
-        "a grep cannot see `test.skip` or a project matrix running one spec twice.",
-    };
-  }
   if (listed === 0) {
     return {
       code: 2,
@@ -175,7 +167,25 @@ export function checkPlaywright(listingPath, readme = readFileSync(README_PATH, 
         "the e2e suite ran nothing, so it is an error rather than a pass.",
     };
   }
-  return { code: 0, message: `check-readme-test-count: README's ${claimed} playwright match` };
+  // EVERY claim, not the first (#141). The sentence matched here sits under
+  // "Benchmarks"; the `# N passed` comment under the documented e2e command said
+  // 3 while 6 ran, and nothing compared it.
+  const claims = [
+    Number(m[1].replace(/,/g, "")),
+    ...[...readme.matchAll(README_E2E_PASSED_RE)].map((x) => Number(x[1])),
+  ];
+  for (const claimed of claims) {
+    if (claimed !== listed) {
+      return {
+        code: 1,
+        message:
+          `README.md claims ${claimed} Playwright tests; Playwright lists ${listed}.\n` +
+          "The unit is what `playwright test --list` reports, not a grep for `test(` -- " +
+          "a grep cannot see `test.skip` or a project matrix running one spec twice.",
+      };
+    }
+  }
+  return { code: 0, message: `check-readme-test-count: README's ${claims.length} Playwright claims match ${listed}` };
 }
 
 /**

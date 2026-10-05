@@ -1547,6 +1547,24 @@ followups: ["portfolio-ops#81"]
 ---
 
 ---
+session: 2026-10-02T12:35Z
+issue: 141
+focus: A_COUNT_LOCK_THAT_READ_ONLY_THE_FIRST_CLAIM_README_SAID_3_PASSED_UNDER_THE_E2E_COMMAND_WHILE_6_RAN
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 5
+  suite: "612 -> 617 (33 -> 34 files); lint, tsc clean; check-readme-test-count passes in all three modes"
+decisions_made: []
+measured: "playwright --list: 6 tests; README:115 said 3. example-app/test has 6 suites (78 tests); the doc listed 3. Reverts: checker 2 red, README 1 red, architecture 2 red."
+context_for_next_session:
+  - A_LOCK_KEYED_ON_RE_exec_READS_ONE_MATCH_matchAll_every_claim_of_the_same_number
+  - THE_ZERO_LISTING_CHECK_MOVED_AHEAD_OF_THE_COMPARISONS_so_a_0_listing_is_still_exit_2_not_a_mismatch
+  - aiapp_140_EXTERNAL_PR_ALSO_TOUCHES_THE_README_COUNT_JT_DECIDES_IT
+followups: []
+---
+
+---
 session: 2026-10-02T14:45Z
 issue: 143
 focus: A_GET_OR_HEAD_REQUEST_OBJECT_COULD_NOT_BE_RECORDED_CLONE_TEXT_READ_EMPTY_STRING_NOT_NULL
