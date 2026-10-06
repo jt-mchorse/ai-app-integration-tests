@@ -1582,6 +1582,66 @@ followups: []
 ---
 
 ---
+session: 2026-10-05T08:14Z
+duration_min: 3   # computed: started 08:11Z -> 08:14Z
+issue: 145
+branch: session/2026-10-05-0812-issue-145
+focus: A_REQUEST_INPUTS_BINARY_BODY_WENT_UPSTREAM_AS_ITS_UTF_8_DECODING_93S_CORRUPTION_THROUGH_THE_FALLBACK_93_CALLED_RIGHT
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 4
+  suite: "622 -> 626 vitest (35 -> 36 files), README count updated and check-readme-test-count run locally; lint, typecheck clean"
+decisions_made: []
+measured: "real fetch, byte-echo server: Request(body Uint8Array 89504e47fffe0080) arrived as efbfbd504e47efbfbdefbfbd00efbfbd on main, intact now. Probes: fallback restored 1 red, TextEncoder re-encode neighbour 1 red"
+context_for_next_session:
+  - FOUND_BY_A_HUNT_AGENT_READING_93S_SCOPE_it_called_the_bodyText_fallback_exactly_right_for_a_Request_IT_WAS_THE_SAME_DEFECT
+  - 93S_REQUEST_TEST_STUBBED_AN_UPSTREAM_THAT_READ_ONLY_init_body_A_NONCONFORMING_FETCH_THAT_PINNED_THE_BUG_a_stub_must_behave_like_the_thing_it_stands_for
+  - BINARY_BODIES_THAT_ARE_NOT_VALID_UTF_8_ALSO_COLLIDE_IN_THE_HASH_Int16Array_minus_1_vs_minus_2_ONE_CASSETTE_replay_serves_the_other_filed_separately
+followups: []
+---
+
+---
+session: 2026-10-05T08:18Z
+duration_min: 5   # computed: started 08:14Z -> 08:18Z
+issue: 147
+branch: session/2026-10-05-0815-issue-147
+focus: NON_UTF_8_BINARY_BODIES_HASH_COLLIDED_THROUGH_A_LENIENT_TextDecoder_NOW_TAGGED_BASE64_AND_VALID_UTF_8_HASHES_PINNED_UNCHANGED
+phase: shipped
+delta:
+  files_changed: 8
+  tests_added: 17
+  suite: "622 -> 639 vitest (35 -> 36 files), check-readme-test-count run locally; lint, typecheck clean; decision-range + architecture + doc-symbol locks green AFTER D-015 went into MEMORY first"
+decisions_made: [D-015]
+measured: "7 body types: 1 cassette and replay(a) served b on main, 2 and a after. Eight valid-UTF-8 hashes captured from main and pinned. Probes: lenient decoder 7 red, base64 not folded 1 red (JSON forge arm only), tagged-raw neighbour 1 red, all-base64 neighbour 8 red"
+context_for_next_session:
+  - MERGE_ORDER_146_AND_148_BOTH_BUMP_THE_README_COUNT_LINE_combined_expected_643_37_RE_RUN_check_readme_test_count_on_the_second
+  - A_FORGE_ARM_MUST_USE_THE_ENCODING_THAT_IS_NOT_FOLDED_raw_is_folded_either_way_so_only_the_JSON_string_arm_catches_a_missing_fold
+  - PIN_HASHES_BY_CAPTURING_THEM_FROM_MAIN_BEFORE_THE_CHANGE_recording_each_body_type_and_reading_the_cassette_file_name
+followups: []
+---
+
+---
+session: 2026-10-05T08:59Z
+duration_min: 2   # computed: started 08:57Z -> 08:59Z
+issue: 149
+branch: session/2026-10-05-0858-issue-149
+focus: CAPTURE_DEMO_SURFACE_3_BUILT_EXAMPLE_APP_WITHOUT_INSTALLING_IT_WHEN_A_GLOBAL_CHROMIUM_PASSED_THE_GATE_exit_127
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 3
+  suite: "622 -> 625 vitest (35 -> 36 files), README count checked locally; lint, tsc clean"
+decisions_made: []
+measured: "fresh clone + global chromium: exit 127 next: command not found (hunt agent, two clones). Test runs the real script with stub npm/npx and a fake chromium cache; main's script 2 red."
+context_for_next_session:
+  - FOUND_BY_RUNNING_EVERY_DOCUMENTED_COMMAND_ON_A_FRESH_CLONE_a_gate_that_accepts_a_GLOBAL_cache_is_satisfied_by_a_different_project
+  - A_BASH_SCRIPT_BRANCH_IS_TESTABLE_WITH_PATH_STUBS_THAT_LOG_CALLS_run_the_real_script_in_a_temp_tree
+  - MERGE_ORDER_146_148_149_ALL_BUMP_THE_README_COUNT_LINE_recount_on_each
+followups: []
+---
+
+---
 session: 2026-10-05T09:13Z
 duration_min: 2   # computed: started 09:11Z -> 09:13Z
 issue: 151

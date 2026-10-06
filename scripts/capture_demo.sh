@@ -141,8 +141,16 @@ if [ "${CAPTURE_SKIP_E2E:-0}" = "1" ]; then
 elif ! chromium_installed; then
   printf 'surface 3 skipped: Playwright chromium not detected in any of:\n'
   printf '  %s\n' "${PLAYWRIGHT_BROWSER_DIRS[@]}"
-  printf 'install once with: npx --prefix example-app playwright install chromium\n'
+  printf 'install once with: npm run example:install && npx --prefix example-app playwright install chromium\n'
 else
+  # The Chromium check also accepts the GLOBAL Playwright cache, so a machine
+  # with Chromium from any other project reaches the build with example-app's
+  # dependencies never installed -- `next: command not found`, exit 127, on a
+  # fresh clone (#149). The Quickstart's `npm install` covers the root only.
+  if [ ! -d example-app/node_modules ]; then
+    printf 'npm run example:install\n'
+    npm run example:install
+  fi
   # `test:e2e`'s webServer is `next start`, which needs a production build;
   # without this step surface 3 failed on every fresh clone (#131).
   printf 'npm run example:build\n'

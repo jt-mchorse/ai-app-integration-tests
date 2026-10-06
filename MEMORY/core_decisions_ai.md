@@ -142,3 +142,16 @@
   reversibility: cheap
   related_issues: ["#127", "#125", "#119"]
   superseded_by: null
+
+- id: D-015
+  date: 2026-10-05
+  decision: a_request_body_whose_BYTES_ARE_NOT_VALID_UTF_8_hashes_as_its_BASE64_under_a_THIRD_out_of_body_discriminator_bodyEncoding_base64_folded_into_the_hash_like_raw_and_every_body_that_IS_valid_UTF_8_keeps_its_text_and_its_hash_unchanged
+  rationale: every_byte_container_branch_of_readBodyAsText_decoded_with_a_LENIENT_TextDecoder_which_maps_each_invalid_byte_to_U_FFFD_so_Int16Array_minus_1_and_minus_2_or_Uint8Array_ff_and_fe_DECODED_TO_ONE_STRING_RECORDED_ONE_CASSETTE_AND_REPLAY_SERVED_THE_OTHER_REQUESTS_RESPONSE_the_57_70_84_86_88_collision_class_one_byte_range_over
+  A_FATAL_DECODER_DECIDES_SO_NO_EXISTING_CASSETTE_MOVES: "bytes that decode keep exactly today's text, so a valid-UTF-8 body's hash is byte-identical; pinned by eight literal hashes captured from main by recording each body type. Only non-UTF-8 binary bodies are re-keyed, and those were already ambiguous (any two could overwrite each other); re-recording is their migration."
+  FOLDED_LIKE_RAW_AND_THE_ARM_THAT_PROVES_WHY_IS_THE_JSON_ONE: "a JSON string body canonicalizes to the bare string and its json tag is NOT folded, so without folding base64 the bytes [0xff] (base64 /w==) and the JSON body \"/w==\" hash alike. The raw-text forge arm cannot see that revert (raw is folded either way); the JSON arm is the only red one."
+  BASE64_IS_A_HASH_KEY_NOT_A_BODY: "normalizeRequest returns bodyText null for bytes, so the pre-#146 upstream fallback cannot send base64 upstream"
+  alternatives_rejected: ["HASH_EVERY_BYTE_BODY_AS_BASE64_REJECTED_re_keys_every_existing_binary_cassette_including_valid_UTF_8_ones_built_and_run_8_red_on_the_pins", "TAG_THE_BASE64_AS_raw_REJECTED_a_text_body_spelling_it_collides_1_red", "LEAVE_IT_UNTIL_A_RECORD_FORMAT_V2_REJECTED_replay_serves_the_wrong_response_today"]
+  measured: "main: 2 non-UTF-8 bodies -> 1 cassette, replay(a) served b, for ArrayBuffer/Uint8Array/Int16Array/DataView/Blob/Request/FormData file; after: 2 cassettes, replay(a) serves a. Probes: lenient decoder 7 red, base64 not folded 1 red (JSON forge arm only), tagged raw 1 red, everything-as-base64 8 red"
+  reversibility: cheap
+  related_issues: ["#147", "#145", "#88", "#57"]
+  superseded_by: null

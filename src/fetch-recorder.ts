@@ -36,11 +36,17 @@ async function normalizeRequest(
   const method = (init?.method ?? (typeof input === "object" && "method" in input ? input.method : "GET")).toUpperCase();
 
   const rawHeaders = collectHeaders(init?.headers, input);
-  const bodyText = await readBodyAsText(init?.body, input);
+  const read = await readBodyAsText(init?.body, input);
+  const bodyText = read === null ? null : read.text;
 
   let parsedBody: unknown = null;
-  let bodyEncoding: "json" | "raw" | undefined;
-  if (bodyText !== null) {
+  let bodyEncoding: "json" | "raw" | "base64" | undefined;
+  if (read !== null && read.binary) {
+    // Bytes that are not UTF-8: the base64 of the bytes, tagged outside the
+    // body so a text body spelling the same base64 cannot collide (#147).
+    parsedBody = read.text;
+    bodyEncoding = "base64";
+  } else if (bodyText !== null) {
     if (bodyText.length > 0) {
       try {
         parsedBody = JSON.parse(bodyText);
@@ -78,7 +84,9 @@ async function normalizeRequest(
     ...(bodyEncoding ? { bodyEncoding } : {}),
   };
 
-  return { normalized, rawHeaders, bodyText };
+  // `bodyText` is text a caller could send. Base64 of binary bytes is a hash
+  // key, not a body, so it is never handed out as one (#147).
+  return { normalized, rawHeaders, bodyText: read !== null && read.binary ? null : bodyText };
 }
 
 function collectHeaders(headers: HeadersInit | undefined, input: RequestInfo | URL): Record<string, string> {
@@ -119,13 +127,49 @@ function collectHeaders(headers: HeadersInit | undefined, input: RequestInfo | U
   return out;
 }
 
+/**
+ * A body's bytes as the hash reads them: its text when the bytes are valid
+ * UTF-8, otherwise base64 tagged `binary` (#147).
+ *
+ * Every byte-container branch below used to decode with a LENIENT
+ * `TextDecoder`, which maps each invalid byte to U+FFFD -- so two different
+ * binary bodies (`Int16Array([-1])` vs `Int16Array([-2])`, `[0xff]` vs `[0xfe]`)
+ * decoded to one string, hashed to one cassette, and replay served the other
+ * request's response: the #57/#70/#84/#86/#88 collision class, one byte-range
+ * over. A FATAL decoder keeps every valid-UTF-8 body's text -- and so its hash
+ * and every cassette already recorded for it -- exactly as before, and hands
+ * the rest to base64, which `normalizeRequest` tags `bodyEncoding: "base64"`
+ * outside the body, where no text body can forge it. (D-015)
+ */
+type BodyRead = { text: string; binary: boolean };
+
+function bytesOf(view: ArrayBuffer | ArrayBufferView): Uint8Array {
+  return view instanceof ArrayBuffer
+    ? new Uint8Array(view)
+    : new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+}
+
+function readBytes(view: ArrayBuffer | ArrayBufferView): BodyRead {
+  try {
+    return { text: new TextDecoder("utf-8", { fatal: true }).decode(view), binary: false };
+  } catch {
+    return { text: Buffer.from(bytesOf(view)).toString("base64"), binary: true };
+  }
+}
+
+/** A FormData file entry's record: `f` with its text, or `fb` with base64 (#147). */
+async function fileRecord(name: string, file: File): Promise<string> {
+  const read = readBytes(await file.arrayBuffer());
+  return JSON.stringify([read.binary ? "fb" : "f", name, file.name, file.type, read.text]);
+}
+
 async function readBodyAsText(
   body: BodyInit | null | undefined,
   input: RequestInfo | URL,
-): Promise<string | null> {
+): Promise<BodyRead | null> {
   if (body !== undefined && body !== null) {
-    if (typeof body === "string") return body;
-    if (body instanceof ArrayBuffer) return new TextDecoder().decode(body);
+    if (typeof body === "string") return { text: body, binary: false };
+    if (body instanceof ArrayBuffer) return readBytes(body);
     if (ArrayBuffer.isView(body)) {
       // Any ArrayBufferView is a standard BodyInit that fetch sends as its exact
       // bytes: Uint8Array, but also DataView, Int8Array, Uint16Array/Int16Array,
@@ -138,7 +182,7 @@ async function readBodyAsText(
       // window, so normalizeRequest tags it `bodyEncoding:"raw"` and folds it into
       // the hash — the same collision class as #86 (URLSearchParams) / #84 (empty-
       // string) / #70 (JSON-null) / #57 (raw/JSON), one body-type over.
-      return new TextDecoder().decode(body);
+      return readBytes(body);
     }
     if (body instanceof URLSearchParams) {
       // A URLSearchParams body is a standard BodyInit that fetch serializes onto
@@ -150,7 +194,7 @@ async function readBodyAsText(
       // tags it `bodyEncoding:"raw"` and folds it into the hash — the same
       // collision class as #84 (empty-string) / #70 (JSON-null) / #57 (raw/JSON),
       // one body-type over.
-      return body.toString();
+      return { text: body.toString(), binary: false };
     }
     if (body instanceof Blob) {
       // A Blob body is a standard BodyInit that fetch serializes to its exact,
@@ -164,7 +208,7 @@ async function readBodyAsText(
       // and folds it into the hash — the same collision class as #88 (typed-array
       // views) / #86 (URLSearchParams) / #84 (empty-string), one body-type over.
       // `File extends Blob`, so a File body is covered by this branch too.
-      return await body.text();
+      return readBytes(await body.arrayBuffer());
     }
     if (body instanceof FormData) {
       // A FormData body used to be lumped in with ReadableStream and dropped to
@@ -192,10 +236,10 @@ async function readBodyAsText(
         records.push(
           typeof value === "string"
             ? JSON.stringify(["s", name, value])
-            : JSON.stringify(["f", name, value.name, value.type, await value.text()]),
+            : await fileRecord(name, value),
         );
       }
-      return records.join("\n");
+      return { text: records.join("\n"), binary: false };
     }
     // Skip ReadableStream — genuinely un-canonicalizable here, because it is
     // single-read: consuming it to hash it would take the body away from the
@@ -212,7 +256,7 @@ async function readBodyAsText(
     if ((input as Request).body === null) return null;
     try {
       const cloned = (input as Request).clone();
-      return await cloned.text();
+      return readBytes(await cloned.arrayBuffer());
     } catch {
       return null;
     }
@@ -366,7 +410,7 @@ export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
       return upstream(input, init);
     }
 
-    const { normalized, bodyText } = await normalizeRequest(input, init);
+    const { normalized } = await normalizeRequest(input, init);
     const requestHash = hashRequest(normalized);
 
     // Re-issue the original request to upstream, forwarding the caller's own
@@ -388,11 +432,19 @@ export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
     // faithfully recorded the response to a request the caller never made
     // (#93). A URLSearchParams or Blob body also lost the `Content-Type` fetch
     // sets automatically for it and does not set for a string.
+    //
+    // #93 kept `bodyText` as the fallback for a `Request` input, calling it
+    // "exactly the right fallback". It was #93's own defect by another road:
+    // `bodyText` is the UTF-8 *decoding*, so a Request carrying binary bytes
+    // went upstream with every non-UTF-8 byte replaced by U+FFFD (#145). No
+    // fallback is needed -- `normalizeRequest` reads from `input.clone()`, so the
+    // Request's own body is still unread and travels with `input`. `body` is
+    // left out of `upstreamInit` unless the caller passed one.
     const upstreamInit: RequestInit = {
       ...init,
       method: normalized.method,
-      body: init?.body ?? bodyText ?? undefined,
     };
+    if (init?.body !== undefined) upstreamInit.body = init.body;
     const liveResponse = await upstream(input, upstreamInit);
 
     const contentType = liveResponse.headers.get("content-type") ?? "";
