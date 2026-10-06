@@ -252,6 +252,10 @@ const EXTERNAL_SYMBOLS: ReadonlyArray<string> = [
   // `toFixed` calls at mismatched widths, so the prose cannot describe the bug
   // without naming the method (#125).
   "toFixed",
+  // The WHATWG `TextDecoder` — a runtime global. Named in the D-015 section
+  // because the defect it documents is the lenient decoder's U+FFFD mapping, so
+  // the prose cannot describe it without naming the class (#147).
+  "TextDecoder",
 ] as const;
 
 // Illustrative pseudo-code identifiers the doc uses to *describe* behavior but
@@ -371,10 +375,12 @@ describe("docs/architecture.md names only symbols that exist (#72 / portfolio-op
     // a pair of `toFixed` calls at mismatched widths, so the prose cannot
     // describe it without naming the method. This meta-lock is why that addition
     // is a visible edit rather than silent allowlist growth — exactly its job.
+    // `TextDecoder` added for D-015 (#147), for the same reason.
     expect([...EXTERNAL_SYMBOLS]).toEqual([
       "ReadableStream",
       "globalThis",
       "toFixed",
+      "TextDecoder",
     ]);
   });
 

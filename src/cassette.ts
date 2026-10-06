@@ -34,9 +34,10 @@ export interface NormalizedRequest {
    * caller-supplied JSON can forge it. Omitted when there is no body. "json" is
    * informational; only "raw" is folded into the request hash (see
    * `hashRequest`) so existing JSON-body and no-body cassette hashes are
-   * unchanged.
+   * unchanged. "base64" marks a body whose bytes are not valid UTF-8, stored
+   * as their base64 and folded into the hash like "raw" (#147, D-015).
    */
-  bodyEncoding?: "json" | "raw";
+  bodyEncoding?: "json" | "raw" | "base64";
 }
 
 export type RecordedResponse =
@@ -152,8 +153,12 @@ export function hashRequest(req: NormalizedRequest): string {
   // replay serves the wrong response. Folding the tag only in these two cases
   // (raw, or present-but-null) keeps every non-null JSON-body and no-body hash
   // byte-identical, so already-recorded cassettes still replay.
+  // "base64" (#147) is folded for the same reason as "raw": the base64 string
+  // is otherwise indistinguishable from a text body spelling it.
   const foldEncoding =
-    req.bodyEncoding === "raw" || (req.bodyEncoding !== undefined && req.body === null);
+    req.bodyEncoding === "raw" ||
+    req.bodyEncoding === "base64" ||
+    (req.bodyEncoding !== undefined && req.body === null);
   const payload = JSON.stringify({
     method: req.method,
     url: req.url,

@@ -278,3 +278,18 @@ now, and D-013 already pins that the structured fields stay full precision.
 **Reversibility:** Cheap.
 
 **Related issues:** #127, #125, #119
+
+## D-015 — binary bodies that aren't UTF-8 hash as tagged base64 (2026-10-05)
+
+**Decision:** When a request body's bytes aren't valid UTF-8, the recorder hashes their base64 form under a third discriminator, `bodyEncoding: "base64"`. That discriminator sits outside the body and is folded into the hash the way `"raw"` is. A body that *is* valid UTF-8 keeps its text and its hash.
+
+**Why:** The recorder decoded every byte body with a lenient `TextDecoder`, which turns each invalid byte into U+FFFD. Two different binary bodies, such as `Int16Array([-1])` and `Int16Array([-2])`, decoded to the same string and were saved as one cassette, so replaying one request served the other's response. A strict decoder now decides between the two forms. Every valid-UTF-8 body hashes exactly as before, and eight pinned hashes captured from the previous code prove it, so no cassette anyone has committed moves. Only non-UTF-8 binary bodies get new keys, and those were already ambiguous.
+
+**Alternatives considered:**
+- Hash every byte body as base64. Rejected: it would re-key every existing binary cassette, including valid-UTF-8 ones (8 red on the pins).
+- Tag the base64 as `"raw"`. Rejected: a text body spelling the same base64 would collide.
+- Wait for a new cassette format. Rejected: replay serves the wrong response today.
+
+**Reversibility:** Cheap.
+
+**Related issues:** #147, #145, #88, #57

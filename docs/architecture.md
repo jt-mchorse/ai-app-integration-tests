@@ -387,3 +387,15 @@ because it is in the repo name. The sweep reported zero sites and this
 repo was recorded clean. A population filter keyed on a substring of the
 *full path* is untrustworthy when that substring can appear in the repo or
 directory name; filter on the basename or on a path segment.
+
+### Binary bodies hash as tagged base64 (#147, D-015)
+
+Every byte-container body (ArrayBuffer, any view, Blob, a `Request` clone, a
+FormData file) was decoded with a lenient `TextDecoder`, which maps each invalid
+UTF-8 byte to U+FFFD, so two different binary bodies decoded to one string,
+recorded one cassette, and replay served the other request's response. A fatal
+decoder now decides: valid UTF-8 keeps its text and its hash (eight hashes are
+pinned against the previous code), and anything else hashes as its base64 under
+`bodyEncoding: "base64"`, folded into the hash like `"raw"` so no text or JSON
+body spelling the same base64 can collide. Only non-UTF-8 binary cassettes are
+re-keyed, and those were already ambiguous.
