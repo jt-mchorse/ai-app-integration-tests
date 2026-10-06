@@ -84,7 +84,12 @@ pace
 banner "surface 1: cassette replay (D-002, D-003)"
 printf 'npx vitest run test/demo.test.ts test/record-replay.test.ts\n'
 printf '(install-from-env + replay against committed cassette + record→replay round-trip)\n\n'
-npx vitest run test/demo.test.ts test/record-replay.test.ts --reporter=default
+# Replay pinned here, as surface 2 pins it for itself: `installFromEnv()` reads
+# ANTHROPIC_TEST_MODE from the operator's shell, and test/demo.test.ts tells
+# them to export it to re-record. With "record" inherited, this surface
+# overwrote the committed cassette it replays; with "live" it called the API
+# (#153).
+ANTHROPIC_TEST_MODE=replay npx vitest run test/demo.test.ts test/record-replay.test.ts --reporter=default
 pace
 
 # ─── surface 2 ────────────────────────────────────────────────────────
@@ -143,6 +148,16 @@ elif ! chromium_installed; then
   printf '  %s\n' "${PLAYWRIGHT_BROWSER_DIRS[@]}"
   printf 'install once with: npm run example:install && npx --prefix example-app playwright install chromium\n'
 else
+  # Playwright reuses whatever already answers on the e2e port
+  # (`reuseExistingServer` outside CI), and that server's env is not the
+  # replay stub's -- example-app's instrumentation defaults to live. Refuse
+  # rather than record someone else's server (#153).
+  if (echo > /dev/tcp/127.0.0.1/3100) 2>/dev/null; then
+    printf '\n[capture] surface 3: something is already listening on 127.0.0.1:3100.\n' >&2
+    printf 'Playwright would reuse it instead of starting example-app with the replay stub.\n' >&2
+    printf 'Stop it (or run with CAPTURE_SKIP_E2E=1) and re-run.\n' >&2
+    exit 1
+  fi
   # The Chromium check also accepts the GLOBAL Playwright cache, so a machine
   # with Chromium from any other project reaches the build with example-app's
   # dependencies never installed -- `next: command not found`, exit 127, on a
