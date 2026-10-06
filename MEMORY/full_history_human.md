@@ -1575,3 +1575,14 @@ valid UTF-8. If they are, nothing changes. Eight hashes are pinned against the
 old code to prove that existing cassettes still match. If they aren't, the
 body is hashed as tagged base64. Only cassettes for non-text binary bodies get
 new keys, and those were already unreliable.
+
+## 2026-10-05 — the demo script works on a fresh clone (#149)
+
+`scripts/capture_demo.sh` checks whether Playwright's browser is installed
+before running its third surface. It also counted a browser installed for any
+other project, so on such a machine it tried to build the example app without
+installing its dependencies and failed with "next: command not found". It now
+installs them first when they're missing, and its "how to install" hint
+includes that step. A test runs the real script with fake npm commands to
+check the order. The architecture doc's dev-server command also gained the
+replay setting it needs to run without an API key.
