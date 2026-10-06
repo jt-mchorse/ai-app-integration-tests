@@ -1659,3 +1659,22 @@ context_for_next_session:
   - MERGE_ORDER_146_148_150_152_ALL_BUMP_README_COUNT_RECOUNT_EACH
 followups: []
 ---
+
+---
+session: 2026-10-06T08:12Z
+duration_min: 1   # computed: plan comment 08:11:09Z -> 08:12Z (date -u); forced repro from ~08:09Z after a sweep agent flagged it as latent
+issue: 155
+branch: session/2026-10-06-0811-issue-155
+focus: e2e_long_stream_POLLED_FOR_THE_400MS_streaming_PHASE_WITH_toHaveText_280MS_OF_EXTRA_LATENCY_MISSED_IT_now_a_MutationObserver_recording_and_a_forward_progression_assertion
+phase: shipped
+delta:
+  files_changed: 1
+  tests_added: 0
+  suite: "6 Playwright tests green 3 of 3; vitest unchanged"
+decisions_made: []
+measured: "injected latency on /api/streaming: main fails at 280 and 300 ms; fixed passes at 0/250/280/300/320/400. One-frame stream: fixed fails only on toContain(streaming), recorded idle,loading,done."
+context_for_next_session:
+  - SECOND_INSTANCE_TODAY_OF_POLLING_FOR_A_TRANSIENT_STATE_nextjs_148_and_this_RECORD_THEN_ASSERT
+  - EXACT_SEQUENCE_EQUALITY_WOULD_FLAKE_REACT_BATCHES_TWO_FRAMES_FROM_ONE_READ_INTO_ONE_COMMIT_the_one_frame_probe_skipped_first_token_ASSERT_FORWARD_ORDER_NOT_EVERY_STATE
+followups: []
+---
