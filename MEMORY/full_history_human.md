@@ -1594,3 +1594,12 @@ you to update `redactHeaders()`. That only helps for headers, and only if you
 edit the library. A key in the URL or request body stayed put no matter what.
 The message now says whether the key is in the URL, headers, body or response,
 and what to change for that case: for a URL key, send it as a header instead.
+
+## 2026-10-06 — re-recording the demo uses your key (#161)
+
+The documented way to re-record the demo recording is to run the demo test
+with `ANTHROPIC_TEST_MODE=record` and your API key. The test ignored the key
+and always sent a placeholder, so the real API answered "unauthorized" and
+that answer was saved over the committed recording, breaking the test until
+the file was restored from git. The test now sends the key from the
+environment when one is set; normal replay runs are unaffected.
