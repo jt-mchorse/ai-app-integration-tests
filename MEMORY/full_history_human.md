@@ -1564,3 +1564,14 @@ and the cassette saved the answer to a request nobody made. An earlier fix
 path was safe. The recorder now lets the `Request` carry its own unread body.
 One older test had a fake upstream that only looked where the bug put the body,
 so it was changed to read what a real `fetch` sends.
+
+## 2026-10-05 — different binary uploads no longer share a cassette (#147, D-015)
+
+Binary request bodies were turned into text before being hashed, and every
+byte that isn't valid text became the same replacement character. So two
+different binary uploads could produce the same cassette, and replaying one
+returned the other's response. The recorder now checks whether the bytes are
+valid UTF-8. If they are, nothing changes. Eight hashes are pinned against the
+old code to prove that existing cassettes still match. If they aren't, the
+body is hashed as tagged base64. Only cassettes for non-text binary bodies get
+new keys, and those were already unreliable.
