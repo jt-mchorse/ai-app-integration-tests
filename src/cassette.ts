@@ -307,15 +307,46 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   /\b(?:api[-_]?key|access[-_]?token|auth[-_]?token|key)["']?\s*[=:]\s*["']?([A-Za-z0-9_\-.+/=]{24,})/i,
 ];
 
+// Where a match was found, and what will actually remove it from there (#151).
+// The message used to say "Update redactHeaders() and re-record" for every
+// match, but `redactHeaders` only ever sees header NAMES in a fixed list callers
+// cannot extend, while #113's pattern exists for the URL and body, which
+// `normalizeUrl` and the body canonicalizer record as-is.
+const LEAK_LOCATIONS: ReadonlyArray<[string, (c: CassetteV1) => unknown, string]> = [
+  [
+    "the request URL",
+    (c) => c.request.url,
+    "the query string is recorded as-is; send the credential as a header " +
+      "(e.g. `x-goog-api-key`, `api-key`, `authorization`) so redaction strips it",
+  ],
+  [
+    "the request headers",
+    (c) => c.request.headers,
+    "that header's name is not in the redaction list (SENSITIVE_HEADER_NAMES in " +
+      "src/cassette.ts); send the credential under a name it lists, or add the name there",
+  ],
+  [
+    "the request body",
+    (c) => c.request.body,
+    "the body is recorded verbatim; keep the credential out of it, e.g. in a header",
+  ],
+  [
+    "the response",
+    (c) => c.response,
+    "the upstream echoed a credential; record against an endpoint or key that does not",
+  ],
+];
+
 export function assertNoLeakedSecrets(cassette: CassetteV1): void {
   const serialized = JSON.stringify(cassette);
   for (const pattern of API_KEY_PATTERNS) {
-    const m = serialized.match(pattern);
-    if (m) {
-      throw new Error(
-        `cassette appears to contain an unredacted secret matching ${pattern.source}; ` +
-          `refusing to write. Update redactHeaders() and re-record.`,
-      );
-    }
+    if (!pattern.test(serialized)) continue;
+    const found = LEAK_LOCATIONS.find(([, part]) => pattern.test(JSON.stringify(part(cassette)) ?? ""));
+    const where = found ? ` in ${found[0]}` : "";
+    const advice = found ? ` ${found[2]}, then re-record.` : " Remove it, then re-record.";
+    throw new Error(
+      `cassette appears to contain an unredacted secret matching ${pattern.source}${where}; ` +
+        `refusing to write.${advice}`,
+    );
   }
 }

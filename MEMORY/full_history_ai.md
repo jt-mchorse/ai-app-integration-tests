@@ -1640,3 +1640,22 @@ context_for_next_session:
   - MERGE_ORDER_146_148_149_ALL_BUMP_THE_README_COUNT_LINE_recount_on_each
 followups: []
 ---
+
+---
+session: 2026-10-05T09:13Z
+duration_min: 2   # computed: started 09:11Z -> 09:13Z
+issue: 151
+branch: session/2026-10-05-0912-issue-151
+focus: THE_LEAK_SCANNER_TOLD_EVERY_REFUSAL_TO_UPDATE_redactHeaders_WHICH_CANNOT_REACH_A_URL_OR_BODY_SECRET
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 5
+  suite: "622 -> 627 vitest (36 files), README count checked locally; lint, tsc clean"
+decisions_made: []
+measured: "4 of 5 location arms red against main's message; existing 21 scanner rows unchanged"
+context_for_next_session:
+  - RUN_THE_HINT_FOUND_IT_a_refusal_message_must_name_where_and_advice_that_works_there
+  - MERGE_ORDER_146_148_150_152_ALL_BUMP_README_COUNT_RECOUNT_EACH
+followups: []
+---

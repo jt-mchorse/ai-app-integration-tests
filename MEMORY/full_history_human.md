@@ -1586,3 +1586,11 @@ installs them first when they're missing, and its "how to install" hint
 includes that step. A test runs the real script with fake npm commands to
 check the order. The architecture doc's dev-server command also gained the
 replay setting it needs to run without an API key.
+
+## 2026-10-05 — the leak scanner says where the secret is (#151)
+
+When the recorder refuses to save a cassette containing a credential, it told
+you to update `redactHeaders()`. That only helps for headers, and only if you
+edit the library. A key in the URL or request body stayed put no matter what.
+The message now says whether the key is in the URL, headers, body or response,
+and what to change for that case: for a URL key, send it as a header instead.
