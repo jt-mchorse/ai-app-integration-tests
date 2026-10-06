@@ -1553,3 +1553,14 @@ back as an empty string, which the recorder then re-sent as a body on a GET,
 and fetch rejects that. The same request also hashed differently from
 `fetch(url)`, so it missed its cassette on replay. A request with no body is
 now treated as having no body. 5 new tests against a real local server.
+
+## 2026-10-05 — binary request bodies reach the API intact (#145)
+
+When a request was passed as a `Request` object carrying binary data, the
+recorder re-sent it to the real API as a decoded string. Every byte that isn't
+valid text became a replacement character, so the API received corrupted data,
+and the cassette saved the answer to a request nobody made. An earlier fix
+(#93) had handled this for the other way of passing a body and believed this
+path was safe. The recorder now lets the `Request` carry its own unread body.
+One older test had a fake upstream that only looked where the bug put the body,
+so it was changed to read what a real `fetch` sends.
