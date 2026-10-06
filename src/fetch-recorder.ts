@@ -410,7 +410,7 @@ export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
       return upstream(input, init);
     }
 
-    const { normalized, bodyText } = await normalizeRequest(input, init);
+    const { normalized } = await normalizeRequest(input, init);
     const requestHash = hashRequest(normalized);
 
     // Re-issue the original request to upstream, forwarding the caller's own
@@ -432,11 +432,19 @@ export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
     // faithfully recorded the response to a request the caller never made
     // (#93). A URLSearchParams or Blob body also lost the `Content-Type` fetch
     // sets automatically for it and does not set for a string.
+    //
+    // #93 kept `bodyText` as the fallback for a `Request` input, calling it
+    // "exactly the right fallback". It was #93's own defect by another road:
+    // `bodyText` is the UTF-8 *decoding*, so a Request carrying binary bytes
+    // went upstream with every non-UTF-8 byte replaced by U+FFFD (#145). No
+    // fallback is needed -- `normalizeRequest` reads from `input.clone()`, so the
+    // Request's own body is still unread and travels with `input`. `body` is
+    // left out of `upstreamInit` unless the caller passed one.
     const upstreamInit: RequestInit = {
       ...init,
       method: normalized.method,
-      body: init?.body ?? bodyText ?? undefined,
     };
+    if (init?.body !== undefined) upstreamInit.body = init.body;
     const liveResponse = await upstream(input, upstreamInit);
 
     const contentType = liveResponse.headers.get("content-type") ?? "";
