@@ -1594,3 +1594,12 @@ you to update `redactHeaders()`. That only helps for headers, and only if you
 edit the library. A key in the URL or request body stayed put no matter what.
 The message now says whether the key is in the URL, headers, body or response,
 and what to change for that case: for a URL key, send it as a header instead.
+
+## 2026-10-06 — waitFor's deadline covers a predicate that never answers (#157)
+
+`waitFor` checked its deadline only between polls. A check that never
+finished, such as Playwright waiting for an element that never appears, which
+is the toolkit's own documented example, never produced the promised timeout
+error, and a slow check overran the deadline by its own length. A pending
+check now races the deadline, and the timeout error still carries the last
+value a check returned.

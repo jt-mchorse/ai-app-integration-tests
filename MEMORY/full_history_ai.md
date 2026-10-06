@@ -1659,3 +1659,22 @@ context_for_next_session:
   - MERGE_ORDER_146_148_150_152_ALL_BUMP_README_COUNT_RECOUNT_EACH
 followups: []
 ---
+
+---
+session: 2026-10-06T09:17Z
+duration_min: 1   # computed: plan comment 09:16:51Z -> 09:17Z (date -u); the fix was drafted from ~09:14Z before filing
+issue: 157
+branch: session/2026-10-06-0916-issue-157
+focus: waitFor_AWAITED_THE_PREDICATE_WITH_NOTHING_RACING_IT_a_never_settling_predicate_never_timed_out_and_a_slow_one_overshot_400_vs_500_to_860ms
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 5
+  suite: "651 -> 656 (README 656/40); lint, typecheck clean"
+decisions_made: []
+measured: "revert probe: 4 of 5 red (2 hang to the 4 s test timeout, slow one at 862 ms, one unhandled rejection), the in-time control green."
+context_for_next_session:
+  - A_DEADLINE_RACE_MUST_NOT_USE_AN_INJECTABLE_FAKE_SLEEP_it_advances_the_fake_clock_when_CALLED_and_spends_the_budget_even_when_the_predicate_wins
+  - MERGE_NOTE_154_AND_158_BOTH_MOVE_THE_README_COUNT_LINE_recount_the_second
+followups: []
+---
