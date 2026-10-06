@@ -445,6 +445,18 @@ export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
       method: normalized.method,
     };
     if (init?.body !== undefined) upstreamInit.body = init.body;
+    // Refuse a secret the REQUEST already shows before sending it (#159). The
+    // scan below runs after the live call, so a key in the URL, an unredacted
+    // header or the body cost a real (billed, side-effecting) request on every
+    // attempt before the recording was refused. Same scanner, same message;
+    // a secret only the response carries is still caught after the call.
+    assertNoLeakedSecrets({
+      schema_version: "1",
+      request_hash: requestHash,
+      request: normalized,
+      response: { kind: "non_streaming", status: 0, headers: {}, body: "" },
+      recorded_at: "",
+    });
     const liveResponse = await upstream(input, upstreamInit);
 
     const contentType = liveResponse.headers.get("content-type") ?? "";
