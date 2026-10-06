@@ -1594,3 +1594,11 @@ you to update `redactHeaders()`. That only helps for headers, and only if you
 edit the library. A key in the URL or request body stayed put no matter what.
 The message now says whether the key is in the URL, headers, body or response,
 and what to change for that case: for a URL key, send it as a header instead.
+
+## 2026-10-06 — the recorder refuses a leaked key before calling the API (#159)
+
+The recorder refuses to save a recording that contains an API key. When the
+key was in the request itself (in the URL, a header or the body), it still
+made the real API call first, then refused, and did so again on every retry.
+The request is now checked before anything is sent; keys that only show up
+in the response are still caught afterwards.
