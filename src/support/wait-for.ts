@@ -48,6 +48,16 @@ function stringify(value: unknown): string {
   }
 }
 
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return (
+    (typeof value === "object" || typeof value === "function") &&
+    value !== null &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
+}
+
+const DEADLINE: unique symbol = Symbol("waitFor deadline");
+
 const defaultSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -80,7 +90,34 @@ export async function waitFor<T>(
   // First call happens immediately so the predicate's first observation
   // is at elapsed=0; this matters when the caller computes off-clock.
   while (true) {
-    lastValue = (await predicate()) as Awaited<T>;
+    const polled = predicate();
+    if (isThenable(polled)) {
+      // The deadline covers the predicate too (#157). It used to be awaited
+      // with nothing racing it, so a predicate that never settled -- a
+      // Playwright `textContent()` still waiting for its element -- never
+      // reached `WaitTimeoutError`, and a slow one overshot the deadline by
+      // its own duration. The race uses its own timer, not the injectable
+      // `sleep`: a test's fake `sleep` advances its fake clock when CALLED, so
+      // racing it would spend the whole budget even when the predicate wins.
+      const remaining = Math.max(0, options.timeoutMs - (now() - start));
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const deadline = new Promise<typeof DEADLINE>((resolve) => {
+        timer = setTimeout(() => resolve(DEADLINE), remaining);
+      });
+      const pending = Promise.resolve(polled);
+      pending.catch(() => {}); // a rejection after a timeout is not unhandled
+      try {
+        const winner = await Promise.race([pending, deadline]);
+        if (winner === DEADLINE) {
+          throw new WaitTimeoutError(options.label, now() - start, lastValue);
+        }
+        lastValue = winner as Awaited<T>;
+      } finally {
+        clearTimeout(timer);
+      }
+    } else {
+      lastValue = polled as Awaited<T>;
+    }
     const elapsed = now() - start;
     options.onPoll?.({ elapsedMs: elapsed, value: lastValue });
     if (lastValue) return lastValue;
