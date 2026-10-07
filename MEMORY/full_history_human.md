@@ -1595,6 +1595,18 @@ edit the library. A key in the URL or request body stayed put no matter what.
 The message now says whether the key is in the URL, headers, body or response,
 and what to change for that case: for a URL key, send it as a header instead.
 
+## 2026-10-06 — the demo script is hermetic whatever the shell exports (#153)
+
+The demo script promises no API key, no network and no changes to committed
+files. Its first section runs a test that picks its mode from the
+`ANTHROPIC_TEST_MODE` variable, and that test's own comments tell people to
+export the variable when re-recording. With "record" left exported, running
+the demo overwrote the committed recording it replays; with "live" it called
+the real API. The first section now forces replay mode, the same way the second
+section already did. The third section now refuses to run when another server
+is already on its port, because Playwright would have tested that server
+instead of the stubbed one.
+
 ## 2026-10-06 — the streaming e2e test records what it checks (#155)
 
 The long-stream browser test checked that the page showed its "streaming"

@@ -1661,6 +1661,26 @@ followups: []
 ---
 
 ---
+session: 2026-10-06T07:59Z
+duration_min: 2   # computed: plan comment 07:57:35Z -> 07:59Z (date -u); reproduced firsthand from ~07:56Z after a sweep agent's report
+issue: 153
+branch: session/2026-10-06-0757-issue-153
+focus: capture_demo_SURFACE_1_INHERITED_ANTHROPIC_TEST_MODE_record_REWROTE_THE_COMMITTED_CASSETTE_live_CALLED_THE_API_and_surface_3_could_reuse_a_server_on_3100
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 3
+  suite: "651 -> 654 green (README updated); lint, typecheck clean"
+decisions_made: []
+measured: "fetch trap via NODE_OPTIONS: replay 0 calls; live 1 call; record 1 call AND fixtures/a154fc0b...json rewritten with the trap's 401. Fixed: 0 calls, cassette byte-identical, exit 0 for both. Revert probe: 3 of 3 red, tree clean (finally restores the cassette)."
+context_for_next_session:
+  - A_HERMETIC_CLAIM_IS_PER_SURFACE_surface_2_PINNED_ITS_MODE_AND_surface_1_DID_NOT_check_every_child_that_reads_the_env
+  - A_TEST_THAT_CAN_DIRTY_A_COMMITTED_FIXTURE_ON_RED_MUST_RESTORE_IT_IN_finally_OR_THE_REVERT_PROBE_LEAVES_THE_TREE_DIRTY
+  - RESTORED_THE_FIXTURE_WITH_git_show_HEAD_path_GREATER_THAN_path_NOT_git_checkout
+followups: []
+---
+
+---
 session: 2026-10-06T08:12Z
 duration_min: 1   # computed: plan comment 08:11:09Z -> 08:12Z (date -u); forced repro from ~08:09Z after a sweep agent flagged it as latent
 issue: 155
