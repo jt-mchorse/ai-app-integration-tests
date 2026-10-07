@@ -1595,6 +1595,29 @@ edit the library. A key in the URL or request body stayed put no matter what.
 The message now says whether the key is in the URL, headers, body or response,
 and what to change for that case: for a URL key, send it as a header instead.
 
+## 2026-10-06 — the demo script is hermetic whatever the shell exports (#153)
+
+The demo script promises no API key, no network and no changes to committed
+files. Its first section runs a test that picks its mode from the
+`ANTHROPIC_TEST_MODE` variable, and that test's own comments tell people to
+export the variable when re-recording. With "record" left exported, running
+the demo overwrote the committed recording it replays; with "live" it called
+the real API. The first section now forces replay mode, the same way the second
+section already did. The third section now refuses to run when another server
+is already on its port, because Playwright would have tested that server
+instead of the stubbed one.
+
+## 2026-10-06 — the streaming e2e test records what it checks (#155)
+
+The long-stream browser test checked that the page showed its "streaming"
+state by polling for that text. The state is visible for about 0.4 seconds,
+and Playwright's polling looks only every half second after the first few
+checks, so the test passed only because the state happened to appear early.
+Adding 0.3 seconds of server latency made it fail. The test now records every
+state the page shows from before the click and checks the recorded order
+afterwards. It passed at every latency I tried, and it still fails when the
+page skips the streaming state.
+
 ## 2026-10-06 — waitFor's deadline covers a predicate that never answers (#157)
 
 `waitFor` checked its deadline only between polls. A check that never
