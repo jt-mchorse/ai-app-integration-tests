@@ -41,8 +41,12 @@ const response = await withRetryBudget(
 - The classifier decides per-error whether to retry. Hard errors
   short-circuit immediately; flake errors consume the budget.
 - The default classifier treats `AbortError`, `TimeoutError`,
-  `ECONNRESET` / `ECONNREFUSED` / `ETIMEDOUT` / `fetch failed`, and HTTP
-  429 + 5xx as flake. Everything else is hard.
+  `ECONNRESET` / `ECONNREFUSED` / `ETIMEDOUT` / `ENOTFOUND` / `fetch failed`
+  (in the message or as a `code`), an SDK `APIConnectionError` (including its
+  timeout subclass), and HTTP 429 + 5xx as flake. It checks the error and each
+  error on its `cause` chain, because SDKs wrap the network failure: the
+  Anthropic SDK's "Connection error." carries `fetch failed` only on `.cause`
+  (#163). A 4xx is hard at the level it appears. Everything else is hard.
 - Budget exhaustion throws `RetryBudgetExhaustedError` with the
   attempt count and the last underlying error.
 - Backoff is `backoffMs × backoffMultiplier^(attempt-1)`.

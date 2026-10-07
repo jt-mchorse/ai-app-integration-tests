@@ -203,7 +203,7 @@ The pages are client components driving `fetch` against their sibling
 are exported functions — tests import them directly and call with a
 synthetic `Request`, no Next.js server needed.
 
-Six vitest suites in `example-app/test/`:
+Seven vitest suites in `example-app/test/`:
 
 - **`error-route.test.ts`** — no Anthropic call at all (validation +
   synthetic `shape` paths return early). 4 tests.
@@ -223,6 +223,10 @@ Six vitest suites in `example-app/test/`:
   running against the live SDK (#101). 24 tests.
 - **`route-body-shape.test.ts`** — every route answers a non-object JSON
   body with its own 400, not a 500 (#135). 25 tests.
+- **`retry-sdk-connection.test.ts`** — the harness's `withRetryBudget`
+  around the real Anthropic SDK, with its own retries off: a refused port and a
+  server that never answers are retried to the budget, a 400 is not (#163).
+  3 tests.
 
 Run locally:
 
