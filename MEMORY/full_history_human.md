@@ -1652,3 +1652,10 @@ refused connection or a timeout was treated as a hard failure and never
 retried. The rules now look through the wrapped causes and recognise the SDK's
 connection-error class. A new test drives the real SDK against a refused port
 and a silent server and sees all three budgeted attempts.
+## 2026-10-07 — the similarity check handles accents and Indic scripts (#165)
+
+The semantic-similarity assertion treated accent and vowel marks as
+punctuation. Two unrelated Hindi words ("book" and "scribe") came out as the
+same three consonants and scored a perfect match, and an accented word typed
+two ways that look identical scored only 0.5. Marks now stay part of their
+word, and text is normalised first, so both cases behave correctly.
