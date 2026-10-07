@@ -37,14 +37,22 @@ export interface SemanticAssertOptions {
   label?: string;
 }
 
-// Pure tokenizer: lowercase, strip punctuation, split on whitespace,
-// drop stopwords. Exposed so callers can apply the same normalization
-// when computing their own diagnostics.
+// Pure tokenizer: NFC-normalize, lowercase, strip punctuation, split on
+// whitespace, drop stopwords. Exposed so callers can apply the same
+// normalization when computing their own diagnostics.
+//
+// Combining marks (\p{M}) are part of a word, not punctuation (#165). The
+// class used to be [^\p{L}\p{N}\s], which turned every mark into a space: in
+// Devanagari the vowel signs are marks, so "किताब" (book) and "कातिब" (scribe)
+// both became ["क", "त", "ब"] and scored a perfect 1.0, a false pass. And
+// NFC first, so the two encodings of one rendered word are one token:
+// "café" (NFC) and "cafe\u0301" (NFD) scored 0.5 and failed at the default 0.6.
 export function tokenize(text: string, stopwords?: ReadonlySet<string>): string[] {
   const stops = stopwords ?? DEFAULT_STOPWORDS;
   return text
+    .normalize("NFC")
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
     .split(/\s+/)
     .filter((tok) => tok.length > 0 && !stops.has(tok));
 }
