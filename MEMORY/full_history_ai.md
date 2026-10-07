@@ -1736,3 +1736,22 @@ context_for_next_session:
   - MERGE_NOTE_154_158_160_ALL_MOVE_THE_README_COUNT_LINE
 followups: []
 ---
+
+---
+session: 2026-10-06T09:21Z
+duration_min: 1   # computed: plan comment 09:20:29Z -> 09:21Z (date -u)
+issue: 161
+branch: session/2026-10-06-0920-issue-161
+focus: THE_DOCUMENTED_RE_RECORD_SENT_THE_TESTS_HARDCODED_FAKE_KEY_got_a_401_and_wrote_it_over_the_committed_cassette
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 1
+  suite: "651 -> 652 (README 652/40); lint, typecheck clean"
+decisions_made: []
+measured: "record-mode subprocess under a fetch trap: fixed sends the env key; main sends the hardcoded fake (revert probe red). Cassette byte-identical after both."
+context_for_next_session:
+  - RUN_THE_DOCUMENTED_MAINTENANCE_COMMAND_not_just_the_demo_a_re_record_path_nobody_runs_rots_like_any_script
+  - FOUR_aiapp_PRS_TONIGHT_MOVE_THE_README_COUNT_LINE_154_158_160_162_merge_serially_and_recount
+followups: []
+---

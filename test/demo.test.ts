@@ -29,7 +29,13 @@ describe("demo: replay an Anthropic /v1/messages cassette", () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-api-key": "sk-ant-test-key-do-not-use-1234567890abcdef",
+        // The operator's key when one is set, so the documented re-record
+        // (`ANTHROPIC_TEST_MODE=record ANTHROPIC_API_KEY=sk-... npm test --
+        // demo`) sends it: this was always the fake key, so a re-record got a
+        // 401 and wrote it over the committed cassette (#161). Replay never
+        // sends a request, and the request hash excludes headers, so the
+        // fallback keeps CI exactly as it was.
+        "x-api-key": process.env.ANTHROPIC_API_KEY || "sk-ant-test-key-do-not-use-1234567890abcdef",
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({

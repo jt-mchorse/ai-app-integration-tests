@@ -1634,3 +1634,12 @@ key was in the request itself (in the URL, a header or the body), it still
 made the real API call first, then refused, and did so again on every retry.
 The request is now checked before anything is sent; keys that only show up
 in the response are still caught afterwards.
+
+## 2026-10-06 — re-recording the demo uses your key (#161)
+
+The documented way to re-record the demo recording is to run the demo test
+with `ANTHROPIC_TEST_MODE=record` and your API key. The test ignored the key
+and always sent a placeholder, so the real API answered "unauthorized" and
+that answer was saved over the committed recording, breaking the test until
+the file was restored from git. The test now sends the key from the
+environment when one is set; normal replay runs are unaffected.
