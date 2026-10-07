@@ -1717,3 +1717,22 @@ context_for_next_session:
   - MERGE_NOTE_154_AND_158_BOTH_MOVE_THE_README_COUNT_LINE_recount_the_second
 followups: []
 ---
+
+---
+session: 2026-10-06T09:19Z
+duration_min: 1   # computed: plan comment 09:18:44Z -> 09:19Z (date -u)
+issue: 159
+branch: session/2026-10-06-0918-issue-159
+focus: recorder_REFUSED_A_REQUEST_SIDE_SECRET_ONLY_AFTER_THE_LIVE_UPSTREAM_CALL_every_attempt_paid_and_performed_the_request
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 5
+  suite: "651 -> 656 (README 656/40); lint, typecheck clean"
+decisions_made: []
+measured: "counting stub: fixed 0 upstream calls and 0 writes over 3 attempts per location; revert probe: exactly the 3 request-side arms red, response-side + clean controls green."
+context_for_next_session:
+  - A_VALIDATION_THAT_NEEDS_ONLY_THE_REQUEST_BELONGS_BEFORE_THE_PAID_CALL_sibling_of_leh_301_in_a_library
+  - MERGE_NOTE_154_158_160_ALL_MOVE_THE_README_COUNT_LINE
+followups: []
+---
