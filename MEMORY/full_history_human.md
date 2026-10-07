@@ -1617,3 +1617,12 @@ Adding 0.3 seconds of server latency made it fail. The test now records every
 state the page shows from before the click and checks the recorded order
 afterwards. It passed at every latency I tried, and it still fails when the
 page skips the streaming state.
+
+## 2026-10-06 — waitFor's deadline covers a predicate that never answers (#157)
+
+`waitFor` checked its deadline only between polls. A check that never
+finished, such as Playwright waiting for an element that never appears, which
+is the toolkit's own documented example, never produced the promised timeout
+error, and a slow check overran the deadline by its own length. A pending
+check now races the deadline, and the timeout error still carries the last
+value a check returned.
