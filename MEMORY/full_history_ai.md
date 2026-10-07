@@ -1755,3 +1755,23 @@ context_for_next_session:
   - FOUR_aiapp_PRS_TONIGHT_MOVE_THE_README_COUNT_LINE_154_158_160_162_merge_serially_and_recount
 followups: []
 ---
+
+---
+session: 2026-10-07T07:59Z
+duration_min: 4
+issue: 163
+branch: session/2026-10-07-aiapp-retry-cause
+focus: defaultClassify_NEVER_RETRIED_THE_ANTHROPIC_SDKS_CONNECTION_ERRORS_THE_CAUSE_WAS_ON_cause_AND_THE_CLASS_NAME_WAS_IGNORED
+phase: shipped
+delta:
+  files_changed: 6
+  tests_added: 12
+  suite: "root 674/44, example-app 81/7 (both count checks pass); tsc both, eslint clean"
+decisions_made: []
+measured: "real SDK 0.96 maxRetries 0: main 1 call each for refused and silent; fix 3. Revert: main 4+2 red, no cause walk 2+0, no class check 2+1."
+context_for_next_session:
+  - A_CLASSIFIER_THAT_READS_ONLY_THE_OUTER_ERROR_MISSES_EVERY_WRAPPING_SDK_sweep_other_repos_for_retry_classifiers_and_error_mappers_that_ignore_cause
+  - GOTCHA_ZSH_set_DASH_DASH_n_DOES_NOT_WORD_SPLIT_it_mangled_the_README_count_line_use_awk_or_python_to_split
+  - GOTCHA_example_app_next_build_TYPECHECKS_TEST_FILES_run_its_tsc_before_pushing
+followups: []
+---
