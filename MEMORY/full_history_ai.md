@@ -1661,6 +1661,64 @@ followups: []
 ---
 
 ---
+session: 2026-10-06T07:59Z
+duration_min: 2   # computed: plan comment 07:57:35Z -> 07:59Z (date -u); reproduced firsthand from ~07:56Z after a sweep agent's report
+issue: 153
+branch: session/2026-10-06-0757-issue-153
+focus: capture_demo_SURFACE_1_INHERITED_ANTHROPIC_TEST_MODE_record_REWROTE_THE_COMMITTED_CASSETTE_live_CALLED_THE_API_and_surface_3_could_reuse_a_server_on_3100
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 3
+  suite: "651 -> 654 green (README updated); lint, typecheck clean"
+decisions_made: []
+measured: "fetch trap via NODE_OPTIONS: replay 0 calls; live 1 call; record 1 call AND fixtures/a154fc0b...json rewritten with the trap's 401. Fixed: 0 calls, cassette byte-identical, exit 0 for both. Revert probe: 3 of 3 red, tree clean (finally restores the cassette)."
+context_for_next_session:
+  - A_HERMETIC_CLAIM_IS_PER_SURFACE_surface_2_PINNED_ITS_MODE_AND_surface_1_DID_NOT_check_every_child_that_reads_the_env
+  - A_TEST_THAT_CAN_DIRTY_A_COMMITTED_FIXTURE_ON_RED_MUST_RESTORE_IT_IN_finally_OR_THE_REVERT_PROBE_LEAVES_THE_TREE_DIRTY
+  - RESTORED_THE_FIXTURE_WITH_git_show_HEAD_path_GREATER_THAN_path_NOT_git_checkout
+followups: []
+---
+
+---
+session: 2026-10-06T08:12Z
+duration_min: 1   # computed: plan comment 08:11:09Z -> 08:12Z (date -u); forced repro from ~08:09Z after a sweep agent flagged it as latent
+issue: 155
+branch: session/2026-10-06-0811-issue-155
+focus: e2e_long_stream_POLLED_FOR_THE_400MS_streaming_PHASE_WITH_toHaveText_280MS_OF_EXTRA_LATENCY_MISSED_IT_now_a_MutationObserver_recording_and_a_forward_progression_assertion
+phase: shipped
+delta:
+  files_changed: 1
+  tests_added: 0
+  suite: "6 Playwright tests green 3 of 3; vitest unchanged"
+decisions_made: []
+measured: "injected latency on /api/streaming: main fails at 280 and 300 ms; fixed passes at 0/250/280/300/320/400. One-frame stream: fixed fails only on toContain(streaming), recorded idle,loading,done."
+context_for_next_session:
+  - SECOND_INSTANCE_TODAY_OF_POLLING_FOR_A_TRANSIENT_STATE_nextjs_148_and_this_RECORD_THEN_ASSERT
+  - EXACT_SEQUENCE_EQUALITY_WOULD_FLAKE_REACT_BATCHES_TWO_FRAMES_FROM_ONE_READ_INTO_ONE_COMMIT_the_one_frame_probe_skipped_first_token_ASSERT_FORWARD_ORDER_NOT_EVERY_STATE
+followups: []
+---
+
+---
+session: 2026-10-06T09:17Z
+duration_min: 1   # computed: plan comment 09:16:51Z -> 09:17Z (date -u); the fix was drafted from ~09:14Z before filing
+issue: 157
+branch: session/2026-10-06-0916-issue-157
+focus: waitFor_AWAITED_THE_PREDICATE_WITH_NOTHING_RACING_IT_a_never_settling_predicate_never_timed_out_and_a_slow_one_overshot_400_vs_500_to_860ms
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 5
+  suite: "651 -> 656 (README 656/40); lint, typecheck clean"
+decisions_made: []
+measured: "revert probe: 4 of 5 red (2 hang to the 4 s test timeout, slow one at 862 ms, one unhandled rejection), the in-time control green."
+context_for_next_session:
+  - A_DEADLINE_RACE_MUST_NOT_USE_AN_INJECTABLE_FAKE_SLEEP_it_advances_the_fake_clock_when_CALLED_and_spends_the_budget_even_when_the_predicate_wins
+  - MERGE_NOTE_154_AND_158_BOTH_MOVE_THE_README_COUNT_LINE_recount_the_second
+followups: []
+---
+
+---
 session: 2026-10-06T09:19Z
 duration_min: 1   # computed: plan comment 09:18:44Z -> 09:19Z (date -u)
 issue: 159

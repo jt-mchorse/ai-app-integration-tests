@@ -87,6 +87,9 @@ const finalText = await waitFor(
   with a real signal instead of "test timed out somewhere."
 - The final poll interval is capped to `timeoutMs - elapsed` so the
   deadline fires at the documented moment, not `intervalMs` past it.
+- The deadline also bounds a pending async predicate: one that never
+  settles, or settles late, ends in `WaitTimeoutError` at the deadline
+  carrying the last value a poll did return (#157).
 - `sleep` and `now` are injectable for hermetic unit tests.
 
 **Composes with retry budgets.** A `waitFor` timeout is a *hard* error
