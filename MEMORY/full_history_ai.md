@@ -1789,3 +1789,23 @@ context_for_next_session:
   - A_UNICODE_CHARACTER_CLASS_IS_A_SET_COUNT_ITS_MEMBERS_L_N_but_not_M_and_ask_which_scripts_live_in_the_missing_class
 followups: []
 ---
+
+---
+session: 2026-10-08T08:20Z
+duration_min: 20   # computed: issue filed ~08:20Z -> PR ~08:40Z (date -u)
+issue: 173
+branch: session/2026-10-08-issue-173
+focus: THE_RECORDER_READ_A_NON_STREAMING_RESPONSE_WITH_text_SO_A_BINARY_BODY_REACHED_THE_RECORD_MODE_CALLER_AND_EVERY_REPLAY_AS_U_FFFD_the_response_side_twin_of_D_015
+phase: shipped
+delta:
+  files_changed: 6
+  tests_added: 25
+  suite: "679 -> 704 vitest (46 files, README updated); lint, tsc, build clean"
+decisions_made: []
+measured: "upstream 89504e470d0a1a0aff00fe -> record caller and replay efbfbd504e...efbfbd00efbfbd on main; fixed: identical. Revert probes: full revert 20 red; replay not decoding base64 4; lenient decoder 8; BOM stripped 2; io guard dropped 5."
+context_for_next_session:
+  - A_FIX_ON_THE_REQUEST_SIDE_HAS_A_RESPONSE_SIDE_TWIN_D_015_never_looked_at_the_text_call_one_screen_below
+  - SSE_FRAMES_STILL_DECODE_AS_TEXT_BY_DESIGN_the_spec_makes_the_stream_UTF_8
+  - MERGE_NOTE_168_170_172_AND_THIS_ALL_MOVE_THE_README_COUNT_LINE_recount_each
+followups: []
+---

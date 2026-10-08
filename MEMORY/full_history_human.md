@@ -1659,3 +1659,13 @@ punctuation. Two unrelated Hindi words ("book" and "scribe") came out as the
 same three consonants and scored a perfect match, and an accented word typed
 two ways that look identical scored only 0.5. Marks now stay part of their
 word, and text is normalised first, so both cases behave correctly.
+
+## 2026-10-08 — binary responses survive recording (#173)
+
+The recorder promised to replay responses byte-for-byte, but it read every
+non-streaming response as text. Any byte that was not valid UTF-8, such as in
+an image or file download, was replaced with a placeholder character. Both the
+caller during recording and every later replay got the damaged bytes. The
+recorder now keeps the bytes: text responses are saved exactly as before, and
+anything else is saved as base64 and turned back into the original bytes on
+replay. This mirrors the fix made to request bodies in October (#147).
