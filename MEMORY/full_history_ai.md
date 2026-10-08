@@ -1789,3 +1789,21 @@ context_for_next_session:
   - A_UNICODE_CHARACTER_CLASS_IS_A_SET_COUNT_ITS_MEMBERS_L_N_but_not_M_and_ask_which_scripts_live_in_the_missing_class
 followups: []
 ---
+---
+session: 2026-10-08T07:50Z
+duration_min: 12
+issue: 169
+branch: session/2026-10-08-issue-169
+focus: check_readme_test_count_ENTRY_GUARD_COMPARED_import_meta_url_TO_A_HAND_BUILT_file_URL_OF_argv1_so_through_a_symlink_or_a_spaced_path_main_NEVER_RAN_AND_THE_GATE_EXITED_0
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 3
+  suite: "679 -> 682 / 46 files (README check passes); lint, typecheck clean"
+decisions_made: []
+measured: "main on macOS: node /tmp/<wt>/tools/check-readme-test-count.mjs /nonexistent.json -> no output, exit 0; same from a dir named 'a b' -> exit 0; /private/tmp real path -> ENOENT, exit 2. Revert probe 2 of 3 red (real-path control green). Neighbour pathToFileURL(argv[1]) without realpath: 1 red (symlink arm)."
+context_for_next_session:
+  - AN_ENTRY_GUARD_THAT_CAN_BE_FALSE_TURNS_A_GATE_INTO_A_SILENT_EXIT_0_sweep_other_repos_for_import_meta_url_EQUALS_file_argv1
+  - MERGE_NOTE_168_AND_170_BOTH_MOVE_THE_README_COUNT_LINE_second_to_merge_is_686_47
+followups: []
+---
