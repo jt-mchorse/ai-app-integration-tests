@@ -128,9 +128,12 @@ expectSemanticallySimilar(
 ```
 
 **Behavior.**
-- Tokenizes both strings: lowercase, strip punctuation, drop
-  stopwords. A small English seed list ships as default; pass
-  `stopwords` for non-English or domain-specific corpora.
+- Tokenizes both strings: NFC-normalize, lowercase, strip punctuation,
+  drop stopwords. Combining marks stay part of their word, so vowel
+  signs in Devanagari and other scripts are not stripped, and the NFC and
+  NFD spellings of one word are one token (#165). A small English seed
+  list ships as default; pass `stopwords` for non-English or
+  domain-specific corpora.
 - Computes Jaccard similarity (intersection / union) over the token
   sets.
 - Throws `SemanticMismatchError` with both texts + the computed

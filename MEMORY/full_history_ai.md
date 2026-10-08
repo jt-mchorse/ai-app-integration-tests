@@ -1773,5 +1773,19 @@ context_for_next_session:
   - A_CLASSIFIER_THAT_READS_ONLY_THE_OUTER_ERROR_MISSES_EVERY_WRAPPING_SDK_sweep_other_repos_for_retry_classifiers_and_error_mappers_that_ignore_cause
   - GOTCHA_ZSH_set_DASH_DASH_n_DOES_NOT_WORD_SPLIT_it_mangled_the_README_count_line_use_awk_or_python_to_split
   - GOTCHA_example_app_next_build_TYPECHECKS_TEST_FILES_run_its_tsc_before_pushing
+session: 2026-10-07T08:25Z
+duration_min: 5
+issue: 165
+branch: session/2026-10-07-aiapp-tokenize-marks
+focus: TOKENIZE_STRIPPED_COMBINING_MARKS_SO_DIFFERENT_DEVANAGARI_WORDS_SCORED_1_AND_NFC_NFD_FAILED
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 5
+  suite: "670 / 44 files (README check passes); tsc, eslint clean"
+decisions_made: []
+measured: "main: book/scribe 1.000, NFC/NFD 0.500. Revert main 4/5, no-NFC 1, no-\\p{M} 3."
+context_for_next_session:
+  - A_UNICODE_CHARACTER_CLASS_IS_A_SET_COUNT_ITS_MEMBERS_L_N_but_not_M_and_ask_which_scripts_live_in_the_missing_class
 followups: []
 ---
