@@ -8,6 +8,8 @@
 // returning so debugging starts with a real signal instead of "test
 // timed out somewhere."
 
+import { MAX_TIMER_MS } from "./retry-budget.js";
+
 export interface WaitForOptions<T> {
   timeoutMs: number;
   intervalMs: number;
@@ -71,8 +73,10 @@ export async function waitFor<T>(
 ): Promise<Awaited<T>> {
   // Finiteness guards reject NaN and +/-Infinity (which the sign-only checks
   // silently let through pre-#24). NaN makes every comparison false so the
-  // polling loop never times out; +Infinity hangs setTimeout until CI's outer
-  // timeout fires. Both failure modes were absorbed without diagnostic.
+  // polling loop never times out. +Infinity does not hang setTimeout -- Node
+  // clamps it, like every delay above 2**31-1 ms, to 1 ms (#97, #167) -- but
+  // it makes `elapsed >= timeoutMs` unreachable, so a sync predicate that
+  // never turns truthy polls forever.
   if (!Number.isFinite(options.timeoutMs) || options.timeoutMs < 0) {
     throw new RangeError(
       `timeoutMs must be a finite number >= 0, got ${options.timeoutMs}`,
@@ -99,10 +103,24 @@ export async function waitFor<T>(
       // its own duration. The race uses its own timer, not the injectable
       // `sleep`: a test's fake `sleep` advances its fake clock when CALLED, so
       // racing it would spend the whole budget even when the predicate wins.
+      //
+      // The timer is armed in chunks of at most MAX_TIMER_MS (#167). Node
+      // clamps any setTimeout delay above 2**31-1 ms to 1 ms, and `timeoutMs`
+      // is only bounded as finite, so `timeoutMs: Number.MAX_SAFE_INTEGER`
+      // fired this deadline after 1 ms and every async predicate slower than
+      // that threw WaitTimeoutError. Rejecting a large `timeoutMs` instead
+      // would break sync predicates, which never arm this timer and honour it.
       const remaining = Math.max(0, options.timeoutMs - (now() - start));
       let timer: ReturnType<typeof setTimeout> | undefined;
       const deadline = new Promise<typeof DEADLINE>((resolve) => {
-        timer = setTimeout(() => resolve(DEADLINE), remaining);
+        const arm = (left: number): void => {
+          const chunk = Math.min(left, MAX_TIMER_MS);
+          timer = setTimeout(
+            () => (left > chunk ? arm(left - chunk) : resolve(DEADLINE)),
+            chunk,
+          );
+        };
+        arm(remaining);
       });
       const pending = Promise.resolve(polled);
       pending.catch(() => {}); // a rejection after a timeout is not unhandled
