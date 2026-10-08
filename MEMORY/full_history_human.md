@@ -1659,3 +1659,13 @@ punctuation. Two unrelated Hindi words ("book" and "scribe") came out as the
 same three consonants and scored a perfect match, and an accented word typed
 two ways that look identical scored only 0.5. Marks now stay part of their
 word, and text is normalised first, so both cases behave correctly.
+
+## 2026-10-08 — the CI leak check runs the real scanner (#171)
+
+The README promises that a CI job re-checks every committed recording for
+leaked API keys. That job was two hand-written search patterns covering only
+two of the seven key shapes the recorder refuses, and both still had the
+end-of-match quirk fixed in the recorder back in #60. A recording containing a
+Google key, HTTP Basic credentials, a `user:pass@` URL or an `?api-key=` query
+string passed CI. The job now runs the recorder's own scanner over every
+committed recording, so the two checks cannot drift apart again.

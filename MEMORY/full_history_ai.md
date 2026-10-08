@@ -1789,3 +1789,22 @@ context_for_next_session:
   - A_UNICODE_CHARACTER_CLASS_IS_A_SET_COUNT_ITS_MEMBERS_L_N_but_not_M_and_ask_which_scripts_live_in_the_missing_class
 followups: []
 ---
+
+---
+session: 2026-10-08T07:55Z
+duration_min: 15   # computed: plan comment ~07:58Z -> 08:10Z (date -u); hunt from ~07:50Z
+issue: 171
+branch: session/2026-10-08-issue-171
+focus: THE_no_leaked_secrets_CI_JOB_WAS_TWO_GREPS_COVERING_2_OF_7_SCANNER_PATTERNS_WITH_THE_TRAILING_b_60_REMOVED_now_it_runs_assertNoLeakedSecrets_itself
+phase: shipped
+delta:
+  files_changed: 5
+  tests_added: 15
+  suite: "679 -> 694 vitest (46 files, README updated); lint, tsc, build clean"
+decisions_made: []
+measured: "7 synthetic cassettes: old grep job caught 1 (plain sk-), recorder scanner refuses 7. Revert probes: main's ci.yml 3 red (workflow arms); script re-implementing the old two regexes 7 red (6 shapes + nested); fixed 15/15 green."
+context_for_next_session:
+  - A_SECOND_LAYER_THAT_RESTATES_THE_FIRST_LAYERS_RULE_DRIFTS_the_60_fix_and_the_113_pattern_never_reached_the_CI_copy_import_the_rule
+  - MERGE_NOTE_168_170_AND_THIS_ALL_MOVE_THE_README_COUNT_LINE_recount_whichever_merges_later
+followups: []
+---
