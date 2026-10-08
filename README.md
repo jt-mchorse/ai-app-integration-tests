@@ -128,7 +128,8 @@ surfaces:
 - **`withRetryBudget(fn, policy)`** — bounded retries with a
   classifier callback so flaky errors retry but real bugs throw
   immediately. The default classifier treats network families +
-  429 + 5xx as flake.
+  429 + 5xx as flake, on the error and on its `cause` chain, so the
+  Anthropic SDK's wrapped `APIConnectionError` / timeout retry (#163).
 - **`waitFor(predicate, options)`** — time-bounded predicate
   polling with a documented label and the last-value attached to
   the timeout error.
@@ -153,14 +154,14 @@ const surfaced = await waitFor(() => readUiResponse(), { timeoutMs: 5000, interv
 ## Benchmarks / Results
 
 The relevant metric for this layer is "tests stay green and fast" —
-665 vitest tests run in a few seconds locally with zero network access
-(43 files, ~5.5 s on an M-series Mac); the 6 Playwright streaming tests
+674 vitest tests run in a few seconds locally with zero network access
+(44 files, ~5.5 s on an M-series Mac); the 6 Playwright streaming tests
 run in ~5 s (CI target: <60 s per the issue acceptance criteria,
 comfortably met).
 
 Those numbers are the **harness library's own** suite, at the repository
 root. CI runs a second vitest suite inside `example-app/` — the demo
-application the harness is pointed at — of 78 tests in 6 files
+application the harness is pointed at — of 81 tests in 7 files
 (`npm test --prefix example-app`, the `example-app` job). It is counted
 separately on purpose: the root count above is the harness's coverage, and
 mixing the application's tests into that number would overstate it. Stated here so

@@ -1643,3 +1643,12 @@ and always sent a placeholder, so the real API answered "unauthorized" and
 that answer was saved over the committed recording, breaking the test until
 the file was restored from git. The test now sends the key from the
 environment when one is set; normal replay runs are unaffected.
+
+## 2026-10-07 — the retry helper retries the Anthropic SDK's connection errors (#163)
+
+`withRetryBudget`'s default rules were supposed to retry network flakes, but
+the Anthropic SDK wraps them (the real cause sits one level down), so a
+refused connection or a timeout was treated as a hard failure and never
+retried. The rules now look through the wrapped causes and recognise the SDK's
+connection-error class. A new test drives the real SDK against a refused port
+and a silent server and sees all three budgeted attempts.

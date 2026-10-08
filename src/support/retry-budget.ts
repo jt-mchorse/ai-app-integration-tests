@@ -41,33 +41,58 @@ export const MAX_TIMER_MS = 2_147_483_647;
 const defaultSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-// Default classifier — treats four flake families as retryable:
+// Default classifier — treats these flake families as retryable:
 //   * AbortError, TimeoutError  (network or fetch timeout)
 //   * Errors with a numeric `status` field in 429 or 5xx
-//   * Errors whose message includes the word "ECONN..." or "fetch failed"
+//   * Errors whose message includes "ECONN...", "ETIMEDOUT", "ENOTFOUND" or
+//     "fetch failed", or whose string `code` is one of those
+//   * An SDK connection error: a class named `APIConnectionError` anywhere on
+//     the prototype chain (the Anthropic and OpenAI SDKs both use the name;
+//     their `APIConnectionTimeoutError` extends it)
+// and applies them to the error AND to each error on its `cause` chain (#163).
+// The SDKs wrap the network failure: the outer error is named "Error" with the
+// message "Connection error." or "Request timed out.", and "fetch failed" /
+// ECONNREFUSED live only on `.cause`. Reading the outer error alone classified
+// both as hard, so the documented default gave zero retries on the flakes it
+// exists to absorb. A numeric `status` is decided at the level it appears:
+// a 4xx is hard even if something below it was a network error.
 // Everything else is hard. The caller is expected to override when
 // their stack has a different convention.
+const NETWORK_MARKERS = ["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND"];
+const SDK_CONNECTION_CLASSES = new Set(["APIConnectionError"]);
+const MAX_CAUSE_DEPTH = 8;
+
+function classifyOne(err: object): FlakeClassification | null {
+  const e = err as { name?: unknown; message?: unknown; status?: unknown; code?: unknown };
+  if (typeof e.name === "string") {
+    if (e.name === "AbortError" || e.name === "TimeoutError") return "flake";
+  }
+  if (typeof e.status === "number") {
+    return e.status === 429 || (e.status >= 500 && e.status < 600) ? "flake" : "hard";
+  }
+  if (typeof e.code === "string" && NETWORK_MARKERS.includes(e.code)) return "flake";
+  if (typeof e.message === "string") {
+    const m = e.message;
+    if (NETWORK_MARKERS.some((marker) => m.includes(marker)) || m.toLowerCase().includes("fetch failed")) {
+      return "flake";
+    }
+  }
+  for (let proto = Object.getPrototypeOf(err); proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto)) {
+    const ctor = (proto as { constructor?: { name?: unknown } }).constructor;
+    if (ctor && typeof ctor.name === "string" && SDK_CONNECTION_CLASSES.has(ctor.name)) return "flake";
+  }
+  return null;
+}
+
 export function defaultClassify(err: unknown): FlakeClassification {
-  if (err && typeof err === "object") {
-    const e = err as { name?: unknown; message?: unknown; status?: unknown };
-    if (typeof e.name === "string") {
-      if (e.name === "AbortError" || e.name === "TimeoutError") return "flake";
-    }
-    if (typeof e.status === "number") {
-      if (e.status === 429 || (e.status >= 500 && e.status < 600)) return "flake";
-    }
-    if (typeof e.message === "string") {
-      const m = e.message;
-      if (
-        m.includes("ECONNRESET") ||
-        m.includes("ECONNREFUSED") ||
-        m.includes("ETIMEDOUT") ||
-        m.includes("ENOTFOUND") ||
-        m.toLowerCase().includes("fetch failed")
-      ) {
-        return "flake";
-      }
-    }
+  const seen = new Set<object>();
+  let current: unknown = err;
+  for (let depth = 0; depth < MAX_CAUSE_DEPTH; depth++) {
+    if (!current || typeof current !== "object" || seen.has(current)) break;
+    seen.add(current);
+    const verdict = classifyOne(current);
+    if (verdict !== null) return verdict;
+    current = (current as { cause?: unknown }).cause;
   }
   return "hard";
 }
