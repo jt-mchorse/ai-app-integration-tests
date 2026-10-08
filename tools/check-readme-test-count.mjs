@@ -43,7 +43,7 @@
 //   1 — drift
 //   2 — bad input (missing/unparseable report, no count in the README)
 //
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -409,6 +409,25 @@ function main(argv) {
   return code;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+/**
+ * Whether this file is the script node was asked to run (#169).
+ *
+ * This used to be `import.meta.url === \`file://${process.argv[1]}\``, a
+ * comparison between two different spellings of the path: `import.meta.url` is
+ * the REALPATH, percent-encoded, while `argv[1]` is the path as typed. Through
+ * a symlink (macOS `/tmp` is one) or under a directory whose name has a space,
+ * the two never matched, `main()` never ran, and the gate exited 0 without
+ * reading a report. Compare resolved file paths instead.
+ */
+export function isInvokedDirectly(argv1 = process.argv[1], moduleUrl = import.meta.url) {
+  if (!argv1) return false;
+  try {
+    return realpathSync(argv1) === realpathSync(fileURLToPath(moduleUrl));
+  } catch {
+    return false;
+  }
+}
+
+if (isInvokedDirectly()) {
   process.exit(main(process.argv.slice(2)));
 }
