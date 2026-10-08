@@ -1789,3 +1789,21 @@ context_for_next_session:
   - A_UNICODE_CHARACTER_CLASS_IS_A_SET_COUNT_ITS_MEMBERS_L_N_but_not_M_and_ask_which_scripts_live_in_the_missing_class
 followups: []
 ---
+---
+session: 2026-10-08T07:35Z
+duration_min: 10
+issue: 167
+branch: session/2026-10-08-issue-167
+focus: waitFor_DEADLINE_TIMER_FROM_157_FED_timeoutMs_ALONE_TO_setTimeout_SO_A_timeoutMs_ABOVE_2_POW_31_MINUS_1_FIRED_AFTER_1MS_now_armed_in_MAX_TIMER_MS_chunks
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 4
+  suite: "679 -> 683 / 46 files (README check passes); lint, typecheck clean"
+decisions_made: []
+measured: "main: a 20 ms async predicate at timeoutMs 2147483648 and MAX_SAFE_INTEGER threw 'timed out after 1ms'; fixed returns ok. Revert probe 3 of 4 red (MAX_TIMER_MS control green). Neighbour cap-once-without-re-arm 1 red (the fake-timer full-deadline arm)."
+context_for_next_session:
+  - THE_2026_09_01_CLEAN_VERDICT_FOR_wait_for_WAS_SCOPED_TO_THE_ONE_setTimeout_THAT_EXISTED_THEN_157_ADDED_A_SECOND_FED_BY_ONE_SETTING_re_check_a_class_verdict_when_a_fix_adds_a_new_sink
+  - the_wait_for_guard_comment_still_said_Infinity_hangs_setTimeout_the_97_false_reason_corrected_here
+followups: []
+---

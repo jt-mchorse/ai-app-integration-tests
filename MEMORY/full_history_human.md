@@ -1659,3 +1659,13 @@ punctuation. Two unrelated Hindi words ("book" and "scribe") came out as the
 same three consonants and scored a perfect match, and an accented word typed
 two ways that look identical scored only 0.5. Marks now stay part of their
 word, and text is normalised first, so both cases behave correctly.
+
+## 2026-10-08 — very long waitFor timeouts no longer fire immediately (#167)
+
+Since #157, `waitFor` stops an async check that takes too long by setting a
+timer for the remaining time. Node cannot set a timer longer than about 24.8
+days; anything longer silently becomes 1 millisecond. So passing a huge
+timeout (for example `Number.MAX_SAFE_INTEGER`, meaning "let the test runner
+decide") made every async check fail instantly with "timed out after 1ms".
+The timer is now set in pieces of at most 24.8 days, so the timeout means
+what it says.
