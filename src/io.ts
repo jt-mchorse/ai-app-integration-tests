@@ -131,6 +131,12 @@ function assertValidResponse(response: unknown, requestHash: string): void {
     if (typeof response.body !== "string") {
       bad(`non_streaming response.body must be a string, got ${typeof response.body}`);
     }
+    // The replayer decodes only "base64" (#173); any other value would replay
+    // the stored text as if it were the bytes, which is the corruption #173
+    // removed, so it is refused here rather than served.
+    if (response.bodyEncoding !== undefined && response.bodyEncoding !== "base64") {
+      bad(`non_streaming response.bodyEncoding must be "base64" or absent, got ${JSON.stringify(response.bodyEncoding)}`);
+    }
   } else if (response.kind === "sse") {
     if (!Array.isArray(response.frames)) {
       bad(`sse response.frames must be an array, got ${response.frames === null ? "null" : typeof response.frames}`);

@@ -403,3 +403,11 @@ pinned against the previous code), and anything else hashes as its base64 under
 `bodyEncoding: "base64"`, folded into the hash like `"raw"` so no text or JSON
 body spelling the same base64 can collide. Only non-UTF-8 binary cassettes are
 re-keyed, and those were already ambiguous.
+
+The response side had the same decode (#173): a non-streaming response was
+read with `.text()`, so a binary download reached the record-mode caller with
+U+FFFD in place of every invalid byte, and every replay served that. The caller
+now gets the upstream's bytes, and the cassette stores a UTF-8 body as its text
+(unchanged, BOM kept) or anything else as base64 under
+`response.bodyEncoding: "base64"`, which the replayer decodes back to bytes.
+Nothing is hashed from a response, so no cassette is re-keyed.
