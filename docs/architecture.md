@@ -141,6 +141,10 @@ Two checks run before any cassette is written:
 
 The CI job `no-leaked-secrets` re-runs the body scan against every
 committed cassette so a new leak in any future cassette fails the build.
+It imports the scanner rather than restating it
+(`scripts/scan-committed-cassettes.ts`, #171): it used to be two `grep`
+lines covering 2 of the patterns, and an `AIza`, `Basic`, userinfo or
+`?api-key=` cassette passed it.
 
 ## Missing cassette = loud failure (D-005)
 
