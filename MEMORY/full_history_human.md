@@ -1669,3 +1669,13 @@ timeout (for example `Number.MAX_SAFE_INTEGER`, meaning "let the test runner
 decide") made every async check fail instantly with "timed out after 1ms".
 The timer is now set in pieces of at most 24.8 days, so the timeout means
 what it says.
+
+## 2026-10-08 — the README test-count check can no longer pass by not running (#169)
+
+The script that checks the README's test count only ran its checks when it
+recognised itself as the program being run, and it did that by comparing two
+different spellings of its own path. When the repository sat under a folder
+with a space in its name, or was reached through a symlink (macOS's `/tmp` is
+one), the spellings differed, the script did nothing at all, and it reported
+success even for a report file that did not exist. It now compares the real
+file paths, so it always runs.
