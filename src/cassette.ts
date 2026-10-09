@@ -46,6 +46,13 @@ export type RecordedResponse =
       status: number;
       headers: Record<string, string>;
       body: string;
+      /**
+       * Present only when the response bytes are not valid UTF-8: `body` is
+       * then their base64, and the replayer decodes it back to bytes (#173).
+       * Omitted for every UTF-8 body, which is stored as its text exactly as
+       * before -- the response-side twin of the request's D-015 rule.
+       */
+      bodyEncoding?: "base64";
     }
   | {
       kind: "sse";

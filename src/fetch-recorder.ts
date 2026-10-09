@@ -477,14 +477,19 @@ export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
         headers: liveResponse.headers,
       });
     } else {
-      const text = await liveResponse.text();
+      // Bytes, not `.text()` (#173). `.text()` is a lenient UTF-8 decode: every
+      // invalid byte became U+FFFD, so a binary response (a Files API download,
+      // say) reached the record-mode caller corrupted and every replay served
+      // the same corruption. The caller now gets the upstream's own bytes, and
+      // the cassette stores them by the rule D-015 applies to request bodies.
+      const bytes = new Uint8Array(await liveResponse.arrayBuffer());
       recorded = {
         kind: "non_streaming",
         status: liveResponse.status,
         headers: redactHeaders(headersToObject(liveResponse.headers)),
-        body: text,
+        ...storedResponseBody(bytes),
       };
-      cloneForCaller = new Response(bodyForStatus(liveResponse.status, text), {
+      cloneForCaller = new Response(bodyForStatus(liveResponse.status, bytes), {
         status: liveResponse.status,
         statusText: liveResponse.statusText,
         headers: liveResponse.headers,
@@ -504,6 +509,22 @@ export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
 
     return cloneForCaller;
   };
+}
+
+/**
+ * How a non-streaming response body is stored (#173): its text when the bytes
+ * are valid UTF-8, otherwise their base64 tagged `bodyEncoding: "base64"`.
+ *
+ * The decoder is strict, so it decides, and `ignoreBOM` keeps a leading BOM in
+ * the text: for every valid-UTF-8 body, encoding the stored text gives back the
+ * exact bytes. `.text()` stripped the BOM, so that was not true before either.
+ */
+function storedResponseBody(bytes: Uint8Array): { body: string; bodyEncoding?: "base64" } {
+  try {
+    return { body: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes) };
+  } catch {
+    return { body: Buffer.from(bytes).toString("base64"), bodyEncoding: "base64" };
+  }
 }
 
 function headersToObject(h: Headers): Record<string, string> {
@@ -678,7 +699,11 @@ function rebuildResponse(recorded: RecordedResponse): Response {
   }
 
   if (recorded.kind === "non_streaming") {
-    return new Response(bodyForStatus(recorded.status, recorded.body), {
+    const body =
+      recorded.bodyEncoding === "base64"
+        ? new Uint8Array(Buffer.from(recorded.body, "base64"))
+        : recorded.body;
+    return new Response(bodyForStatus(recorded.status, body), {
       status: recorded.status,
       headers,
     });
