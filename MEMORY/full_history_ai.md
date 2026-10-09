@@ -1920,3 +1920,21 @@ context_for_next_session:
   - MERGE_ORDER_178_AND_180_BOTH_ADD_AN_EXAMPLE_APP_SUITE_second_one_needs_9_suites_97_tests_by_hand_tokmerge_cannot_count_words
 followups: []
 ---
+
+---
+session: 2026-10-09T09:49Z
+duration_min: 6   # computed: issue filed 2026-10-09T09:48:40Z -> PR 2026-10-09T09:49:56Z (gh createdAt)
+issue: 181
+branch: session/2026-10-09-1010-issue-181
+focus: TS_ATOMICWRITEFILE_RENAMED_ONTO_A_SYMLINKED_CASSETTE_READ_FOLLOWS_THE_LINK_WRITE_FORKED_IT_TWIN_OF_THE_PYTHON_FIX
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 6
+  suite: "726 -> 732 (50 files); README count gate, eslint, tsc green"
+decisions_made: []
+measured: "CassetteStore.write over a symlinked fixture: main replaced the link (shared file kept OLD); branch kept the link and wrote the shared file. Revert 3 red / 3 controls (plain path, loop, mode)."
+context_for_next_session:
+  - SIBLING_aop_src_io_atomic_write_ts_SAME_HELPER_filed_separately
+followups: []
+---
