@@ -1867,7 +1867,7 @@ followups: []
 
 ---
 session: 2026-10-09T08:09Z
-duration_min: 7   # computed: issue filed 2026-10-09T08:07:19Z -> PR 2026-10-09T08:09:17Z (gh createdAt); hunt-agent lead re-measured first
+duration_min: 2   # computed: issue filed 2026-10-09T08:07:19Z -> PR 2026-10-09T08:09:17Z (gh createdAt); hunt-agent lead re-measured first
 issue: 175
 branch: session/2026-10-09-0815-issue-175
 focus: LEAK_SCANNER_READ_BASE64_STORED_BODIES_AS_BASE64_A_KEY_IN_A_NON_UTF8_REQUEST_OR_RESPONSE_BODY_WAS_WRITTEN_AND_PASSED_THE_CI_RESCAN
