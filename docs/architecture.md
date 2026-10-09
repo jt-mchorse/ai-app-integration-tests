@@ -207,7 +207,7 @@ The pages are client components driving `fetch` against their sibling
 are exported functions — tests import them directly and call with a
 synthetic `Request`, no Next.js server needed.
 
-Seven vitest suites in `example-app/test/`:
+Eight vitest suites in `example-app/test/`:
 
 - **`error-route.test.ts`** — no Anthropic call at all (validation +
   synthetic `shape` paths return early). 4 tests.
@@ -219,6 +219,10 @@ Seven vitest suites in `example-app/test/`:
   `tool_use`, turn 2: final `text`); asserts both tool-routing paths
   (`calculate` for math, `get_weather` for cities) and the deterministic
   sandbox (`calculate` rejects non-arithmetic characters). 5 tests.
+- **`tools-route-stop-reason.test.ts`** — the route answers only when the
+  model finished: a `max_tokens` turn (no tool runs from it), a `refusal` or
+  `pause_turn`, or a model still calling tools after the last turn is a 502
+  naming why (#179). 7 tests.
 - **`api-key.test.ts`** — an empty or whitespace `ANTHROPIC_API_KEY`
   falls back to the placeholder in all three routes instead of reaching the
   SDK as `""` (#102). 15 tests.
