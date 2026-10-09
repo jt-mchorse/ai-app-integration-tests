@@ -1699,3 +1699,11 @@ caller during recording and every later replay got the damaged bytes. The
 recorder now keeps the bytes: text responses are saved exactly as before, and
 anything else is saved as base64 and turned back into the original bytes on
 replay. This mirrors the fix made to request bodies in October (#147).
+
+## 2026-10-09 — The example tools route answers only when the model finished (#179)
+
+The demo app's tool route makes up to two model calls and returns the final
+text. It never checked why the model stopped. An answer cut off by the token
+limit was returned as if complete. A tool call cut off mid-way still ran the
+tool on partial input. A model that wanted yet another tool got an empty
+"answer" with a success status. All three are now errors that name the cause.

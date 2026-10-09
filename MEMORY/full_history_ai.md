@@ -1864,3 +1864,21 @@ context_for_next_session:
   - MERGE_NOTE_168_170_172_AND_THIS_ALL_MOVE_THE_README_COUNT_LINE_recount_each
 followups: []
 ---
+
+---
+session: 2026-10-09T09:28Z
+duration_min: 6   # computed: issue filed 2026-10-09T09:26:46Z -> PR 2026-10-09T09:28:29Z (gh createdAt)
+issue: 179
+branch: session/2026-10-09-0945-issue-179
+focus: EXAMPLE_APP_TOOLS_ROUTE_IGNORED_STOP_REASON_CUT_ANSWER_200_CUT_TOOL_USE_RAN_LOOP_EXHAUSTED_FINALTEXT_EMPTY_200
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 7
+  suite: "example-app 81 -> 88 (8 files); root 726 green; README drift check + architecture suite lock green"
+decisions_made: []
+measured: "in-process POST with sequenced canned responses: main returned 200 for a max_tokens-cut final text, ran a tool from a max_tokens-cut tool_use, and returned finalText '' after two tool turns; branch 502 naming the cause, 0 tools run from a cut turn; end_turn/stop_sequence unchanged. Revert 5 red / 2 controls."
+context_for_next_session:
+  - MERGE_ORDER_178_AND_180_BOTH_ADD_AN_EXAMPLE_APP_SUITE_second_one_needs_9_suites_97_tests_by_hand_tokmerge_cannot_count_words
+followups: []
+---
