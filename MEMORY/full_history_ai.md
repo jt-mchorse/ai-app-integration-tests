@@ -1864,3 +1864,22 @@ context_for_next_session:
   - MERGE_NOTE_168_170_172_AND_THIS_ALL_MOVE_THE_README_COUNT_LINE_recount_each
 followups: []
 ---
+
+---
+session: 2026-10-09T08:57Z
+duration_min: 5   # computed: repro test ~08:53Z, issue filed 2026-10-09T08:55:06Z, PR 2026-10-09T08:57:08Z (gh createdAt)
+issue: 177
+branch: session/2026-10-09-0905-issue-177
+focus: EXAMPLE_APP_STREAMING_ROUTE_SENT_EVENT_DONE_AFTER_A_STREAM_CUT_AT_MAX_TOKENS_256_OR_BY_UPSTREAM_EOF_NEXTJS_167_SIBLING
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 8
+  suite: "example-app 81 -> 89 (8 files); root 726 green; README drift check + architecture suite lock green"
+decisions_made: []
+measured: "in-process POST with canned SSE: main max_tokens/refusal/pause_turn and two EOF points all ended in event: done; branch event: error naming the cause; end_turn/stop_sequence still done. Revert 5 red / 3 controls."
+context_for_next_session:
+  - SWEEPING_A_FIXED_CLASS_ACROSS_THE_PORTFOLIO_FOUND_IT_IN_A_REPO_THE_HUNTERS_HAD_NOT_LISTED_an_example_app_is_still_shipped_code
+  - THE_ARCHITECTURE_DOC_LOCK_141_COUNTS_EXAMPLE_APP_SUITES_BY_NAME_a_new_test_file_needs_a_bullet_and_the_count_word
+followups: []
+---
