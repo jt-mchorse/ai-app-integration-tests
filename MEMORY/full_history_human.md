@@ -1699,3 +1699,12 @@ caller during recording and every later replay got the damaged bytes. The
 recorder now keeps the bytes: text responses are saved exactly as before, and
 anything else is saved as base64 and turned back into the original bytes on
 replay. This mirrors the fix made to request bodies in October (#147).
+
+## 2026-10-09 — The example app reports a cut-off stream as an error (#177)
+
+The demo app's streaming endpoint always ended with a "done" message, even
+when the model's answer had been cut off by its 256-token limit (likely for
+any real prompt) or the connection dropped mid-answer. It now checks how the
+model's stream ended and sends an error naming the cause unless the answer
+actually finished. This is the same fix made in the Next.js streaming repo
+earlier in this run.
