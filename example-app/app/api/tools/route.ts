@@ -11,6 +11,9 @@ import { readApiKey } from "../../../api-key";
  *     toolCalls: Array<{ name: string; input: unknown; result: unknown }>,
  *     finalText: string,
  *   }
+ *   or 502 `{ error, toolCalls }` when the model did not finish: a turn that
+ *   stopped at `max_tokens` (no tool runs from it), a `refusal`, or a model
+ *   still calling tools when the two turns run out (#179).
  *
  * Two tools ship: `get_weather` returns canned weather; `calculate` evaluates
  * a simple arithmetic expression. Both are pure functions of the input so
@@ -98,6 +101,7 @@ export async function POST(req: Request) {
 
   const toolCalls: ToolCall[] = [];
   let finalText = "";
+  let answered = false;
 
   // Two-turn loop: the model picks a tool (turn 1), we execute it and feed
   // the result back (turn 2). Three-turn or longer is out of scope for the
@@ -111,14 +115,26 @@ export async function POST(req: Request) {
     });
     messages.push({ role: "assistant", content: response.content });
 
+    // How the model ended this turn decides what the route may do with it
+    // (#179). Read off the content alone, a max_tokens stop returned cut text
+    // as the final answer, and a cut `tool_use` block ran its tool on partial
+    // input.
+    const stop = response.stop_reason;
+    if (stop !== "tool_use" && stop !== "end_turn" && stop !== "stop_sequence") {
+      return Response.json(
+        { error: `the model stopped with stop_reason=${String(stop)}; the answer is incomplete`, toolCalls },
+        { status: 502 },
+      );
+    }
     const toolUses = response.content.filter(
       (b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use",
     );
-    if (toolUses.length === 0) {
+    if (stop !== "tool_use" || toolUses.length === 0) {
       const textBlocks = response.content.filter(
         (b): b is Anthropic.Messages.TextBlock => b.type === "text",
       );
       finalText = textBlocks.map((b) => b.text).join("\n");
+      answered = true;
       break;
     }
     const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
@@ -134,5 +150,13 @@ export async function POST(req: Request) {
     messages.push({ role: "user", content: toolResults });
   }
 
+  if (!answered) {
+    // The model still wanted a tool when the two turns ran out: there is no
+    // answer to return, and `finalText: ""` read as one (#179).
+    return Response.json(
+      { error: "the model was still calling tools after the last turn; no final answer", toolCalls },
+      { status: 502 },
+    );
+  }
   return Response.json({ toolCalls, finalText });
 }
