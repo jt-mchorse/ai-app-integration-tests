@@ -1679,3 +1679,13 @@ with a space in its name, or was reached through a symlink (macOS's `/tmp` is
 one), the spellings differed, the script did nothing at all, and it reported
 success even for a report file that did not exist. It now compares the real
 file paths, so it always runs.
+
+## 2026-10-08 — the CI leak check runs the real scanner (#171)
+
+The README promises that a CI job re-checks every committed recording for
+leaked API keys. That job was two hand-written search patterns covering only
+two of the seven key shapes the recorder refuses, and both still had the
+end-of-match quirk fixed in the recorder back in #60. A recording containing a
+Google key, HTTP Basic credentials, a `user:pass@` URL or an `?api-key=` query
+string passed CI. The job now runs the recorder's own scanner over every
+committed recording, so the two checks cannot drift apart again.

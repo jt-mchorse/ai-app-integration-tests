@@ -158,20 +158,19 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Reject any committed cassette that still contains a sk- or Bearer token
-        run: |
-          set -euo pipefail
-          if [ -d fixtures ]; then
-            if grep -E -r --include="*.json" '\bsk-(ant-)?[A-Za-z0-9_-]{32,}\b' fixtures/ ; then
-              echo "::error::A cassette contains an unredacted secret. Re-record after fixing redactHeaders()."
-              exit 1
-            fi
-            if grep -E -r --include="*.json" '\bBearer[[:space:]]+[A-Za-z0-9._/+=-]{20,}\b' fixtures/ ; then
-              echo "::error::A cassette contains a Bearer token."
-              exit 1
-            fi
-          fi
-          echo "no leaked secrets found in fixtures/"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # The recorder's own `assertNoLeakedSecrets`, over every committed
+      # cassette (#171). This used to be two `grep -E` lines: 2 of the scanner's
+      # 7 patterns, each with the trailing `\b` #60 removed, so an `AIza`,
+      # `Basic`, userinfo or `?api-key=` cassette passed. One rule, imported,
+      # cannot drift; `test/ci-leak-rescan.test.ts` pins this line unguarded.
+      - name: Reject any committed cassette the recorder's leak scanner refuses
+        run: npx tsx scripts/scan-committed-cassettes.ts fixtures
 
   memory-check:
     runs-on: ubuntu-latest
