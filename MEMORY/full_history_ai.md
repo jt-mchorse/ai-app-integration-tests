@@ -1996,3 +1996,23 @@ context_for_next_session:
   - retry_after_ms_0_HEADER_MAKES_THE_TS_SDK_RETRY_INSTANTLY_IN_TESTS
 followups: []
 ---
+
+---
+session: 2026-10-12T09:01:07Z
+duration_min: 0   # computed: plan comment 2026-10-12T09:01:07Z -> PR 2026-10-12T09:01:58Z (gh createdAt)
+issue: 189
+branch: session/2026-10-12-0901-issue-189
+focus: CASSETTESTORE_READ_ACCEPTED_NON_STRING_SSE_FRAMES_AND_A_NON_BASE64_BASE64_BODY_WHICH_REPLAYED_AS_WRONG_BYTES
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 10
+  suite: "742 -> 752 passed (52 files); lint, typecheck, build, readme-count, cassette rescan clean"
+decisions_made: []
+measured: "main: frames [42,null,{a:1}] and body 'hello world!!' (base64) read OK. Branch: refused. Revert 9 red / 1 control green."
+context_for_next_session:
+  - A_SHAPE_GUARD_THAT_CHECKS_THE_CONTAINER_NOT_THE_ELEMENTS_frames_array_of_anything
+  - NODE_BASE64_DECODER_SKIPS_NON_ALPHABET_CHARS_SILENTLY_check_canonical_form
+  - AIAPP_README_COUNT_IS_NOW_ON_FOUR_OPEN_PRS_184_186_188_189_whichever_merges_later_needs_main_plus_delta
+followups: []
+---

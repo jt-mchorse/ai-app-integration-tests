@@ -1759,3 +1759,12 @@ Anthropic SDK raised. It read the error's `name`, which the SDK sets to
 "Error" for every failure, so the demo always said "Error". It now reports the
 SDK's error class (for example `NotFoundError` or `RateLimitError`) and the
 API's own error type, and a new test covers it.
+
+## 2026-10-12 — Cassettes that would replay the wrong bytes are refused (#189)
+
+Reading a recorded cassette checks its shape before replaying it. It checked
+that a streaming response's frames were a list, but not that each frame was
+text. It checked that an encoded body said "base64", but not that it actually
+was base64. Either kind of hand edit or corruption replayed different bytes
+than were recorded, without any error. Both are now refused when the cassette
+is read.
