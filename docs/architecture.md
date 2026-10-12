@@ -207,10 +207,13 @@ The pages are client components driving `fetch` against their sibling
 are exported functions — tests import them directly and call with a
 synthetic `Request`, no Next.js server needed.
 
-Nine vitest suites in `example-app/test/`:
+Ten vitest suites in `example-app/test/`:
 
 - **`error-route.test.ts`** — no Anthropic call at all (validation +
   synthetic `shape` paths return early). 4 tests.
+- **`error-route-upstream-type.test.ts`** — the `upstream` case through a
+  stubbed `globalThis.fetch`: a 404 / 429 / 500 envelope reports the SDK error
+  class as `type` and the API's own type as `api_error_type` (#187). 3 tests.
 - **`streaming-route.test.ts`** — monkey-patches `globalThis.fetch` with
   a canned Anthropic SSE response (`message_start` →
   `content_block_delta`+ → `message_stop`); asserts the route emits one

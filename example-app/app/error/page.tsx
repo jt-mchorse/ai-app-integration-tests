@@ -10,6 +10,7 @@ interface ErrorPayload {
   message: string;
   status?: number | null;
   type?: string;
+  api_error_type?: string | null;
   details?: unknown;
 }
 
