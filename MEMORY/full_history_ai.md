@@ -1977,3 +1977,22 @@ context_for_next_session:
   - README_COUNT_754_ON_184_AND_751_HERE_whichever_merges_second_needs_main_plus_delta
 followups: []
 ---
+
+---
+session: 2026-10-12T08:50:04Z
+duration_min: 1   # computed: plan comment 2026-10-12T08:50:04Z -> PR 2026-10-12T08:51:04Z (gh createdAt)
+issue: 187
+branch: session/2026-10-12-0850-issue-187
+focus: EXAMPLE_APP_API_ERROR_REPORTED_TYPE_ERROR_FOR_EVERY_UPSTREAM_FAILURE_SDK_0_96_ERRORS_NAME_IS_ALWAYS_ERROR
+phase: shipped
+delta:
+  files_changed: 5
+  tests_added: 3
+  suite: "example-app 96 -> 99 (10 files); root 742; lint, typecheck clean; readme-count ok"
+decisions_made: []
+measured: "SDK 0.96 stubbed 404: name=Error ctor=NotFoundError envelope not_found_error. Branch: type NotFoundError, api_error_type not_found_error (and 429/500). Revert 3 of 3 red."
+context_for_next_session:
+  - JS_ERROR_NAME_IS_NOT_THE_CLASS_FOR_SDK_ERRORS_read_constructor_name_and_the_envelope
+  - retry_after_ms_0_HEADER_MAKES_THE_TS_SDK_RETRY_INSTANTLY_IN_TESTS
+followups: []
+---
