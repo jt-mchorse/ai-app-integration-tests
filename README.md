@@ -154,8 +154,8 @@ const surfaced = await waitFor(() => readUiResponse(), { timeoutMs: 5000, interv
 ## Benchmarks / Results
 
 The relevant metric for this layer is "tests stay green and fast" —
-742 vitest tests run in a few seconds locally with zero network access
-(51 files, ~5.5 s on an M-series Mac); the 6 Playwright streaming tests
+754 vitest tests run in a few seconds locally with zero network access
+(52 files, ~5.5 s on an M-series Mac); the 6 Playwright streaming tests
 run in ~5 s (CI target: <60 s per the issue acceptance criteria,
 comfortably met).
 
