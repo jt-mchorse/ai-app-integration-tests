@@ -207,7 +207,7 @@ The pages are client components driving `fetch` against their sibling
 are exported functions — tests import them directly and call with a
 synthetic `Request`, no Next.js server needed.
 
-Seven vitest suites in `example-app/test/`:
+Eight vitest suites in `example-app/test/`:
 
 - **`error-route.test.ts`** — no Anthropic call at all (validation +
   synthetic `shape` paths return early). 4 tests.
@@ -215,6 +215,10 @@ Seven vitest suites in `example-app/test/`:
   a canned Anthropic SSE response (`message_start` →
   `content_block_delta`+ → `message_stop`); asserts the route emits one
   `data` frame per text delta plus a terminal `done` frame. 5 tests.
+- **`streaming-route-terminal.test.ts`** — the terminal frame is `done` only
+  when the upstream finished: a `max_tokens`/`refusal`/`pause_turn` stop, or a
+  body that ends before `message_stop`, ends in `event: error` naming the
+  cause (#177). 8 tests.
 - **`tools-route.test.ts`** — sequences two canned responses (turn 1:
   `tool_use`, turn 2: final `text`); asserts both tool-routing paths
   (`calculate` for math, `get_weather` for cities) and the deterministic

@@ -1708,3 +1708,12 @@ replay. The check that refuses to save a cassette containing an API key only
 looked at that encoded text, not at the bytes behind it. A key inside a binary
 body was therefore saved, and the CI re-check let it through. The scanner now
 decodes those bodies before checking them.
+
+## 2026-10-09 — The example app reports a cut-off stream as an error (#177)
+
+The demo app's streaming endpoint always ended with a "done" message, even
+when the model's answer had been cut off by its 256-token limit (likely for
+any real prompt) or the connection dropped mid-answer. It now checks how the
+model's stream ended and sends an error naming the cause unless the answer
+actually finished. This is the same fix made in the Next.js streaming repo
+earlier in this run.
