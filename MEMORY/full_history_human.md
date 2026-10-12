@@ -1732,3 +1732,13 @@ If a cassette in the fixtures folder was a symbolic link to a shared file,
 reading it followed the link, but recording replaced the link with a private
 copy. The shared file then went stale. The writer now follows the link and
 updates the file it points to, the same fix made in the Python repos yesterday.
+
+## 2026-10-12 — The cassette leak scanner sees secrets inside text fields (#183)
+
+The scanner that stops API keys being saved into test recordings checked the
+recording's JSON text. Response bodies and streaming frames are stored as
+strings, and inside a string every quote and newline gets escaped. That hid the
+very patterns the scanner looks for, so a token echoed back by an API was saved
+and the CI check passed it. The scanner now also reads each text field as
+itself, and any JSON inside it. Eight shapes that slipped through are now
+refused, and ordinary traffic still passes.
