@@ -1725,3 +1725,10 @@ text. It never checked why the model stopped. An answer cut off by the token
 limit was returned as if complete. A tool call cut off mid-way still ran the
 tool on partial input. A model that wanted yet another tool got an empty
 "answer" with a success status. All three are now errors that name the cause.
+
+## 2026-10-09 — Re-recording a symlinked cassette updates the shared file (#181)
+
+If a cassette in the fixtures folder was a symbolic link to a shared file,
+reading it followed the link, but recording replaced the link with a private
+copy. The shared file then went stale. The writer now follows the link and
+updates the file it points to, the same fix made in the Python repos yesterday.
