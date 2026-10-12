@@ -40,11 +40,18 @@ export class WaitTimeoutError extends Error {
   }
 }
 
+// The message only ever shows a FALSY value -- a truthy one ends the wait --
+// and JSON.stringify prints four of the eight as another (#185): NaN as `null`,
+// `-0` as `0`, `0n` (via the String fallback, since JSON.stringify throws on a
+// bigint) as `0`, and `""` as nothing at all. Each is printed as itself.
 function stringify(value: unknown): string {
   if (value === undefined) return "undefined";
   if (value === null) return "null";
+  if (typeof value === "number") return Object.is(value, -0) ? "-0" : String(value);
+  if (typeof value === "bigint") return `${value}n`;
+  if (typeof value === "string") return JSON.stringify(value);
   try {
-    return typeof value === "string" ? value : JSON.stringify(value);
+    return JSON.stringify(value) ?? String(value);
   } catch {
     return String(value);
   }
