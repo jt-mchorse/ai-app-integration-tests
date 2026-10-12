@@ -415,3 +415,10 @@ now gets the upstream's bytes, and the cassette stores a UTF-8 body as its text
 (unchanged, BOM kept) or anything else as base64 under
 `response.bodyEncoding: "base64"`, which the replayer decodes back to bytes.
 Nothing is hashed from a response, so no cassette is re-keyed.
+
+The leak scanner reads both base64 bodies as the bytes they encode (#175). It
+scanned the stored text, which for these bodies is base64, so a key inside a
+non-UTF-8 request or response body was written to the cassette and passed the
+committed-cassette rescan. `assertNoLeakedSecrets` now scans a view in which
+each `bodyEncoding: "base64"` body is decoded one character per byte (latin1),
+so an ASCII credential in the bytes appears verbatim to every pattern.

@@ -1699,3 +1699,12 @@ caller during recording and every later replay got the damaged bytes. The
 recorder now keeps the bytes: text responses are saved exactly as before, and
 anything else is saved as base64 and turned back into the original bytes on
 replay. This mirrors the fix made to request bodies in October (#147).
+
+## 2026-10-09 — The secret scanner reads binary bodies too (#175)
+
+Recently, request and response bodies that are not ordinary text started being
+stored in the cassette in an encoded form (base64), so that their exact bytes
+replay. The check that refuses to save a cassette containing an API key only
+looked at that encoded text, not at the bytes behind it. A key inside a binary
+body was therefore saved, and the CI re-check let it through. The scanner now
+decodes those bodies before checking them.

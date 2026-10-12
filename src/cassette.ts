@@ -344,11 +344,34 @@ const LEAK_LOCATIONS: ReadonlyArray<[string, (c: CassetteV1) => unknown, string]
   ],
 ];
 
+/**
+ * The cassette as the scanner must read it (#175): every base64-stored body
+ * decoded to its bytes, one character per byte (latin1), so an ASCII
+ * credential inside it is visible to the patterns verbatim. #147 and #173 store
+ * a body that is not valid UTF-8 as base64, and the scanner read only that
+ * text: a key in such a request or response body was written to the cassette,
+ * and the committed-cassette rescan, which calls this function, passed it too.
+ */
+function scanView(cassette: CassetteV1): CassetteV1 {
+  const decode = (b64: unknown): unknown =>
+    typeof b64 === "string" ? Buffer.from(b64, "base64").toString("latin1") : b64;
+  let view = cassette;
+  if (cassette.request.bodyEncoding === "base64") {
+    view = { ...view, request: { ...view.request, body: decode(view.request.body) } };
+  }
+  const response = cassette.response;
+  if (response.kind === "non_streaming" && response.bodyEncoding === "base64") {
+    view = { ...view, response: { ...response, body: decode(response.body) as string } };
+  }
+  return view;
+}
+
 export function assertNoLeakedSecrets(cassette: CassetteV1): void {
-  const serialized = JSON.stringify(cassette);
+  const view = scanView(cassette);
+  const serialized = JSON.stringify(view);
   for (const pattern of API_KEY_PATTERNS) {
     if (!pattern.test(serialized)) continue;
-    const found = LEAK_LOCATIONS.find(([, part]) => pattern.test(JSON.stringify(part(cassette)) ?? ""));
+    const found = LEAK_LOCATIONS.find(([, part]) => pattern.test(JSON.stringify(part(view)) ?? ""));
     const where = found ? ` in ${found[0]}` : "";
     const advice = found ? ` ${found[2]}, then re-record.` : " Remove it, then re-record.";
     throw new Error(

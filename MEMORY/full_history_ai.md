@@ -1864,3 +1864,22 @@ context_for_next_session:
   - MERGE_NOTE_168_170_172_AND_THIS_ALL_MOVE_THE_README_COUNT_LINE_recount_each
 followups: []
 ---
+
+---
+session: 2026-10-09T08:09Z
+duration_min: 2   # computed: issue filed 2026-10-09T08:07:19Z -> PR 2026-10-09T08:09:17Z (gh createdAt); hunt-agent lead re-measured first
+issue: 175
+branch: session/2026-10-09-0815-issue-175
+focus: LEAK_SCANNER_READ_BASE64_STORED_BODIES_AS_BASE64_A_KEY_IN_A_NON_UTF8_REQUEST_OR_RESPONSE_BODY_WAS_WRITTEN_AND_PASSED_THE_CI_RESCAN
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 10
+  suite: "726 -> 736 (50 files); README count gate, tsc, eslint green"
+decisions_made: []
+measured: "recorder on main: non-utf8 response echoing the key WRITTEN, non-utf8 request body with the key WRITTEN (base64-decoded bodies contain it); utf8 controls REFUSED. Branch: all four refused. Revert 9 red / 1 key-free control."
+context_for_next_session:
+  - A_NEW_STORAGE_ENCODING_IS_A_NEW_POPULATION_FOR_EVERY_SCANNER_THAT_READS_THE_STORED_FORM_147_AND_173_ADDED_base64_AND_NOBODY_ASKED_THE_LEAK_SCANNER
+  - REGRESSION_FROM_THIS_RUNS_OWN_PHASE_A_MERGE_173
+followups: []
+---
