@@ -9,6 +9,9 @@ export interface CassetteStoreOptions {
   dir: string;
 }
 
+/** Canonical padded base64, as `Buffer.toString("base64")` writes it (#189). */
+const CANONICAL_BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+
 export class CassetteStore {
   constructor(private readonly opts: CassetteStoreOptions) {}
 
@@ -137,10 +140,25 @@ function assertValidResponse(response: unknown, requestHash: string): void {
     if (response.bodyEncoding !== undefined && response.bodyEncoding !== "base64") {
       bad(`non_streaming response.bodyEncoding must be "base64" or absent, got ${JSON.stringify(response.bodyEncoding)}`);
     }
+    // And the body must BE base64 (#189). Node's decoder skips characters
+    // outside the alphabet, so a hand-edited or truncated body replayed as
+    // different bytes, silently -- the corruption the line above refuses for
+    // an unknown encoding. Canonical form, as `Buffer.toString("base64")`
+    // (what the recorder writes) produces.
+    if (response.bodyEncoding === "base64" && !CANONICAL_BASE64.test(response.body as string)) {
+      bad("non_streaming response.body is marked base64 but is not canonical base64");
+    }
   } else if (response.kind === "sse") {
     if (!Array.isArray(response.frames)) {
       bad(`sse response.frames must be an array, got ${response.frames === null ? "null" : typeof response.frames}`);
     }
+    // Each frame is replayed as text and concatenated (#189): a number, null or
+    // object served `42null[object Object]` as the event stream.
+    (response.frames as unknown[]).forEach((frame, i) => {
+      if (typeof frame !== "string") {
+        bad(`sse response.frames[${i}] must be a string, got ${frame === null ? "null" : typeof frame}`);
+      }
+    });
   } else {
     bad(`response.kind must be "non_streaming" or "sse", got ${JSON.stringify(response.kind)}`);
   }
