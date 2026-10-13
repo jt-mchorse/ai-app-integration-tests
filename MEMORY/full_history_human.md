@@ -1751,3 +1751,11 @@ Four of these printed as something else: NaN showed as `null`, `-0` and `0n`
 as `0`, and an empty string as nothing. NaN usually means something failed to
 parse, so that is exactly the clue the message should give. Each value now
 prints as itself.
+
+## 2026-10-12 — The example app's error demo names the real error (#187)
+
+The demo's "upstream error" endpoint is meant to show what kind of error the
+Anthropic SDK raised. It read the error's `name`, which the SDK sets to
+"Error" for every failure, so the demo always said "Error". It now reports the
+SDK's error class (for example `NotFoundError` or `RateLimitError`) and the
+API's own error type, and a new test covers it.

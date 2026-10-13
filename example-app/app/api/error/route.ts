@@ -79,13 +79,26 @@ export async function POST(req: Request) {
       });
       return Response.json({ error: "upstream", message: "expected an upstream error" }, { status: 502 });
     } catch (err) {
-      const e = err as { name?: string; status?: number; message?: string };
+      const e = err as {
+        name?: string;
+        status?: number;
+        message?: string;
+        error?: { error?: { type?: unknown } };
+      };
+      // The SDK class, not `.name` (#187): every @anthropic-ai/sdk 0.96 API
+      // error has `.name === "Error"`, so this reported "Error" for every
+      // failure. The API's own type is in the response envelope.
+      const ctor = (err as { constructor?: { name?: unknown } } | null)?.constructor?.name;
+      const sdkType =
+        typeof ctor === "string" && ctor !== "Error" && ctor !== "Object" ? ctor : e.name ?? "Error";
+      const apiType = e.error?.error?.type;
       return Response.json(
         {
           error: "upstream",
           message: e.message ?? "upstream error",
           status: e.status ?? null,
-          type: e.name ?? "Error",
+          type: sdkType,
+          api_error_type: typeof apiType === "string" ? apiType : null,
         },
         { status: 502 },
       );
