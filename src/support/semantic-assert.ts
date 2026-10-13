@@ -47,9 +47,20 @@ export interface SemanticAssertOptions {
 // both became ["क", "त", "ब"] and scored a perfect 1.0, a false pass. And
 // NFC first, so the two encodings of one rendered word are one token:
 // "café" (NFC) and "cafe\u0301" (NFD) scored 0.5 and failed at the default 0.6.
+//
+// Format characters (\p{Cf}) are deleted, not spaced (#199). They were the
+// other category inside a word that the punctuation class caught: a soft
+// hyphen (U+00AD), ZWNJ/ZWJ (U+200C/D), a word joiner (U+2060), a bidi mark.
+// None renders, so "re\u00ADfund window" printed as "refund window" and scored
+// 0.25 against it. Deleted BEFORE NFC, so a ZWJ between a letter and its mark
+// cannot block composition. U+200B ZERO WIDTH SPACE is the exception and stays
+// a separator: it is a word break, and how Thai and Khmer text marks words.
+const FORMAT_CHARS = /(?!\u200B)\p{Cf}/gu;
+
 export function tokenize(text: string, stopwords?: ReadonlySet<string>): string[] {
   const stops = stopwords ?? DEFAULT_STOPWORDS;
   return text
+    .replace(FORMAT_CHARS, "")
     .normalize("NFC")
     .toLowerCase()
     .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
