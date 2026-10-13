@@ -2027,5 +2027,21 @@ measured: "main: CR-framed event with an event: line and a multi-line data: JSON
 context_for_next_session:
   - THE_183_FIX_LISTED_SSE_DATA_PAYLOADS_BUT_USED_A_LINE_SPLIT_OLDER_THAN_D_012_two_parsers_of_one_format_must_agree_on_what_a_line_ending_is
   - SSE_DATA_IS_A_FIELD_NOT_A_LINE_the_spec_joins_data_lines_with_LF
+
+session: 2026-10-13T07:20:30Z
+duration_min: 10
+issue: 193
+branch: session/2026-10-13-0720-issue-193
+focus: LEAK_SCANNER_REPLACED_A_NON_BASE64_BASE64_BODY_WITH_ITS_LOSSY_DECODING_SO_A_CLEARTEXT_KEY_IN_THE_FILE_PASSED_THE_CI_RESCAN
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 8
+  suite: "754 -> 762 passed (53 files); lint, typecheck, build, readme-count, cassette rescan clean"
+decisions_made: []
+measured: "main: file containing sk-ant- literally in a response body marked base64 -> scan-committed-cassettes 'no leaked secrets', exit 0; same body unmarked -> exit 1. Branch: refused. Revert 4 red / 4 green (3 allow rows incl. #175's canonical-AIza lock, 1 canonical-bytes control)."
+context_for_next_session:
+  - A_DECODE_THAT_REPLACES_THE_TEXT_IS_ONLY_SAFE_WHEN_IT_IS_LOSSLESS_round_trip_check_decides
+  - SIBLING_OF_189_SAME_LENIENT_DECODER_ONE_READER_OVER_read_refuses_the_scanner_must_still_see_the_text
 followups: []
 ---

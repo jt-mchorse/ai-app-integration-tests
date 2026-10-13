@@ -1778,3 +1778,12 @@ stream, or for an event whose data is spread over several lines, the data was
 never read, so an echoed key was saved and the CI check passed it. The scanner
 now splits lines the same way the recorder does and joins multi-line data
 before reading it.
+
+## 2026-10-13 — A key in a mislabelled body no longer slips past the leak check (#193)
+
+When a recording marks a body as base64, the leak scanner reads the decoded
+bytes instead of the stored text. If the body was not really base64, for example
+after a hand edit, decoding quietly dropped most of it, and a key written in
+plain text in the file was never seen. The CI check passed such a file. The
+scanner now also reads the stored text whenever it is not genuine base64.
+Recordings made by the recorder are unaffected.
