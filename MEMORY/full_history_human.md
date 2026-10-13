@@ -1742,3 +1742,12 @@ very patterns the scanner looks for, so a token echoed back by an API was saved
 and the CI check passed it. The scanner now also reads each text field as
 itself, and any JSON inside it. Eight shapes that slipped through are now
 refused, and ordinary traffic still passes.
+
+## 2026-10-12 — `waitFor` reports its last value accurately (#185)
+
+When `waitFor` gives up, its error message says what the condition last
+returned, which is always a "falsy" value such as false, 0 or an empty string.
+Four of these printed as something else: NaN showed as `null`, `-0` and `0n`
+as `0`, and an empty string as nothing. NaN usually means something failed to
+parse, so that is exactly the clue the message should give. Each value now
+prints as itself.

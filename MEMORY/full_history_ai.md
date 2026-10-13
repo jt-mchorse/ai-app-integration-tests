@@ -1958,3 +1958,22 @@ context_for_next_session:
   - README_COUNT_LINE_IS_TESTS_AND_FILES_check_readme_test_count_reports_both
 followups: []
 ---
+
+---
+session: 2026-10-12T08:27:55Z
+duration_min: 0   # computed: plan comment 2026-10-12T08:27:55Z -> PR 2026-10-12T08:28:46Z (gh createdAt)
+issue: 185
+branch: session/2026-10-12-0827-issue-185
+focus: WAITFOR_TIMEOUT_MESSAGE_ONLY_EVER_SHOWS_A_FALSY_VALUE_AND_PRINTED_4_OF_THE_8_AS_ANOTHER_NAN_AS_NULL
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 9
+  suite: "742 -> 751 passed (52 files); lint, typecheck, build, readme-count clean"
+decisions_made: []
+measured: "main: NaN -> 'null', -0 -> '0', 0n -> '0', '' -> ''. Revert 5 red / 4 green."
+context_for_next_session:
+  - A_MESSAGE_THAT_CAN_ONLY_SHOW_ONE_CLASS_OF_VALUE_ENUMERATE_THE_CLASS_eight_falsy_values_four_collided
+  - README_COUNT_754_ON_184_AND_751_HERE_whichever_merges_second_needs_main_plus_delta
+followups: []
+---
