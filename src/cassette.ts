@@ -353,8 +353,19 @@ const LEAK_LOCATIONS: ReadonlyArray<[string, (c: CassetteV1) => unknown, string]
  * and the committed-cassette rescan, which calls this function, passed it too.
  */
 function scanView(cassette: CassetteV1): CassetteV1 {
-  const decode = (b64: unknown): unknown =>
-    typeof b64 === "string" ? Buffer.from(b64, "base64").toString("latin1") : b64;
+  // Text that is not canonical base64 is kept alongside its decoding (#193).
+  // Node's decoder skips every character outside the alphabet, so decoding a
+  // hand-edited body marked "base64" discards the text the file actually holds
+  // -- a cleartext key included -- and the committed-cassette rescan passed it.
+  // Canonical base64 still reads as its bytes only: there the text is just an
+  // encoding, and scanning it would refuse bytes whose base64 merely LOOKS
+  // like a key.
+  const decode = (b64: unknown): unknown => {
+    if (typeof b64 !== "string") return b64;
+    const bytes = Buffer.from(b64, "base64");
+    const decoded = bytes.toString("latin1");
+    return bytes.toString("base64") === b64 ? decoded : `${b64}\n${decoded}`;
+  };
   let view = cassette;
   if (cassette.request.bodyEncoding === "base64") {
     view = { ...view, request: { ...view.request, body: decode(view.request.body) } };
