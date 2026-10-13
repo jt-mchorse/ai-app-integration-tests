@@ -366,12 +366,59 @@ function scanView(cassette: CassetteV1): CassetteV1 {
   return view;
 }
 
+/** How deep `scanTexts` follows JSON nested inside a string (#183). */
+const MAX_NESTED_JSON_DEPTH = 4;
+
+/**
+ * Every text the patterns must see in `value` (#183): its serialisation, every
+ * string inside it as the string itself, and the same again for any JSON a
+ * string holds (a JSON response body, each SSE `data:` payload).
+ *
+ * Scanning only `JSON.stringify(view)` read a string field the way it is
+ * escaped, not what it says. Inside a response body, an SSE frame or a raw
+ * request body, `{"access_token":"..."}` serialises as `access_token\":\"...`
+ * and the `key=` family allows only an optional quote before the `:`. A
+ * newline before `sk-` serialises as `\nsk-`, where the leading `\b` never
+ * fires. Both passed: a recorded upstream that echoed a token was written to
+ * the cassette and the committed-cassette rescan reported it clean.
+ */
+function scanTexts(value: unknown, depth = 0): string[] {
+  const out = [JSON.stringify(value) ?? ""];
+  const visit = (v: unknown): void => {
+    if (typeof v === "string") {
+      out.push(v);
+      if (depth >= MAX_NESTED_JSON_DEPTH) return;
+      const candidates = [v];
+      for (const line of v.split(/\r?\n/)) {
+        if (line.startsWith("data:")) candidates.push(line.slice(5).trim());
+      }
+      for (const text of candidates) {
+        const t = text.trim();
+        if (!(t.startsWith("{") || t.startsWith("["))) continue;
+        try {
+          out.push(...scanTexts(JSON.parse(t), depth + 1));
+        } catch {
+          // Not JSON: the string itself was already pushed.
+        }
+      }
+    } else if (Array.isArray(v)) {
+      for (const item of v) visit(item);
+    } else if (v !== null && typeof v === "object") {
+      for (const item of Object.values(v)) visit(item);
+    }
+  };
+  visit(value);
+  return out;
+}
+
 export function assertNoLeakedSecrets(cassette: CassetteV1): void {
   const view = scanView(cassette);
-  const serialized = JSON.stringify(view);
+  const texts = scanTexts(view);
   for (const pattern of API_KEY_PATTERNS) {
-    if (!pattern.test(serialized)) continue;
-    const found = LEAK_LOCATIONS.find(([, part]) => pattern.test(JSON.stringify(part(view)) ?? ""));
+    if (!texts.some((t) => pattern.test(t))) continue;
+    const found = LEAK_LOCATIONS.find(([, part]) =>
+      scanTexts(part(view)).some((t) => pattern.test(t)),
+    );
     const where = found ? ` in ${found[0]}` : "";
     const advice = found ? ` ${found[2]}, then re-record.` : " Remove it, then re-record.";
     throw new Error(

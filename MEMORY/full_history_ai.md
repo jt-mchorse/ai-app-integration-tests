@@ -1938,3 +1938,23 @@ context_for_next_session:
   - SIBLING_aop_src_io_atomic_write_ts_SAME_HELPER_filed_separately
 followups: []
 ---
+
+---
+session: 2026-10-12T07:48:50Z
+duration_min: 1   # computed: plan comment 2026-10-12T07:48:50Z -> PR 2026-10-12T07:50:15Z (gh createdAt)
+issue: 183
+branch: session/2026-10-12-0748-issue-183
+focus: LEAK_SCANNER_SCANNED_JSON_STRINGIFY_OUTPUT_SO_A_CREDENTIAL_INSIDE_A_STRING_FIELD_RESPONSE_BODY_SSE_FRAME_RAW_BODY_WAS_SEEN_ESCAPED_AND_MISSED
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 12
+  suite: "736 -> 748 passed (51 files); lint, typecheck, build, readme-count clean"
+decisions_made: []
+measured: "main: 7 of 10 probe shapes passed the scanner ({access_token} in a response body, SSE data JSON, raw body, newline/tab before sk-/Bearer); hunt agent end to end: recorded cassette with echoed access_token, scan-committed-cassettes 'no leaked secrets'. Branch: all refused. Revert 8 red / 4 allow green."
+context_for_next_session:
+  - A_SCANNER_OVER_A_SERIALISATION_READS_THE_ESCAPES_NOT_THE_VALUE_scan_the_values_and_the_JSON_inside_them
+  - SAME_SHAPE_AS_175_a_new_storage_representation_is_a_new_population_for_every_reader_175_was_base64_this_is_string_holding_JSON
+  - README_COUNT_LINE_IS_TESTS_AND_FILES_check_readme_test_count_reports_both
+followups: []
+---
