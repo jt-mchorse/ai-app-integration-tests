@@ -1806,3 +1806,13 @@ says capitalisation does not matter. A server or proxy writing
 `Text/Event-Stream` got its stream saved as one block, and replay then handed
 the app the whole stream at once instead of event by event, which is the very
 behaviour these tests exist to check. Any capitalisation is now recognised.
+
+## 2026-10-13 — Invisible characters no longer split a word in the similarity check (#199)
+
+The text-similarity check broke words apart at invisible formatting
+characters, such as the soft hyphen web pages use as a hyphenation hint or
+the joiner characters that are part of normal Persian and Hindi spelling.
+Two texts that look exactly the same on screen scored 0.25 and failed, and
+the error message showed them as two identical lines. These characters are
+now removed before comparing, so such texts match. The zero width space,
+which Thai and Khmer use to separate words, still separates them.
