@@ -2045,3 +2045,22 @@ context_for_next_session:
   - SIBLING_OF_189_SAME_LENIENT_DECODER_ONE_READER_OVER_read_refuses_the_scanner_must_still_see_the_text
 followups: []
 ---
+
+---
+session: 2026-10-13T07:40:33Z
+duration_min: 3   # computed: plan comment 2026-10-13T07:40:33Z -> PR (gh createdAt)
+issue: 195
+branch: session/2026-10-13-0740-issue-195
+focus: READBYTES_FATAL_DECODER_DROPPED_A_LEADING_UTF8_BOM_SO_A_BYTE_BODY_WITH_AND_WITHOUT_ONE_HASHED_TO_ONE_CASSETTE
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 12
+  suite: "773 -> 785 passed (55 files); lint, typecheck, build, readme-count clean"
+decisions_made: []
+measured: "main: [EF BB BF 61 62 63] then [61 62 63] -> 1 cassette, replay(first) served second; string '\\uFEFFabc' vs its bytes -> MissingCassetteError. Branch: 2 cassettes, parity. Revert 12 of 12 red. D-015 pins unchanged."
+context_for_next_session:
+  - THE_RESPONSE_SIDE_FIX_173_SET_ignoreBOM_THE_REQUEST_SIDE_DECODER_147_NEVER_DID_check_every_TextDecoder_for_both_options
+  - captureSse_STILL_STRIPS_A_BOM_BUT_THE_SSE_SPEC_STRIPS_IT_TOO_not_a_bug
+followups: []
+---
