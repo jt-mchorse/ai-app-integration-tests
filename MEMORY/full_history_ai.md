@@ -2103,3 +2103,23 @@ context_for_next_session:
   - STILL_DEFERRED_caller_stopwords_not_NFC_or_lowercased_165
 followups: []
 ---
+
+---
+session: 2026-10-14T07:18:24Z
+duration_min: 8   # computed: plan comment 2026-10-14T07:18:24Z -> PR (est.)
+issue: 201
+branch: session/2026-10-14-0718-issue-201
+focus: LEAK_SCANNER_MATCHED_BEARER_AND_BASIC_ONLY_CAPITALISED_SCHEME_NAMES_ARE_CASE_INSENSITIVE_RFC9110_11_1
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 15
+  suite: "822 -> 837 passed (60 files, after rebasing onto #192-#200); lint, typecheck, build, readme-count, cassette rescan clean"
+decisions_made: []
+measured: "main: bearer/BEARER/basic/BASIC in a custom header and in a body all PASSED; Bearer/Basic refused. Revert 8 red / 7 green (2 controls, 5 allow rows)."
+context_for_next_session:
+  - THE_SURFACE_196_DID_NOT_LIST_a_case_insensitive_protocol_token_compared_case_sensitively_media_type_there_auth_scheme_here
+  - BASIC_WITH_I_WIDENS_PROSE_FALSE_POSITIVES_TO_lowercase_basic_plus_16_char_token_allow_rows_pin_common_prose
+  - AIAPP_README_COUNT_IS_ON_SIX_OPEN_PRS_192_194_197_198_200_201_whichever_merges_later_needs_main_plus_delta
+followups: []
+---

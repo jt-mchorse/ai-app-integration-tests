@@ -1816,3 +1816,13 @@ Two texts that look exactly the same on screen scored 0.25 and failed, and
 the error message showed them as two identical lines. These characters are
 now removed before comparing, so such texts match. The zero width space,
 which Thai and Khmer use to separate words, still separates them.
+
+## 2026-10-14 — The leak check spots "bearer" and "basic" credentials in any case (#201)
+
+Before a recording is saved, the leak check looks for credentials such as a
+`Bearer` token or a `Basic` username and password. It only recognised those two
+words with a capital first letter. The standard says the case doesn't matter,
+so a token sent as `bearer ...` or `BASIC ...` in a custom header, a request
+body or an echoed error message was saved to the cassette, and the CI check
+passed it. Both words are now matched in any case. Ordinary lowercase text such
+as "the basic plan" still passes.
