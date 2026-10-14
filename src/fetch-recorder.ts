@@ -466,7 +466,11 @@ export function createRecorderFetch(opts: RecorderOptions): typeof fetch {
     });
     const liveResponse = await upstream(input, upstreamInit);
 
-    const contentType = liveResponse.headers.get("content-type") ?? "";
+    // Lower-cased (#196): media type names are case-insensitive (RFC 9110
+    // §8.3.1) and `Headers` keeps the value as sent, so `Text/Event-Stream`
+    // fell to the non-streaming branch and replay served the stream as ONE
+    // chunk -- the lost chunk boundaries #104 fixed for CR/CRLF framing.
+    const contentType = (liveResponse.headers.get("content-type") ?? "").toLowerCase();
     let recorded: RecordedResponse;
     let cloneForCaller: Response;
 

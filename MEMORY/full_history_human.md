@@ -1797,3 +1797,12 @@ the start of a file), so a body with one and the same body without one were
 filed as the same request, and replay could hand back the other one's
 response. The mark is now kept, so the two are separate recordings, and a
 body sent as text or as its bytes is matched the same way.
+
+## 2026-10-13 — Streams are recognised whatever the capitalisation (#196)
+
+The recorder decides a response is a live stream by its content type. It only
+recognised the lower-case spelling `text/event-stream`, though the standard
+says capitalisation does not matter. A server or proxy writing
+`Text/Event-Stream` got its stream saved as one block, and replay then handed
+the app the whole stream at once instead of event by event, which is the very
+behaviour these tests exist to check. Any capitalisation is now recognised.

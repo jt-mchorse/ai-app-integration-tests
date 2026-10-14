@@ -2064,3 +2064,22 @@ context_for_next_session:
   - captureSse_STILL_STRIPS_A_BOM_BUT_THE_SSE_SPEC_STRIPS_IT_TOO_not_a_bug
 followups: []
 ---
+
+---
+session: 2026-10-13T07:40:34Z
+duration_min: 4   # computed: plan comment 2026-10-13T07:40:34Z -> PR (gh createdAt)
+issue: 196
+branch: session/2026-10-13-0741-issue-196
+focus: RECORDER_CHOSE_THE_SSE_BRANCH_WITH_A_CASE_SENSITIVE_CONTENT_TYPE_TEST_SO_TEXT_EVENT_STREAM_IN_ANY_OTHER_CASE_REPLAYED_AS_ONE_CHUNK
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 6
+  suite: "773 -> 779 passed (55 files); lint, typecheck, build, readme-count clean"
+decisions_made: []
+measured: "main: 3-event stream replayed 3 chunks under text/event-stream, 1 chunk under Text/Event-Stream and TEXT/EVENT-STREAM; charset=utf-8 (kind non_streaming). Branch: 3 chunks, kind sse. Revert 4 of 6 red; 2 controls (lower-case SSE, Application/JSON) green."
+context_for_next_session:
+  - A_HEADER_VALUE_COMPARISON_IS_CASE_SENSITIVE_UNLESS_SOMEONE_LOWERS_IT_Headers_only_normalises_NAMES
+  - AIAPP_README_COUNT_ON_197_AND_THIS_PR_whichever_merges_later_needs_main_plus_delta
+followups: []
+---
