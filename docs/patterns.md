@@ -131,7 +131,10 @@ expectSemanticallySimilar(
 - Tokenizes both strings: NFC-normalize, lowercase, strip punctuation,
   drop stopwords. Combining marks stay part of their word, so vowel
   signs in Devanagari and other scripts are not stripped, and the NFC and
-  NFD spellings of one word are one token (#165). A small English seed
+  NFD spellings of one word are one token (#165). Invisible format
+  characters (soft hyphen, ZWNJ, ZWJ, word joiner, bidi marks) are
+  deleted rather than split on, so a word carrying one is still one token;
+  U+200B zero width space still separates words (#199). A small English seed
   list ships as default; pass `stopwords` for non-English or
   domain-specific corpora.
 - Computes Jaccard similarity (intersection / union) over the token

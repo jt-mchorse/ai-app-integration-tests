@@ -2083,3 +2083,23 @@ context_for_next_session:
   - AIAPP_README_COUNT_ON_197_AND_THIS_PR_whichever_merges_later_needs_main_plus_delta
 followups: []
 ---
+
+---
+session: 2026-10-13T08:07:06Z
+duration_min: 10   # computed: plan comment 2026-10-13T08:07:06Z -> PR (gh createdAt)
+issue: 199
+branch: session/2026-10-13-0807-issue-199
+focus: TOKENIZE_TURNED_INVISIBLE_FORMAT_CHARS_INTO_SEPARATORS_SOFT_HYPHEN_ZWNJ_ZWJ_SPLIT_ONE_WORD_IDENTICAL_TEXTS_SCORED_0_25
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 13
+  suite: "773 -> 786 passed (55 files); lint, typecheck, build, readme-count clean"
+decisions_made: []
+measured: "main: 're<SHY>fund win<SHY>dow' vs 'refund window' 0.250; Devanagari ZWJ 0.000; ZWNJ/RLM/WJ 0.250. Branch: 1.0. Revert 11 of 13 red (2 controls green); delete-after-NFC neighbour 1 red; delete-ZWSP-too neighbour 1 red."
+context_for_next_session:
+  - 165_MOVED_P_M_OUT_OF_THE_PUNCTUATION_CLASS_P_CF_WAS_THE_OTHER_IN_WORD_CATEGORY_IT_DID_NOT_LIST
+  - ZWSP_U_200B_IS_A_WORD_BREAK_THAI_KHMER_keep_it_a_separator
+  - STILL_DEFERRED_caller_stopwords_not_NFC_or_lowercased_165
+followups: []
+---
