@@ -388,10 +388,19 @@ function scanTexts(value: unknown, depth = 0): string[] {
     if (typeof v === "string") {
       out.push(v);
       if (depth >= MAX_NESTED_JSON_DEPTH) return;
+      // An SSE line ends at ANY of `\r\n`, `\r` or `\n`, the three forms
+      // `captureSse` splits frames on (D-012), and an event's `data:` lines are
+      // joined with `\n` (#191). Splitting on `\r?\n` alone left a CR-framed
+      // event as one line starting with `event:`, so its payload was never
+      // parsed, and each line of a multi-line `data` field failed to parse alone.
       const candidates = [v];
-      for (const line of v.split(/\r?\n/)) {
-        if (line.startsWith("data:")) candidates.push(line.slice(5).trim());
+      const data: string[] = [];
+      for (const line of v.split(/\r\n|\r|\n/)) {
+        if (!line.startsWith("data:")) continue;
+        candidates.push(line.slice(5).trim());
+        data.push(line.slice(line.startsWith("data: ") ? 6 : 5));
       }
+      if (data.length > 1) candidates.push(data.join("\n"));
       for (const text of candidates) {
         const t = text.trim();
         if (!(t.startsWith("{") || t.startsWith("["))) continue;

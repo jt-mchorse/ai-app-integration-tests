@@ -1768,3 +1768,13 @@ text. It checked that an encoded body said "base64", but not that it actually
 was base64. Either kind of hand edit or corruption replayed different bytes
 than were recorded, without any error. Both are now refused when the cassette
 is read.
+
+## 2026-10-13 — The leak scanner reads streaming events however their lines end (#191)
+
+Yesterday's fix made the scanner look inside each streaming event's data. It
+found that data by splitting on newlines, but a stream may also end its lines
+with a bare carriage return, and the recorder already handles that. For such a
+stream, or for an event whose data is spread over several lines, the data was
+never read, so an echoed key was saved and the CI check passed it. The scanner
+now splits lines the same way the recorder does and joins multi-line data
+before reading it.

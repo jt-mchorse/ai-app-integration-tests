@@ -2003,6 +2003,12 @@ duration_min: 0   # computed: plan comment 2026-10-12T09:01:07Z -> PR 2026-10-12
 issue: 189
 branch: session/2026-10-12-0901-issue-189
 focus: CASSETTESTORE_READ_ACCEPTED_NON_STRING_SSE_FRAMES_AND_A_NON_BASE64_BASE64_BODY_WHICH_REPLAYED_AS_WRONG_BYTES
+
+session: 2026-10-13T07:18:04Z
+duration_min: 15
+issue: 191
+branch: session/2026-10-13-0718-issue-191
+focus: LEAK_SCANNER_SPLIT_SSE_LINES_ON_CR_QUESTION_LF_ONLY_SO_A_CR_FRAMED_EVENT_OR_A_MULTI_LINE_DATA_FIELD_WAS_NEVER_PARSED
 phase: shipped
 delta:
   files_changed: 3
@@ -2014,5 +2020,12 @@ context_for_next_session:
   - A_SHAPE_GUARD_THAT_CHECKS_THE_CONTAINER_NOT_THE_ELEMENTS_frames_array_of_anything
   - NODE_BASE64_DECODER_SKIPS_NON_ALPHABET_CHARS_SILENTLY_check_canonical_form
   - AIAPP_README_COUNT_IS_NOW_ON_FOUR_OPEN_PRS_184_186_188_189_whichever_merges_later_needs_main_plus_delta
+
+  suite: "754 -> 764 passed (53 files); lint, typecheck, build, readme-count, cassette rescan clean"
+decisions_made: []
+measured: "main: CR-framed event with an event: line and a multi-line data: JSON both passed the scanner; end to end the recorder WROTE the CR cassette and scan-committed-cassettes exited 0. Branch: refused, nothing written. Revert 6 red / 4 green (2 LF/CRLF controls, 2 allow rows)."
+context_for_next_session:
+  - THE_183_FIX_LISTED_SSE_DATA_PAYLOADS_BUT_USED_A_LINE_SPLIT_OLDER_THAN_D_012_two_parsers_of_one_format_must_agree_on_what_a_line_ending_is
+  - SSE_DATA_IS_A_FIELD_NOT_A_LINE_the_spec_joins_data_lines_with_LF
 followups: []
 ---
