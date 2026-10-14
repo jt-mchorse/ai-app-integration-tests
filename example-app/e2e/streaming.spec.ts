@@ -11,6 +11,8 @@
  *                token sequence the stub emits).
  *   3. error  →  loading → error (error-card visible; phase stays at
  *                "error" — no streaming progression).
+ *   4. no terminal frame → error, Run enabled again (#135).
+ *   5. one run at a time → Run disabled at every in-flight phase (#207).
  *
  * The progression is RECORDED, not polled for (#155). `toHaveText` re-checks
  * on Playwright's backoff (+0, 20, 70, 170, 270, 770 ms, then every 500 ms),
@@ -150,4 +152,56 @@ test.describe("streaming UI", () => {
       await expect(page.getByTestId("run-button")).toBeEnabled();
     });
   }
+});
+
+// #207: Run listed `loading` and `streaming` as busy and skipped `first-token`,
+// the phase between them, so a click after the first frame started a second run
+// over the live one and the two answers interleaved. The stub's frames are ~12 ms
+// apart, too short to click into reliably, so `/api/streaming` is served from a
+// stream this test feeds one frame at a time.
+test.describe("streaming UI: one run at a time", () => {
+  type Fed = { __streams?: ReadableStreamDefaultController<Uint8Array>[] };
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as Fed;
+      const original = window.fetch.bind(window);
+      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        if (!url.endsWith("/api/streaming")) return original(input, init);
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            (w.__streams ??= []).push(controller);
+          },
+        });
+        return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
+      };
+    });
+    await page.goto("/streaming");
+  });
+
+  test("Run is disabled at every in-flight phase, first-token included", async ({ page }) => {
+    const feed = (frame: string) =>
+      page.evaluate((f) => (window as unknown as Fed).__streams![0].enqueue(new TextEncoder().encode(f)), frame);
+    const run = page.getByTestId("run-button");
+    const phase = page.getByTestId("phase-indicator");
+
+    await run.click();
+    await expect(phase).toHaveText(PHASE("loading"));
+    await expect(run).toBeDisabled();
+
+    await feed('data: {"text":"one "}\n\n');
+    await expect(phase).toHaveText(PHASE("first-token"));
+    await expect(run).toBeDisabled();
+
+    await feed('data: {"text":"two "}\n\n');
+    await expect(phase).toHaveText(PHASE("streaming"));
+    await expect(run).toBeDisabled();
+
+    await feed('event: done\ndata: {"ms":1}\n\n');
+    await expect(phase).toHaveText(PHASE("done"));
+    await expect(run).toBeEnabled();
+    await expect(page.getByTestId("answer")).toHaveText("one two ");
+    expect(await page.evaluate(() => (window as unknown as Fed).__streams!.length)).toBe(1);
+  });
 });

@@ -7,6 +7,13 @@ type Phase = "idle" | "loading" | "first-token" | "streaming" | "done" | "error"
 
 const STREAM_ENDED_WITHOUT_TERMINAL = "stream ended before a done or error event";
 
+// Every phase a run is still reading in (#207). The button listed `loading` and
+// `streaming` and skipped `first-token`, the phase between them, so Run was
+// enabled once the first frame landed: a click started a second run over the
+// live one, both loops appended to one answer, and the first run's `done` was
+// shown while the second still streamed.
+const IN_FLIGHT: ReadonlySet<Phase> = new Set<Phase>(["loading", "first-token", "streaming"]);
+
 export default function StreamingPage() {
   const [prompt, setPrompt] = useState("Write a one-sentence haiku about server-side rendering.");
   const [text, setText] = useState("");
@@ -111,7 +118,7 @@ export default function StreamingPage() {
           data-testid="prompt-input"
         />
         <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={run} disabled={phase === "loading" || phase === "streaming"} data-testid="run-button">
+          <button onClick={run} disabled={IN_FLIGHT.has(phase)} data-testid="run-button">
             Run
           </button>
           <span className="muted" data-testid="phase-indicator">phase: {phase}</span>
