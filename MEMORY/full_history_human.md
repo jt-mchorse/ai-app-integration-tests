@@ -1826,3 +1826,13 @@ so a token sent as `bearer ...` or `BASIC ...` in a custom header, a request
 body or an echoed error message was saved to the cassette, and the CI check
 passed it. Both words are now matched in any case. Ordinary lowercase text such
 as "the basic plan" still passes.
+
+## 2026-10-14 — The CI leak check reads symlinked cassettes (#203)
+
+The CI job that re-checks every committed cassette for leaked keys walked the
+fixtures folder and silently skipped anything that was a shortcut (symlink): a
+linked cassette, a linked folder of cassettes, or a broken link. Replay follows
+those links, and recording writes through them since #181, so a shared-fixtures
+setup was used by the tests but never checked. The job reported "0 cassettes"
+and passed. It now follows links, walks a linked folder once (so a loop can't
+hang it), and fails on a broken link.

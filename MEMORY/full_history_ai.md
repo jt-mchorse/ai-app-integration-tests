@@ -2123,3 +2123,23 @@ context_for_next_session:
   - AIAPP_README_COUNT_IS_ON_SIX_OPEN_PRS_192_194_197_198_200_201_whichever_merges_later_needs_main_plus_delta
 followups: []
 ---
+
+---
+session: 2026-10-14T07:21:00Z
+duration_min: 7   # computed: plan comment -> PR (est.)
+issue: 203
+branch: session/2026-10-14-0721-issue-203
+focus: SCAN_COMMITTED_CASSETTES_SKIPPED_SYMLINKS_DIRENT_ISFILE_IS_FALSE_FOR_A_LINK_WHILE_READ_AND_181_WRITE_FOLLOW_IT
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 6
+  suite: "822 -> 828 passed (60 files, after rebasing onto #192-#200); lint, typecheck, build, readme-count, cassette rescan clean"
+decisions_made: []
+measured: "main: fixtures/ holding a symlinked leaky cassette, a symlinked dir and a dangling .json -> '0 cassette(s)', exit 0; CassetteStore.read served the leaky body. Branch: 3 of 3 refused, exit 1. Revert 5 red / 1 green (loop control)."
+context_for_next_session:
+  - THE_READER_181_DID_NOT_LIST_read_and_write_follow_a_symlinked_cassette_the_CI_rescan_did_not
+  - DIRENT_ISFILE_AND_ISDIRECTORY_DESCRIBE_THE_LINK_stat_it_when_isSymbolicLink_and_track_realpaths_for_loops
+  - AIAPP_README_COUNT_IS_ON_SEVEN_OPEN_PRS_192_194_197_198_200_202_and_this_one_whichever_merges_later_needs_main_plus_delta
+followups: []
+---
