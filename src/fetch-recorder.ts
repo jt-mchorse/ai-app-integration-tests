@@ -33,7 +33,7 @@ async function normalizeRequest(
   init?: RequestInit,
 ): Promise<{ normalized: NormalizedRequest; rawHeaders: Record<string, string>; bodyText: string | null }> {
   const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-  const method = (init?.method ?? (typeof input === "object" && "method" in input ? input.method : "GET")).toUpperCase();
+  const method = normalizeMethod(init?.method ?? (typeof input === "object" && "method" in input ? input.method : "GET"));
 
   const rawHeaders = collectHeaders(init?.headers, input);
   const read = await readBodyAsText(init?.body, input);
@@ -87,6 +87,25 @@ async function normalizeRequest(
   // `bodyText` is text a caller could send. Base64 of binary bytes is a hash
   // key, not a body, so it is never handed out as one (#147).
   return { normalized, rawHeaders, bodyText: read !== null && read.binary ? null : bodyText };
+}
+
+/**
+ * The method as `fetch` puts it on the wire (#205): the Fetch spec's "normalize
+ * a method" upper-cases only a case-insensitive match for these six, and every
+ * other method is case-sensitive and sent as written. Upper-casing ALL of them
+ * made the recorder send `PATCH` for a `patch` call -- a request the caller
+ * never made, whose success replay then served while the live call failed --
+ * and filed `patch` and `PATCH` under one cassette. Every upper-case method,
+ * and any spelling of these six, normalizes as before, so no hash moves.
+ */
+const FETCH_NORMALIZED_METHODS: ReadonlySet<string> = new Set(["DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT"]);
+
+function normalizeMethod(method: string): string {
+  // ASCII only, as the spec's byte-uppercase is: `toUpperCase` folds U+017F
+  // (long s) to `S`, which would turn the invalid method `po\u017Ft` -- one
+  // `fetch` refuses -- into a POST.
+  const upper = method.replace(/[a-z]+/g, (s) => s.toUpperCase());
+  return FETCH_NORMALIZED_METHODS.has(upper) ? upper : method;
 }
 
 function collectHeaders(headers: HeadersInit | undefined, input: RequestInfo | URL): Record<string, string> {
