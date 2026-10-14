@@ -263,7 +263,13 @@ export function redactHeaders(headers: Record<string, string>): Record<string, s
 const API_KEY_PATTERNS: Array<RegExp> = [
   /\bsk-[A-Za-z0-9_-]{32,}/,
   /\bsk-ant-[A-Za-z0-9_-]{32,}/,
-  /\bBearer\s+[A-Za-z0-9_.\-/+=]{20,}/,
+  // `i` on both auth-scheme patterns (#201): a scheme name is case-insensitive
+  // (RFC 9110 §11.1), and these two exist for the un-redacted channels -- a
+  // custom header, a body, an echoed error -- where the spelling is whatever the
+  // sender chose. Without it `bearer <token>` and `BASIC <base64>` were written
+  // to the cassette. The credential classes already hold both cases, so the
+  // flag changes only how the scheme word matches.
+  /\bBearer\s+[A-Za-z0-9_.\-/+=]{20,}/i,
   // Google / Gemini / Vertex AI keys (`AIza` + 35+ url-safe chars; real keys
   // are 39 chars total). The `x-goog-api-key` header is already redacted (#22);
   // this catches the same key class leaking through an un-redacted channel —
@@ -275,7 +281,7 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   // un-redacted channel (an echoed error body, a custom auth header), and the
   // prefix-based patterns above would miss it. 16+ base64 chars ≈ an 8+ byte
   // `user:pass`, well clear of incidental short tokens.
-  /\bBasic\s+[A-Za-z0-9+/=]{16,}/,
+  /\bBasic\s+[A-Za-z0-9+/=]{16,}/i,
   // URL userinfo credentials (`scheme://user:pass@host`, RFC 3986 §3.2.1).
   // `normalizeUrl` now strips userinfo before write (#64), but a userinfo URL
   // can still surface through an un-redacted channel — an echoed error body, a
