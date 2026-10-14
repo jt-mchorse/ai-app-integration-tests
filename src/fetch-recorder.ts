@@ -149,9 +149,16 @@ function bytesOf(view: ArrayBuffer | ArrayBufferView): Uint8Array {
     : new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
 }
 
+// `ignoreBOM: true` (#195): without it the decoder DROPS a leading UTF-8 BOM, so
+// `EF BB BF 61` and `61` read as one text, hash to one cassette, and replay
+// serves the other request's response -- #147's collision, one decoder option
+// over. With it, valid UTF-8 reads as exactly the string it encodes, the same
+// text a string body of those characters hashes (`storedResponseBody` already
+// keeps the BOM for the same reason). A body with no leading BOM decodes as
+// before, so no hash D-015 pins moves.
 function readBytes(view: ArrayBuffer | ArrayBufferView): BodyRead {
   try {
-    return { text: new TextDecoder("utf-8", { fatal: true }).decode(view), binary: false };
+    return { text: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(view), binary: false };
   } catch {
     return { text: Buffer.from(bytesOf(view)).toString("base64"), binary: true };
   }

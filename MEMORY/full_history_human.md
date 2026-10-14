@@ -1787,3 +1787,13 @@ after a hand edit, decoding quietly dropped most of it, and a key written in
 plain text in the file was never seen. The CI check passed such a file. The
 scanner now also reads the stored text whenever it is not genuine base64.
 Recordings made by the recorder are unaffected.
+
+## 2026-10-13 — A byte order mark no longer merges two recordings (#195)
+
+When a request body is sent as raw bytes, the recorder turns those bytes into
+text to decide which cassette the request belongs to. That conversion quietly
+dropped a leading byte order mark (three invisible bytes some editors put at
+the start of a file), so a body with one and the same body without one were
+filed as the same request, and replay could hand back the other one's
+response. The mark is now kept, so the two are separate recordings, and a
+body sent as text or as its bytes is matched the same way.
