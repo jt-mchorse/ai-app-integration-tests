@@ -2204,3 +2204,27 @@ context_for_next_session:
   - THE_SURFACE_131_DID_NOT_LIST_the_replay_remedy_was_checked_on_streaming_only
   - ARCH_DOC_SUITE_WORD_TABLE_STOPPED_AT_TEN_extended_to_Fifteen
   - NEXT_START_BUILD_MINIFIES_CONSTRUCTOR_NAMES_187_type_reads_u_in_production
+---
+
+---
+
+---
+session: 2026-10-15T07:37:00Z
+duration_min: 15   # computed: plan comment -> PR (est.)
+issue: 213
+branch: session/2026-10-15-0737-issue-213
+focus: A_WHITESPACE_ONLY_HOSTS_ENTRY_PASSED_BOTH_VALIDATEHOSTS_GATES_TRIMMED_TO_EMPTY_AND_SILENTLY_DEGRADED_THE_RECORDER_TO_LIVE_PASS_THROUGH
+phase: shipped
+delta:
+  files_changed: 5
+  tests_added: 32
+  suite: "857 -> 889 passed (62 -> 63 files); lint, typecheck, build, readme-count clean"
+decisions_made: []
+measured: "main: installRecorder/createRecorderFetch with hosts ['   '], ['\\t'], [' \\n'] accepted, 1 upstream call, 0 cassettes; [''] refused. Branch: every blank spelling refused at both layers before any call. Revert 31 of 33 red (32 new + 1 rewritten; 2 controls green: '' message, padded real host still records)."
+context_for_next_session:
+  - VALIDATION_AND_MATCHING_READ_TWO_DIFFERENT_VALUES_validateHosts_tested_raw_length_normalizeHosts_95_matched_the_trim
+  - A_TEST_TITLE_IS_A_PROSE_ASSERTION_the_95_negative_control_was_titled_still_rejected_by_validation_and_asserted_silent_pass_through
+  - FORMDATA_SYNTHETIC_RECORD_TEXT_COLLIDES_WITH_A_TEXT_BODY_SPELLING_IT_filed_as_decision_revisit_because_either_fix_moves_a_hash_D_015_pins
+  - AIAPP_README_COUNT_210_212_AND_THIS_PR_whichever_merges_later_needs_main_plus_delta_this_PR_plus_32_tests_plus_1_file
+followups: []
+---

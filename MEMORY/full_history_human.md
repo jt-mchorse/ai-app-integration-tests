@@ -1871,3 +1871,15 @@ that did not fail. One-shot requests now get the reply the real API would
 give: a tool call and then an answer, or a "model not found" error for the
 error screen's deliberately wrong model. Streaming requests are answered
 exactly as before.
+
+## 2026-10-15 — A hosts list containing only spaces is refused instead of silently going live (#213)
+
+The recorder and replayer refuse an empty hostname, because a hostname that
+matches nothing makes every call go to the real API with nothing recorded.
+But a hostname made only of spaces (or a tab or newline), which is what a
+blank `.env` value split on commas gives you, got past that check: matching
+trims spaces off first, so it became empty after the check had already
+passed. Every call went live and no recording was written, with no error. An
+old test even had a title saying this case was refused while checking that it
+wasn't. Both checks now trim before judging, so a blank entry fails at setup
+with a message saying why; a real hostname with stray spaces still works.
