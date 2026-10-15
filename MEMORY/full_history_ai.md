@@ -2163,3 +2163,24 @@ context_for_next_session:
   - AIAPP_README_COUNT_202_204_AND_THIS_PR_whichever_merges_later_needs_main_plus_delta_this_PR_plus_14_tests_plus_1_file
 followups: []
 ---
+
+---
+session: 2026-10-14T07:43:00Z
+duration_min: 12   # computed: plan comment -> PR (gh createdAt)
+issue: 207
+branch: session/2026-10-14-0743-issue-207
+focus: STREAMING_PAGE_RUN_BUTTON_LISTED_LOADING_AND_STREAMING_AS_BUSY_AND_SKIPPED_FIRST_TOKEN_SO_A_SECOND_RUN_STARTED_OVER_A_LIVE_ONE
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 1
+  suite: "Playwright 6 -> 7 passed; root vitest 822 and example-app 99 unchanged; lint, typecheck, build, all three readme-count checks clean"
+decisions_made: []
+measured: "main: stream held at first-token -> run-button enabled, second click accepted, answer 'B1 A2 B2 ', phase done while run B still streaming. Branch: disabled at loading/first-token/streaming, enabled at done, one stream opened. Revert (stale build = unfixed page) 1 of 1 red at the first-token toBeDisabled step; loading step green on main."
+context_for_next_session:
+  - A_PHASE_LIST_GUARD_ENUMERATED_TWO_OF_THREE_IN_FLIGHT_PHASES_the_tools_and_error_pages_use_one_busy_flag_and_were_fine
+  - THE_PAGES_OWN_135_COMMENT_SAID_FIRST_TOKEN_LEFT_RUN_DISABLED_it_never_did_a_prose_claim_about_UI_state_is_a_test_case
+  - E2E_PROBES_NEED_A_NEXT_REBUILD_next_start_serves_the_last_build_so_a_stale_build_is_a_free_revert_probe_but_also_a_false_red
+  - AIAPP_README_PLAYWRIGHT_COUNT_6_TO_7_on_this_PR_two_claims_benchmarks_sentence_and_the_hash_N_passed_comment
+followups: []
+---

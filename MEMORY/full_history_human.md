@@ -1848,3 +1848,13 @@ passed even though the same code fails against the real API. The two spellings
 also shared one recording. The recorder now treats methods the way `fetch`
 does, so the recording matches what the app really sends; existing recordings
 are unaffected.
+
+## 2026-10-14 — The streaming demo's Run button stays off until the answer finishes (#207)
+
+The demo page turns its Run button off while an answer is streaming in, but
+the check named only two of the three in-progress states. Right after the
+first word arrived, Run came back on. Clicking it then started a second answer
+on top of the first: the words from both were mixed into one reply, and the
+page said "done" while the second answer was still arriving. The button now
+stays off from the click until the answer finishes or fails, and a new browser
+test feeds the stream one piece at a time to check it at each step.
