@@ -2184,3 +2184,23 @@ context_for_next_session:
   - AIAPP_README_PLAYWRIGHT_COUNT_6_TO_7_on_this_PR_two_claims_benchmarks_sentence_and_the_hash_N_passed_comment
 followups: []
 ---
+followups: []
+---
+
+---
+session: 2026-10-15T07:12:00Z
+duration_min: 15   # est.: clone 2026-10-15T07:12Z -> PR; plan comment was posted 2026-10-14T07:48:52Z by a session that did not ship
+issue: 209
+branch: session/2026-10-15-0718-issue-209
+focus: REPLAY_STUB_ANSWERED_NON_STREAMING_CALLS_WITH_SSE_TOOLS_ALWAYS_502_STOP_REASON_UNDEFINED_ERROR_UPSTREAM_SAID_EXPECTED_AN_UPSTREAM_ERROR
+phase: shipped
+delta:
+  files_changed: 5
+  tests_added: 6
+  suite: "example-app 99 -> 105 passed (11 files); root 837 (60 files) unchanged; lint, typecheck, build, both readme-count checks, Playwright 6/6 clean"
+decisions_made: []
+measured: "main: tools 502 stop_reason=undefined, error-upstream 502 'expected an upstream error'. Branch: tools 200 calculate 17*23=391 / get_weather Paris; upstream 502 status 404 NotFoundError not_found_error; same through 'next start' under replay on :3117. Revert 4 of 6 red (2 SSE-unchanged controls green)."
+context_for_next_session:
+  - THE_SURFACE_131_DID_NOT_LIST_the_replay_remedy_was_checked_on_streaming_only
+  - ARCH_DOC_SUITE_WORD_TABLE_STOPPED_AT_TEN_extended_to_Fifteen
+  - NEXT_START_BUILD_MINIFIES_CONSTRUCTOR_NAMES_187_type_reads_u_in_production

@@ -1858,3 +1858,16 @@ on top of the first: the words from both were mixed into one reply, and the
 page said "done" while the second answer was still arriving. The button now
 stays off from the click until the answer finishes or fails, and a new browser
 test feeds the stream one piece at a time to check it at each step.
+
+## 2026-10-15 — The tool-use and error screens work without an API key (#209)
+
+The README says all three example-app screens run with
+`ANTHROPIC_TEST_MODE=replay` and no API key, using the built-in stand-in for
+the Anthropic API. Only the streaming screen did. The stand-in answered every
+request as a stream, including the ordinary one-shot requests the tool-use
+and error screens make, so the tool-use screen failed on every question and
+the error screen's "upstream" case showed the message meant for an upstream
+that did not fail. One-shot requests now get the reply the real API would
+give: a tool call and then an answer, or a "model not found" error for the
+error screen's deliberately wrong model. Streaming requests are answered
+exactly as before.
