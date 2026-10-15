@@ -22,26 +22,58 @@
  * `scripts/missing_cassette_demo.ts`, so it needs neither a built `dist/` nor
  * Node's native TypeScript support.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { assertNoLeakedSecrets, type CassetteV1 } from "../src/cassette.js";
 
-function jsonFiles(dir: string): string[] {
+/**
+ * Every `*.json` under `dir`, following symlinks (#203).
+ *
+ * A `Dirent` describes the link, not its target, so `isFile()` and
+ * `isDirectory()` are both false for a symlink, and this walk used to skip a
+ * symlinked cassette, a symlinked directory of them and a dangling `.json` link
+ * without a word. `CassetteStore.read` follows the link and #181 made `write`
+ * write through it, so a shared-fixture layout is recorded and replayed, and
+ * the gate scanned none of it. A link is now classified by what `statSync`
+ * (which follows it) finds. A dangling `.json` link is collected so `problem`
+ * reports it unreadable, and `seen` (real paths) makes a directory link loop end.
+ */
+function jsonFiles(dir: string, seen: Set<string> = new Set()): string[] {
+  const real = realpathSync(dir);
+  if (seen.has(real)) return [];
+  seen.add(real);
   const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) out.push(...jsonFiles(path));
-    else if (entry.isFile() && entry.name.endsWith(".json")) out.push(path);
+    let isDir = entry.isDirectory();
+    let isFile = entry.isFile();
+    if (entry.isSymbolicLink()) {
+      try {
+        const target = statSync(path);
+        isDir = target.isDirectory();
+        isFile = target.isFile();
+      } catch {
+        isFile = true; // dangling: `problem` reports it, fail closed
+      }
+    }
+    if (isDir) out.push(...jsonFiles(path, seen));
+    else if (isFile && entry.name.endsWith(".json")) out.push(path);
   }
   return out.sort();
 }
 
 /** The reason `path` must not be committed, or `null` when it is clean. */
 function problem(path: string): string | null {
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch (err) {
+    return `not readable: ${(err as Error).message}`;
+  }
   let parsed: unknown;
   try {
-    parsed = JSON.parse(readFileSync(path, "utf8"));
+    parsed = JSON.parse(text);
   } catch (err) {
     return `not valid JSON: ${(err as Error).message}`;
   }
