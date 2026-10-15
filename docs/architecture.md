@@ -135,7 +135,7 @@ Two checks run before any cassette is written:
 2. **Body scan.** `assertNoLeakedSecrets()` serializes the entire
    cassette and rejects on six regexes: `sk-...`, `sk-ant-...`,
    `Bearer <token>`, Google `AIza...` keys (#22), HTTP `Basic ...`
-   credentials (#54), and URL userinfo `//user:pass@` (#64). The check
+   credentials (#54) -- both auth schemes in any case (#201) -- and URL userinfo `//user:pass@` (#64). The check
    is intentionally broad — false positives are recoverable (rename the
    variable in your test); false negatives commit a credential to git.
 
