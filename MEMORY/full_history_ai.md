@@ -2250,3 +2250,26 @@ context_for_next_session:
   - AIAPP_EXAMPLE_APP_README_COUNT_ON_210_AND_THIS_PR_whichever_merges_later_needs_main_plus_delta
 followups: []
 ---
+
+---
+
+---
+session: 2026-10-15T08:03:00Z
+duration_min: 15   # computed: plan comment -> PR (gh createdAt)
+issue: 216
+branch: session/2026-10-15-0803-issue-216
+focus: CI_LEAK_RESCAN_SCANNED_JSON_PARSE_LAST_WINS_VIEW_SO_A_KEY_DUPLICATED_BELOW_A_REAL_CREDENTIAL_HID_IT_FROM_THE_GATE
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 5
+  suite: "857 -> 862 passed (62 -> 63 files); lint, typecheck, build, readme-count, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main: committed fixture + 'x-api-key: sk-ant-...' line above the [REDACTED] one -> grep finds the key in the file, scanner 'no leaked secrets', exit 0; the #171-era grep line matches it. Branch: exit 1 naming file and key. Revert 3 of 5 red (2 anti-vacuity arms green); neighbour wrong fix (one key set for the whole file) 1 red on the per-object arm."
+context_for_next_session:
+  - A_GATE_THAT_SCANS_A_PARSE_VOUCHES_ONLY_FOR_WHAT_THE_PARSE_KEPT_duplicate_keys_are_the_one_lossy_seam_in_JSON_parse_for_strings
+  - 172_REPLACED_A_BYTE_GREP_WITH_A_PARSE_SCAN_it_gained_patterns_and_lost_the_bytes_the_replaced_mechanism_is_a_population_list
+  - BROWSER_WALK_OF_ALL_PAGES_UNDER_REPLAY_AND_LIVE_found_no_React_or_console_errors_only_known_209_and_81
+  - AIAPP_README_COUNT_210_212_214_AND_THIS_PR_whichever_merges_later_needs_main_plus_delta_this_PR_plus_5_tests_plus_1_file
+followups: []
+---
