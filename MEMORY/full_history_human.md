@@ -1883,3 +1883,12 @@ passed. Every call went live and no recording was written, with no error. An
 old test even had a title saying this case was refused while checking that it
 wasn't. Both checks now trim before judging, so a blank entry fails at setup
 with a message saying why; a real hostname with stray spaces still works.
+
+## 2026-10-15 — The error screen names the right error in the built app (#211)
+
+The error screen's "upstream" case shows which kind of API error occurred,
+such as "NotFoundError". It read that name from the error's class, and the
+production build shortens class names to save space, so the served app
+showed `u` instead. The test suite runs the unshortened code and never saw
+the problem. The name now comes from comparing the error against the SDK's
+own error types, which works the same in tests and in the built app.
