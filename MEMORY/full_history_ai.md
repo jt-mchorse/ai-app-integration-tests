@@ -2143,3 +2143,23 @@ context_for_next_session:
   - AIAPP_README_COUNT_IS_ON_SEVEN_OPEN_PRS_192_194_197_198_200_202_and_this_one_whichever_merges_later_needs_main_plus_delta
 followups: []
 ---
+
+---
+session: 2026-10-14T07:39:00Z
+duration_min: 12   # computed: plan comment -> PR (gh createdAt)
+issue: 205
+branch: session/2026-10-14-0739-issue-205
+focus: RECORDER_UPPER_CASED_EVERY_METHOD_AND_SENT_IT_UPSTREAM_SO_A_PATCH_CALL_WAS_RECORDED_AS_A_PATCH_THE_CALLER_NEVER_SENT
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 14
+  suite: "822 -> 836 passed (60 files); lint, typecheck, build, readme-count clean"
+decisions_made: []
+measured: "main: plain fetch 'patch' -> 400 from Node's server; recorder 'patch' -> 200, server saw PATCH; 'patch'/'PATCH'/Request('patch') -> 1 cassette. Branch: upstream sees 'patch', 2 cassettes. Revert 7 of 14 red (7 controls green: six fetch-normalized methods + committed fixture); toUpperCase neighbour 1 red (U+017F long s turns 'poſt' into POST)."
+context_for_next_session:
+  - FETCH_NORMALIZES_ONLY_SIX_METHODS_every_other_method_is_case_sensitive_on_the_wire_a_harness_that_canonicalizes_MORE_than_fetch_rewrites_the_live_request
+  - THE_93_145_CLASS_recorder_sends_something_other_than_what_the_caller_sent_now_seen_via_body_and_via_method_headers_are_forwarded_as_init
+  - AIAPP_README_COUNT_202_204_AND_THIS_PR_whichever_merges_later_needs_main_plus_delta_this_PR_plus_14_tests_plus_1_file
+followups: []
+---

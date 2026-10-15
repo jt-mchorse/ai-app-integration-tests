@@ -81,6 +81,10 @@ Default mode is **replay** so CI never accidentally hits the live API.
 ## Request hashing (D-003)
 
 The hash is `sha256(JSON.stringify({ method, url, body }))[:32]`, where:
+- `method` is normalized the way `fetch` normalizes it: DELETE, GET,
+  HEAD, OPTIONS, POST and PUT are upper-cased in any spelling, and any
+  other method is kept as written, which is also what the recorder sends
+  upstream (#205).
 - `url` has its query parameters sorted (so `?a=1&b=2` and `?b=2&a=1`
   hash equal).
 - `body` is `canonicalize(parse(rawBody))` — JSON parsed, then keys

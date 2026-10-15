@@ -1836,3 +1836,15 @@ those links, and recording writes through them since #181, so a shared-fixtures
 setup was used by the tests but never checked. The job reported "0 cassettes"
 and passed. It now follows links, walks a linked folder once (so a loop can't
 hang it), and fails on a broken link.
+
+## 2026-10-14 — The recorder sends the request method exactly as the app wrote it (#205)
+
+The recorder capitalised every request method before sending it on, but the
+standard only capitalises six common ones (GET, POST and so on); any other
+method is sent exactly as written. So an app calling `patch` in lower case had
+`PATCH` sent for it while recording. The real server would have rejected the
+lower-case call, but the recording saved a success, and every later replay
+passed even though the same code fails against the real API. The two spellings
+also shared one recording. The recorder now treats methods the way `fetch`
+does, so the recording matches what the app really sends; existing recordings
+are unaffected.
