@@ -6,6 +6,7 @@
  * API's own type is in the response envelope. Every upstream failure read
  * `"type": "Error"`.
  */
+import Anthropic from "@anthropic-ai/sdk";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { POST } from "../app/api/error/route.js";
@@ -47,6 +48,37 @@ describe("/api/error upstream type (#187)", () => {
     const body = await upstream();
     expect(body.error).toBe("upstream");
     expect(body.status).toBe(status);
+    expect(body.type).toBe(sdkClass);
+    expect(body.api_error_type).toBe(apiType);
+  });
+});
+
+describe("/api/error upstream type survives minification (#211)", () => {
+  // The production build renames classes, so the served app reported
+  // `"type":"u"` for a 404 while this file, unminified, read `NotFoundError`.
+  // Renaming each SDK error class's `name` is what the minifier does to it.
+  const CLASSES = [
+    Anthropic.AnthropicError,
+    Anthropic.APIError,
+    Anthropic.NotFoundError,
+    Anthropic.RateLimitError,
+    Anthropic.InternalServerError,
+  ];
+  const saved = CLASSES.map((c) => Object.getOwnPropertyDescriptor(c, "name"));
+  afterEach(() => {
+    CLASSES.forEach((c, i) => {
+      if (saved[i]) Object.defineProperty(c, "name", saved[i]!);
+    });
+  });
+
+  it.each([
+    [404, "not_found_error", "NotFoundError"],
+    [429, "rate_limit_error", "RateLimitError"],
+    [500, "api_error", "InternalServerError"],
+  ])("%i still names the SDK class with mangled class names", async (status, apiType, sdkClass) => {
+    CLASSES.forEach((c, i) => Object.defineProperty(c, "name", { value: String.fromCharCode(0x61 + i), configurable: true }));
+    upstreamFails(status, apiType);
+    const body = await upstream();
     expect(body.type).toBe(sdkClass);
     expect(body.api_error_type).toBe(apiType);
   });
