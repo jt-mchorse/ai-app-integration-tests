@@ -50,7 +50,7 @@ describe("the e2e command's `# N passed` line (#141)", () => {
 
 describe("docs/architecture.md names every example-app vitest suite (#141)", () => {
   const files = readdirSync(join(ROOT, "example-app", "test")).filter((f) => f.endsWith(".test.ts")).sort();
-  const WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+  const WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen"];
 
   it("states the right number of suites", () => {
     const m = /(\w+) vitest suites in `example-app\/test\/`/.exec(ARCH);

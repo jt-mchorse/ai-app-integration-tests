@@ -211,7 +211,7 @@ The pages are client components driving `fetch` against their sibling
 are exported functions — tests import them directly and call with a
 synthetic `Request`, no Next.js server needed.
 
-Ten vitest suites in `example-app/test/`:
+Eleven vitest suites in `example-app/test/`:
 
 - **`error-route.test.ts`** — no Anthropic call at all (validation +
   synthetic `shape` paths return early). 4 tests.
@@ -246,6 +246,11 @@ Ten vitest suites in `example-app/test/`:
   around the real Anthropic SDK, with its own retries off: a refused port and a
   server that never answers are retried to the budget, a 400 is not (#163).
   3 tests.
+- **`stub-non-streaming.test.ts`** — the replay stub answers a non-streaming
+  call with JSON, so `/api/tools` runs a tool to a final answer and `/api/error`
+  -> `upstream` reports a 404 `not_found_error` under
+  `ANTHROPIC_TEST_MODE=replay`; a `stream: true` call still gets the canned SSE
+  (#209). 6 tests.
 
 Run locally:
 
