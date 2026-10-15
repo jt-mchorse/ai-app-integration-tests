@@ -318,8 +318,9 @@ function shouldIntercept(url: string, hosts: ReadonlySet<string>): boolean {
  *
  * Trimming rather than rejecting is deliberate — the intent of a padded entry
  * is unambiguous, so it is the matching that should be forgiving, not the
- * validation that should be stricter. Both `validateHosts` implementations are
- * unchanged.
+ * validation that should be stricter. That argument stops at an entry that is
+ * ONLY padding: it trims to `""`, which matches nothing, so both `validateHosts`
+ * implementations judge blankness on the trimmed value (#213).
  *
  * Built once per factory so the per-request `shouldIntercept` stays a plain
  * Set lookup.
@@ -362,11 +363,17 @@ function validateHosts(hosts: ReadonlySet<string> | undefined, fnName: string): 
         `["api.anthropic.com"].`,
     );
   }
+  // Blank is judged on the TRIMMED entry (#213), because that is the value
+  // `normalizeHosts` matches on. `"   "` passed a raw `length === 0` test, was
+  // trimmed to `""`, and matched no hostname: every call went live and no
+  // cassette was written -- the pass-through this gate exists to refuse, behind
+  // an entry that looked configured. A padded real host (#95) is still accepted.
   let i = 0;
   for (const h of hosts) {
-    if (typeof h !== "string" || h.length === 0) {
+    if (typeof h !== "string" || h.trim().length === 0) {
       throw new Error(
-        `${fnName}: hosts entry #${i} must be a non-empty string; got ${JSON.stringify(h)}`,
+        `${fnName}: hosts entry #${i} must be a non-empty string; got ${JSON.stringify(h)}` +
+          (typeof h === "string" && h.length > 0 ? " (blank once trimmed, so it matches no host)" : ""),
       );
     }
     i++;

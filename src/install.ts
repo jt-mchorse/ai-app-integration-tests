@@ -30,10 +30,13 @@ function validateHosts(hosts: string[] | undefined, fnName: string): void {
       `${fnName}: hosts must be a non-empty array; got []. Pass at least one hostname or omit the field to use the default ["api.anthropic.com"].`,
     );
   }
+  // Trimmed (#213): matching trims (#95), so a whitespace-only entry is `""` by
+  // the time it is matched, and `""` matches nothing -- refused here like `""`.
   for (const [i, h] of hosts.entries()) {
-    if (typeof h !== "string" || h.length === 0) {
+    if (typeof h !== "string" || h.trim().length === 0) {
       throw new Error(
-        `${fnName}: hosts[${i}] must be a non-empty string; got ${JSON.stringify(h)}`,
+        `${fnName}: hosts[${i}] must be a non-empty string; got ${JSON.stringify(h)}` +
+          (typeof h === "string" && h.length > 0 ? " (blank once trimmed, so it matches no host)" : ""),
       );
     }
   }
