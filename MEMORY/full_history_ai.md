@@ -2273,3 +2273,21 @@ context_for_next_session:
   - AIAPP_README_COUNT_210_212_214_AND_THIS_PR_whichever_merges_later_needs_main_plus_delta_this_PR_plus_5_tests_plus_1_file
 followups: []
 ---
+
+---
+session: 2026-10-16T11:35Z
+issue: 221
+branch: session/2026-10-16-0839-issue-221
+focus: TOKENIZE_NORMALIZED_TOKENS_BUT_MATCHED_CALLER_STOPWORDS_AS_GIVEN_A_CAPITAL_OR_NFD_STOPWORD_DROPPED_NOTHING
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 11
+  suite: "894 -> 905 passed (65 files); lint, typecheck, readme-count clean"
+decisions_made: []
+measured: "main: tokenize('Claude answered', {'Claude'}) kept claude; NFD cafe stopword kept both; expectSemanticallySimilar mismatch 0.5. After: dropped, RangeError path. Revert 7 of 11 red."
+context_for_next_session:
+  - A_CACHE_KEYED_ON_A_MUTABLE_SET_GOES_STALE_I_DREW_A_SIZE_KEYED_ONE_AND_DROPPED_IT
+  - README_COUNT_LINE_CONFLICTS_WITH_220_whichever_merges_second_sets_the_summed_measured_count
+followups: []
+---
