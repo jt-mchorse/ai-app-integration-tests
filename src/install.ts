@@ -1,5 +1,5 @@
 import { parseTestMode } from "./test-mode.js";
-import { createRecorderFetch, createReplayerFetch } from "./fetch-recorder.js";
+import { createRecorderFetch, createReplayerFetch, hostEntryProblem } from "./fetch-recorder.js";
 import { CassetteStore } from "./io.js";
 
 export interface InstallOptions {
@@ -38,6 +38,11 @@ function validateHosts(hosts: string[] | undefined, fnName: string): void {
         `${fnName}: hosts[${i}] must be a non-empty string; got ${JSON.stringify(h)}` +
           (typeof h === "string" && h.length > 0 ? " (blank once trimmed, so it matches no host)" : ""),
       );
+    }
+    // A port, scheme, path or un-punycoded name matches nothing either (#219).
+    const problem = hostEntryProblem(h);
+    if (problem !== null) {
+      throw new Error(`${fnName}: hosts[${i}] ${JSON.stringify(h)} ${problem}`);
     }
   }
 }

@@ -1903,3 +1903,12 @@ while the real key was still in the file going into git. The old grep-based
 check, replaced on 10-08, read the raw file and would have caught it. The check
 now fails on any recording with a repeated field, naming the field; the
 recorder never writes one, so real recordings are unaffected.
+
+## 2026-10-16 — A hosts entry with a port or a scheme is refused instead of silently recording nothing (#219)
+
+The recorder only intercepts requests whose hostname matches an entry in
+`hosts`. An entry written as `"127.0.0.1:8080"` or `"https://api.anthropic.com"`
+looked configured but never matched, so record mode called the real API and
+saved nothing, and replay then asked the user to add a host they had already
+added. Such entries are now refused when the recorder or replayer is created,
+and the error suggests the hostname to use instead.

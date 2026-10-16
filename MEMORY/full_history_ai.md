@@ -2273,3 +2273,22 @@ context_for_next_session:
   - AIAPP_README_COUNT_210_212_214_AND_THIS_PR_whichever_merges_later_needs_main_plus_delta_this_PR_plus_5_tests_plus_1_file
 followups: []
 ---
+
+---
+session: 2026-10-16T10:15Z
+issue: 219
+branch: session/2026-10-16-0826-issue-219
+focus: 213_REFUSED_ONLY_THE_BLANK_HOSTS_ENTRY_A_PORT_SCHEME_PATH_OR_UNICODE_ENTRY_PASSED_AND_MATCHED_NO_REQUEST_RECORD_WENT_LIVE
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 16
+  suite: "894 -> 910 passed (65 files); lint, typecheck, readme-count clean"
+decisions_made: []
+measured: "main: '127.0.0.1:55023' and 'http://127.0.0.1:55023' recorded 200 with 0 cassettes, replay threw 'add the hostname'. After: refused at construction with use \"127.0.0.1\". Revert 10 of 16 red."
+context_for_next_session:
+  - THE_VALIDATOR_RULE_IS_THE_MATCHERS_OWN_entry_must_equal_new_URL_hostname
+  - MY_FIRST_SUGGESTION_FOR_A_SCHEME_ENTRY_WAS_use_https_parse_an_entry_containing_scheme_as_a_URL_PIN_THE_HINT_IN_TESTS
+  - NOT_FIXED_semantic_assert_stopwords_not_normalized_like_tokens
+followups: []
+---
