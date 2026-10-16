@@ -1903,3 +1903,11 @@ while the real key was still in the file going into git. The old grep-based
 check, replaced on 10-08, read the raw file and would have caught it. The check
 now fails on any recording with a repeated field, naming the field; the
 recorder never writes one, so real recordings are unaffected.
+
+## 2026-10-16 — Custom stopwords match however they are capitalized or encoded (#221)
+
+The text-similarity helper lowercases and Unicode-normalizes every word before
+comparing, but it checked custom stopwords exactly as the caller wrote them. A
+stopword like "Claude" or a decomposed "café" therefore never matched anything.
+Custom stopwords now go through the same normalization as the words they are
+meant to remove.
