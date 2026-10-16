@@ -58,14 +58,25 @@ export interface SemanticAssertOptions {
 const FORMAT_CHARS = /(?!\u200B)\p{Cf}/gu;
 
 export function tokenize(text: string, stopwords?: ReadonlySet<string>): string[] {
-  const stops = stopwords ?? DEFAULT_STOPWORDS;
-  return text
-    .replace(FORMAT_CHARS, "")
-    .normalize("NFC")
-    .toLowerCase()
+  const stops = stopwords === undefined ? DEFAULT_STOPWORDS : normalizedStopwords(stopwords);
+  return normalizeText(text)
     .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
     .split(/\s+/)
     .filter((tok) => tok.length > 0 && !stops.has(tok));
+}
+
+// The character-level half of tokenizing, applied to text and stopwords alike.
+function normalizeText(text: string): string {
+  return text.replace(FORMAT_CHARS, "").normalize("NFC").toLowerCase();
+}
+
+// A caller's stopwords, normalized the way tokens are (#221). The set was used
+// as given, so "Claude" never equalled the token "claude" and an NFD "café"
+// never equalled the NFC token: a stopword silently dropped nothing. Rebuilt
+// per call rather than cached: stopword sets are small, and a cache keyed on
+// the set would serve stale entries after the caller mutates it.
+function normalizedStopwords(stopwords: ReadonlySet<string>): ReadonlySet<string> {
+  return new Set([...stopwords].map(normalizeText));
 }
 
 // Jaccard similarity ∈ [0, 1] over token sets. Two empty token sets
