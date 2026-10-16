@@ -1892,3 +1892,14 @@ production build shortens class names to save space, so the served app
 showed `u` instead. The test suite runs the unshortened code and never saw
 the problem. The name now comes from comparing the error against the SDK's
 own error types, which works the same in tests and in the built app.
+
+## 2026-10-15 — The CI secret check now refuses a recording with a repeated field (#216)
+
+CI re-checks every committed recording for leaked API keys, but it checked the
+recording as read by the standard JSON reader, which keeps only the last copy
+of a field that appears twice. So a file where someone "redacted" a key by
+adding a second, blanked-out line below the real one looked clean to the check
+while the real key was still in the file going into git. The old grep-based
+check, replaced on 10-08, read the raw file and would have caught it. The check
+now fails on any recording with a repeated field, naming the field; the
+recorder never writes one, so real recordings are unaffected.
