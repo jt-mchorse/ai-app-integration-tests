@@ -136,17 +136,16 @@ describe("whitespace-insensitive host matching (#95)", () => {
     expect(files).toHaveLength(0);
   });
 
-  it("an all-whitespace host is still rejected by validation, not silently trimmed to empty", async () => {
-    // `validateHosts` runs before `normalizeHosts`, so "   " is a non-empty
-    // string and passes — but trimming it to "" must not produce a Set entry
-    // that matches nothing while looking configured. Assert the observable
-    // behaviour: it does not intercept, and nothing is recorded.
+  it("an all-whitespace host is rejected by validation, not silently trimmed to empty", async () => {
+    // This test used to carry this title while asserting the opposite (#213):
+    // "   " passed `validateHosts`, trimmed to "", called upstream once and
+    // recorded nothing -- the pass-through the gate exists to refuse. It now
+    // throws at construction, before any call can go live.
     const { upstream, calls } = stubUpstream();
-    const recorder = createRecorderFetch({ upstream, store, hosts: new Set(["   "]) });
-
-    await recorder("https://api.anthropic.com/v1/messages", { method: "POST", body: "{}" });
-
-    expect(calls()).toBe(1);
+    expect(() => createRecorderFetch({ upstream, store, hosts: new Set(["   "]) })).toThrow(
+      /hosts entry #0 must be a non-empty string; got "   " \(blank once trimmed/,
+    );
+    expect(calls()).toBe(0);
     expect(await fs.readdir(dir)).toHaveLength(0);
   });
 });
