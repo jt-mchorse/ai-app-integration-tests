@@ -162,7 +162,7 @@ comfortably met).
 
 Those numbers are the **harness library's own** suite, at the repository
 root. CI runs a second vitest suite inside `example-app/` — the demo
-application the harness is pointed at — of 99 tests in 10 files
+application the harness is pointed at — of 105 tests in 11 files
 (`npm test --prefix example-app`, the `example-app` job). It is counted
 separately on purpose: the root count above is the harness's coverage, and
 mixing the application's tests into that number would overstate it. Stated here so
