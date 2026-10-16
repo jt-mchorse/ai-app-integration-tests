@@ -329,6 +329,43 @@ function normalizeHosts(hosts: ReadonlySet<string>): ReadonlySet<string> {
   return new Set([...hosts].map((h) => h.trim().toLowerCase()));
 }
 
+/**
+ * Why a non-blank hosts entry can never match a request, or `null` (#219).
+ *
+ * `shouldIntercept` compares the entry, trimmed and lowercased, with the
+ * request's `URL.hostname`. An entry with a port (`"127.0.0.1:8080"`), a scheme
+ * (`"https://api.anthropic.com"`), a path, or a Unicode name the URL parser
+ * spells in punycode is non-blank, so #213's check passed it -- and it matched
+ * nothing: record mode called the live API and wrote no cassette, and replay
+ * then said to "add the hostname to hosts", which the caller had. The rule is
+ * the matcher's own: the entry must already be the hostname the parser gives.
+ * Shared by both validators (`install.ts` and the factories).
+ */
+export function hostEntryProblem(entry: string): string | null {
+  const normalized = entry.trim().toLowerCase();
+  // An entry that is already a URL is read as one, so its suggestion is its
+  // host and not its scheme; a bare IPv6 address is read in brackets, which is
+  // how `URL.hostname` spells it.
+  const candidates = normalized.includes("://")
+    ? [normalized]
+    : [`http://${normalized}`, `http://[${normalized}]`];
+  for (const candidate of candidates) {
+    let parsed: URL;
+    try {
+      parsed = new URL(candidate);
+    } catch {
+      continue;
+    }
+    if (parsed.hostname === normalized) return null;
+    if (parsed.hostname === "") break;
+    return (
+      `is not a bare hostname: requests are matched on their URL hostname, so it matches ` +
+      `no request; use ${JSON.stringify(parsed.hostname)}`
+    );
+  }
+  return "is not a hostname, so it matches no request";
+}
+
 /* ------------------------------------------------------------------ */
 /* Factory-layer entry validation (#34)                                */
 /* ------------------------------------------------------------------ */
@@ -375,6 +412,10 @@ function validateHosts(hosts: ReadonlySet<string> | undefined, fnName: string): 
         `${fnName}: hosts entry #${i} must be a non-empty string; got ${JSON.stringify(h)}` +
           (typeof h === "string" && h.length > 0 ? " (blank once trimmed, so it matches no host)" : ""),
       );
+    }
+    const problem = hostEntryProblem(h);
+    if (problem !== null) {
+      throw new Error(`${fnName}: hosts entry #${i} ${JSON.stringify(h)} ${problem}`);
     }
     i++;
   }
