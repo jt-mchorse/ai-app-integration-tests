@@ -217,7 +217,8 @@ Eleven vitest suites in `example-app/test/`:
   synthetic `shape` paths return early). 4 tests.
 - **`error-route-upstream-type.test.ts`** — the `upstream` case through a
   stubbed `globalThis.fetch`: a 404 / 429 / 500 envelope reports the SDK error
-  class as `type` and the API's own type as `api_error_type` (#187). 3 tests.
+  class as `type` and the API's own type as `api_error_type` (#187), by
+  `instanceof` so a minified production build still names it (#211). 6 tests.
 - **`streaming-route.test.ts`** — monkey-patches `globalThis.fetch` with
   a canned Anthropic SSE response (`message_start` →
   `content_block_delta`+ → `message_stop`); asserts the route emits one

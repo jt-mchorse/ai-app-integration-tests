@@ -20,6 +20,26 @@ import { readApiKey } from "../../../api-key";
  */
 export const runtime = "nodejs";
 
+/**
+ * The SDK's error classes, most specific first, each with its name as a
+ * literal: a minifier renames the classes, never these strings (#211).
+ */
+const SDK_ERROR_CLASSES: ReadonlyArray<readonly [abstract new (...args: never[]) => unknown, string]> = [
+  [Anthropic.BadRequestError, "BadRequestError"],
+  [Anthropic.AuthenticationError, "AuthenticationError"],
+  [Anthropic.PermissionDeniedError, "PermissionDeniedError"],
+  [Anthropic.NotFoundError, "NotFoundError"],
+  [Anthropic.ConflictError, "ConflictError"],
+  [Anthropic.UnprocessableEntityError, "UnprocessableEntityError"],
+  [Anthropic.RateLimitError, "RateLimitError"],
+  [Anthropic.InternalServerError, "InternalServerError"],
+  [Anthropic.APIConnectionTimeoutError, "APIConnectionTimeoutError"],
+  [Anthropic.APIConnectionError, "APIConnectionError"],
+  [Anthropic.APIUserAbortError, "APIUserAbortError"],
+  [Anthropic.APIError, "APIError"],
+  [Anthropic.AnthropicError, "AnthropicError"],
+];
+
 interface ErrorBody {
   kind: "validation" | "upstream" | "shape";
   prompt?: string;
@@ -88,9 +108,10 @@ export async function POST(req: Request) {
       // The SDK class, not `.name` (#187): every @anthropic-ai/sdk 0.96 API
       // error has `.name === "Error"`, so this reported "Error" for every
       // failure. The API's own type is in the response envelope.
-      const ctor = (err as { constructor?: { name?: unknown } } | null)?.constructor?.name;
-      const sdkType =
-        typeof ctor === "string" && ctor !== "Error" && ctor !== "Object" ? ctor : e.name ?? "Error";
+      // By `instanceof`, not `constructor.name` (#211): the production build
+      // minifies class names, and the served app reported `"type":"u"`.
+      const sdkClass = SDK_ERROR_CLASSES.find(([cls]) => err instanceof cls)?.[1];
+      const sdkType = sdkClass ?? e.name ?? "Error";
       const apiType = e.error?.error?.type;
       return Response.json(
         {

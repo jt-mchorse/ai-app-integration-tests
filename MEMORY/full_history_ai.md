@@ -2228,3 +2228,25 @@ context_for_next_session:
   - AIAPP_README_COUNT_210_212_AND_THIS_PR_whichever_merges_later_needs_main_plus_delta_this_PR_plus_32_tests_plus_1_file
 followups: []
 ---
+
+---
+
+---
+session: 2026-10-15T07:22:00Z
+duration_min: 12   # est.: plan comment 2026-10-15T07:22Z -> PR
+issue: 211
+branch: session/2026-10-15-0722-issue-211
+focus: ERROR_ROUTE_READ_THE_SDK_CLASS_FROM_CONSTRUCTOR_NAME_187_THE_MINIFIED_PRODUCTION_BUILD_REPORTED_TYPE_U
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 3
+  suite: "example-app 99 -> 102 passed (10 files); root 857 (62 files) unchanged; lint, typecheck, build, both readme-count checks clean"
+decisions_made: []
+measured: "main 'next start' + fake 404 upstream via ANTHROPIC_BASE_URL: type 'u'. Branch: NotFoundError (404), RateLimitError (429). Revert 3 of 3 new red ('c'/'d'/'e' for renamed class names)."
+context_for_next_session:
+  - VITEST_DOES_NOT_MINIFY_a_constructor_name_lock_is_green_in_process_and_wrong_in_the_served_build
+  - NOT_FIXED_src_support_retry_budget_matches_constructor_name_APIConnectionError_unminified_consumer_test_code_and_D_006_forbids_importing_the_SDK
+  - AIAPP_EXAMPLE_APP_README_COUNT_ON_210_AND_THIS_PR_whichever_merges_later_needs_main_plus_delta
+followups: []
+---
