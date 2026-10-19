@@ -15,6 +15,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CassetteStore, createRecorderFetch } from "../src/index.js";
 
 const FAKE_KEY = ["sk", "ant", "x".repeat(40)].join("-");
+// No prefix of its own, like an Azure `api-key` or an OAuth token: only the
+// field name next to it marks it as a credential (#223).
+const FAKE_OPAQUE = ["fake", "opaque", "y".repeat(24)].join("");
 const HOSTS = new Set(["api.example.com"]);
 
 let dir: string;
@@ -27,6 +30,12 @@ function recorder() {
     return new Response(responseBody, { status: 200, headers: { "content-type": "application/json" } });
   }) as typeof fetch;
   return createRecorderFetch({ upstream, store: new CassetteStore({ dir }), hosts: HOSTS });
+}
+
+function form(...fields: Array<readonly [string, string]>): FormData {
+  const fd = new FormData();
+  for (const [name, value] of fields) fd.append(name, value);
+  return fd;
 }
 
 async function written(): Promise<number> {
@@ -62,6 +71,28 @@ describe("request-side secrets are refused with zero upstream calls (#159)", () 
     }
     expect(calls).toBe(0);
     expect(await written()).toBe(0);
+  });
+
+  it.each([
+    ["one api_key field", () => form(["api_key", FAKE_OPAQUE])],
+    ["access_token after another field", () => form(["grant_type", "client_credentials"], ["access_token", FAKE_OPAQUE])],
+  ] as const)("in a FormData body: %s (#223)", async (_name, body) => {
+    const fetchRec = recorder();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await expect(
+        fetchRec("https://api.example.com/v1/files", { method: "POST", body: body() }),
+      ).rejects.toThrow("in the request body");
+    }
+    expect(calls).toBe(0);
+    expect(await written()).toBe(0);
+  });
+
+  it("a FormData body of ordinary fields records normally (#223)", async () => {
+    const body = form(["model", "claude-haiku-4-5"], ["purpose", "batch"]);
+    const res = await recorder()("https://api.example.com/v1/files", { method: "POST", body });
+    expect(res.status).toBe(200);
+    expect(calls).toBe(1);
+    expect(await written()).toBe(1);
   });
 
   it("a secret only the response carries is still refused, after the one call", async () => {

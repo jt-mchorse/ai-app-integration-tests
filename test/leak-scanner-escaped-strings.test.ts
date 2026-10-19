@@ -13,6 +13,11 @@
  * rescan of committed cassettes reported it clean. Every row here passed on
  * `main`. The controls are the shapes that were already refused, and the allow
  * rows are ordinary traffic that has to stay accepted.
+ *
+ * #223 is the same bug one layer down: a string of several JSON lines (a
+ * FormData body as the recorder stores it, an NDJSON body) is not JSON as a
+ * whole, so it was never parsed, and a FormData record `["s", name, value]` puts
+ * `","` between the name and the value, which the `key=` family never matches.
  */
 import { describe, expect, it } from "vitest";
 
@@ -24,6 +29,7 @@ const SKANT = "sk-ant-api03-" + "Ab3dEfGh1jKlMn0pQrStUvWxYz012345678";
 // Built from code points so no escape in this file is doing the work.
 const NL = String.fromCharCode(10);
 const TAB = String.fromCharCode(9);
+const CR = String.fromCharCode(13);
 const BACKSLASH = String.fromCharCode(92);
 
 function base(request: Partial<CassetteV1["request"]>, response: CassetteV1["response"]): CassetteV1 {
@@ -48,6 +54,13 @@ const sse = (...frames: string[]): CassetteV1["response"] => ({
   headers: {},
   frames,
 });
+
+/** A request body as the recorder stores a FormData body: one JSON record per entry. */
+const form = (...records: string[][]): Partial<CassetteV1["request"]> => ({
+  body: records.map((r) => JSON.stringify(r)).join(NL),
+  bodyEncoding: "raw",
+});
+const ndjson = (...docs: object[]): string => docs.map((d) => JSON.stringify(d)).join(NL);
 
 const REFUSE: Array<[string, CassetteV1, string]> = [
   ["response JSON body {api_key}", base({}, text(JSON.stringify({ api_key: HEX32 }))), "the response"],
@@ -78,6 +91,52 @@ const REFUSE: Array<[string, CassetteV1, string]> = [
   ],
   ["response text, a newline then sk-ant", base({}, text(`key:${NL}${SKANT}`)), "the response"],
   ["response text, a tab then Bearer", base({}, text(`auth:${TAB}Bearer ${OPAQUE32}`)), "the response"],
+  // #223: a FormData body is stored as one JSON record per entry, joined with a
+  // newline, and an NDJSON body is one JSON document per line.
+  ["FormData body, one field api_key", base(form(["s", "api_key", HEX32]), text("ok")), "the request body"],
+  [
+    "FormData body, two fields, access_token second",
+    base(form(["s", "grant_type", "client_credentials"], ["s", "access_token", OPAQUE32]), text("ok")),
+    "the request body",
+  ],
+  [
+    "FormData body, two fields, JSON {access_token} in a value",
+    base(form(["s", "model", "claude"], ["s", "payload", JSON.stringify({ access_token: OPAQUE32 })]), text("ok")),
+    "the request body",
+  ],
+  [
+    "FormData body, two fields, a newline then sk-ant in a value",
+    base(form(["s", "model", "claude"], ["s", "note", `line one${NL}${SKANT}`]), text("ok")),
+    "the request body",
+  ],
+  [
+    "FormData body, a file field named api_key",
+    base(form(["s", "model", "claude"], ["f", "api_key", "k.txt", "text/plain", HEX32]), text("ok")),
+    "the request body",
+  ],
+  [
+    "NDJSON body, two lines, a newline then sk-ant in the second",
+    base({ body: ndjson({ content: "hi" }, { content: `x${NL}${SKANT}` }), bodyEncoding: "raw" }, text("ok")),
+    "the request body",
+  ],
+  [
+    "NDJSON body, two lines, JSON {access_token} in the second",
+    base(
+      { body: ndjson({ content: "hi" }, { content: JSON.stringify({ access_token: OPAQUE32 }) }), bodyEncoding: "raw" },
+      text("ok"),
+    ),
+    "the request body",
+  ],
+  [
+    "NDJSON body, an unescaped {api_key} line (control: refused before #223 too)",
+    base({ body: ndjson({ id: 1 }, { api_key: HEX32 }), bodyEncoding: "raw" }, text("ok")),
+    "the request body",
+  ],
+  [
+    "NDJSON response body, CRLF lines, JSON {api_key} in the second line's text",
+    base({}, text(`${JSON.stringify({ id: 1 })}${CR}${NL}${JSON.stringify({ text: JSON.stringify({ api_key: HEX32 }) })}`)),
+    "the response",
+  ],
 ];
 
 const ALLOW: Array<[string, CassetteV1]> = [
@@ -93,6 +152,15 @@ const ALLOW: Array<[string, CassetteV1]> = [
   ],
   ["a JSON body with a long request id", base({}, text(JSON.stringify({ request_id: `req_${OPAQUE32}` })))],
   ["a string that only looks like JSON", base({}, text("{not json api_key"))],
+  [
+    "a FormData body of ordinary fields",
+    base(form(["s", "model", "claude-haiku-4-5"], ["s", "request_id", `req_${OPAQUE32}`]), text("ok")),
+  ],
+  [
+    "a FormData file field whose content is long but not a credential name",
+    base(form(["s", "model", "claude"], ["f", "file", "notes.txt", "text/plain", OPAQUE32]), text("ok")),
+  ],
+  ["an NDJSON body of ordinary lines", base({ body: ndjson({ id: "msg_01" }, { id: `req_${OPAQUE32}` }), bodyEncoding: "raw" }, text("ok"))],
 ];
 
 describe("escaped string fields are scanned as what they say (#183)", () => {
