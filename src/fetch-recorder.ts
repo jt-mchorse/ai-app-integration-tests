@@ -343,6 +343,15 @@ function normalizeHosts(hosts: ReadonlySet<string>): ReadonlySet<string> {
  */
 export function hostEntryProblem(entry: string): string | null {
   const normalized = entry.trim().toLowerCase();
+  // WHATWG parsing accepts `*` in a hostname, so `*.anthropic.com` and `*`
+  // passed the rule below, and `shouldIntercept` (an exact `Set.has`) matched
+  // no request with them: record mode went live and wrote nothing (#225).
+  if (normalized.includes("*")) {
+    return (
+      "is not a hostname: hosts are matched exactly and wildcards are not supported, " +
+      "so it matches no request; list each hostname"
+    );
+  }
   // An entry that is already a URL is read as one, so its suggestion is its
   // host and not its scheme; a bare IPv6 address is read in brackets, which is
   // how `URL.hostname` spells it.

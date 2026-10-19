@@ -2347,3 +2347,22 @@ context_for_next_session:
   - "PR_222_REBASED_ONTO_MAIN_README_921_66_whichever_of_222_and_this_merges_second_needs_the_summed_count"
 followups: []
 ---
+
+---
+session: 2026-10-19T07:41Z
+issue: 225
+branch: session/2026-10-19-0741-issue-225
+focus: WHATWG_ACCEPTS_STAR_IN_A_HOSTNAME_SO_A_WILDCARD_HOSTS_ENTRY_PASSED_219S_VALIDATOR_AND_MATCHED_NOTHING_UNDER_EXACT_SET_HAS
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 8
+  suite: "910 -> 918 passed (65 files); lint, typecheck, readme-count clean"
+decisions_made: []
+measured: "main: '*.anthropic.com' and '*' -> hostEntryProblem null; recorder hosts=[*.anthropic.com] made 1 live call and wrote 0 cassettes, installRecorder accepted it. 'https://*.anthropic.com' was refused but told to use \"*.anthropic.com\". After: all refused with 'wildcards are not supported ... list each hostname'. Revert 7 of 8 red (the green one is the scheme row, already refused on main; its message arm is red)."
+context_for_next_session:
+  - "THE_TEST_HELPER_QUOTED_ENTRIES_WITHOUT_ESCAPING_STAR_a_new_regex_metachar_in_a_fixture_breaks_the_shared_matcher"
+  - "NOT_FIXED_trailing_dot_FQDN_entry_api_anthropic_com_dot_passes_and_matches_nothing_design_call_noted_in_225"
+  - "README_COUNT_222_224_AND_THIS_PR_each_edit_the_same_line_merge_second_needs_main_plus_delta"
+followups: []
+---

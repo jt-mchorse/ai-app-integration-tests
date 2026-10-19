@@ -25,6 +25,11 @@ const NOT_BARE: ReadonlyArray<{ host: string; label: string; use: string | null 
   { host: "bücher.example", label: "a Unicode name", use: "xn--bcher-kva.example" },
   { host: "::1", label: "a bare IPv6", use: "[::1]" },
   { host: "a b.example", label: "a space inside", use: null },
+  // #225: parsed as a hostname, matched as a literal.
+  { host: "*.anthropic.com", label: "a subdomain wildcard", use: null },
+  { host: "*", label: "a bare wildcard", use: null },
+  { host: "https://*.anthropic.com", label: "a wildcard behind a scheme", use: null },
+  { host: "api.*.com", label: "a wildcard label in the middle", use: null },
 ];
 
 const BARE: ReadonlyArray<{ host: string; label: string }> = [
@@ -52,7 +57,7 @@ describe("a hosts entry must be the hostname requests are matched on (#219)", ()
   it.each(NOT_BARE)("all four entry points refuse $label", ({ host, use }) => {
     const hint =
       use === null ? "" : `.*; use ${JSON.stringify(use).replace(/[.[\]]/g, "\\$&")}$`;
-    const quoted = JSON.stringify(host).replace(/[.[\]/]/g, "\\$&");
+    const quoted = JSON.stringify(host).replace(/[.[\]/*]/g, "\\$&");
     expect(() => createRecorderFetch({ store, hosts: new Set([host]) })).toThrow(
       new RegExp(`createRecorderFetch: hosts entry #0 ${quoted} is not a.*${hint}`),
     );
@@ -66,6 +71,17 @@ describe("a hosts entry must be the hostname requests are matched on (#219)", ()
       new RegExp(`installReplayer: hosts\\[0\\] ${quoted} is not a.*${hint}`),
     );
   });
+
+  it.each(NOT_BARE.filter(({ host }) => host.includes("*")))(
+    "$label is refused as a wildcard, not given a hostname to use (#225)",
+    ({ host }) => {
+      const wildcard = /hosts are matched exactly and wildcards are not supported.*; list each hostname$/;
+      expect(() => createRecorderFetch({ store, hosts: new Set([host]) })).toThrow(wildcard);
+      expect(() => createReplayerFetch({ store, hosts: new Set([host]) })).toThrow(wildcard);
+      expect(() => installRecorder({ fixturesDir: dir, hosts: [host] })).toThrow(wildcard);
+      expect(() => installReplayer({ fixturesDir: dir, hosts: [host] })).toThrow(wildcard);
+    },
+  );
 
   it.each(BARE)("$label is still accepted everywhere", ({ host }) => {
     expect(() => createRecorderFetch({ store, hosts: new Set([host]) })).not.toThrow();
