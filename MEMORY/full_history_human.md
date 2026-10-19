@@ -1941,3 +1941,12 @@ holding a plain key was sent to the real API and saved to the recording, and
 the CI check passed it. The check now reads each line on its own and sees a
 form field's name next to its value, so these are refused before any real
 request is made, the same as the equivalent JSON or URL-encoded body.
+
+## 2026-10-19 — A wildcard hosts entry is refused instead of silently recording nothing (#225)
+
+The recorder matches a request's hostname against `hosts` exactly. An entry
+like `"*.anthropic.com"` or `"*"` looked like it covered every subdomain, but
+it matched nothing, so record mode called the real API and saved no recording.
+The check added for #219 did not catch it because the URL parser accepts `*`
+in a hostname. Any entry containing `*` is now refused, and the error says
+wildcards are not supported and each hostname has to be listed.
