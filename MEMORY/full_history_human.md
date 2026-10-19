@@ -1912,3 +1912,13 @@ looked configured but never matched, so record mode called the real API and
 saved nothing, and replay then asked the user to add a host they had already
 added. Such entries are now refused when the recorder or replayer is created,
 and the error suggests the hostname to use instead.
+
+## 2026-10-19 — the Playwright CI job is pinned to Ubuntu 24.04 (#227)
+
+GitHub started running `ubuntu-latest` jobs on Ubuntu 26.04 this morning, and
+the Playwright version this repo uses (1.60.0) refuses to install a browser
+there. Every pull request's `playwright` job failed before running a test, and
+main would have gone red on its next push with nothing changed in the repo. The
+job is now pinned to `ubuntu-24.04`. A small test ties the pin to the
+Playwright version, so upgrading Playwright forces the question of whether the
+pin can go. 3 new tests.

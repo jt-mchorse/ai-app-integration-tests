@@ -2292,3 +2292,21 @@ context_for_next_session:
   - NOT_FIXED_semantic_assert_stopwords_not_normalized_like_tokens
 followups: []
 ---
+
+---
+session: 2026-10-19T07:47Z
+issue: 227
+branch: session/2026-10-19-0745-issue-227
+focus: UBUNTU_LATEST_BECAME_UBUNTU_26_04_AND_PLAYWRIGHT_1_60_REFUSES_IT_SO_THE_PLAYWRIGHT_JOB_FAILED_AT_INSTALL_ON_EVERY_PR
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 3
+  suite: "910 -> 913 passed (66 files); lint, typecheck, readme-count clean"
+decisions_made: []
+measured: "PR runs from ~07:40Z (#222, #224, #226, and their re-runs): 'Playwright does not support chromium on ubuntu26.04-x64' at Install Chromium; main's 07:13Z run was green on ubuntu-24.04. Only this repo's CI uses Playwright (12 repos checked). Revert probe: 1 of 3 new arms red; the version-tie arm and the other-jobs control are green on both trees."
+context_for_next_session:
+  - "A_RUNNER_IMAGE_ROLL_IS_THE_2026_07_31_RUFF_SHAPE_main_goes_red_with_zero_repo_changes"
+  - "PLAYWRIGHT_1_64_1_IS_CURRENT_UNVERIFIED_ON_26_04_the_upgrade_and_dropping_the_pin_are_one_followup"
+followups: []
+---
