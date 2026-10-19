@@ -1922,3 +1922,11 @@ main would have gone red on its next push with nothing changed in the repo. The
 job is now pinned to `ubuntu-24.04`. A small test ties the pin to the
 Playwright version, so upgrading Playwright forces the question of whether the
 pin can go. 3 new tests.
+
+## 2026-10-16 — Custom stopwords match however they are capitalized or encoded (#221)
+
+The text-similarity helper lowercases and Unicode-normalizes every word before
+comparing, but it checked custom stopwords exactly as the caller wrote them. A
+stopword like "Claude" or a decomposed "café" therefore never matched anything.
+Custom stopwords now go through the same normalization as the words they are
+meant to remove.
