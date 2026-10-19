@@ -399,6 +399,12 @@ const MAX_NESTED_JSON_DEPTH = 4;
  * fires. Both passed: a recorded upstream that echoed a token was written to
  * the cassette and the committed-cassette rescan reported it clean.
  */
+function isFormDataRecord(v: unknown[]): boolean {
+  const tag = v[0];
+  const arity = tag === "s" ? 3 : tag === "f" || tag === "fb" ? 5 : 0;
+  return v.length === arity && v.every((item) => typeof item === "string");
+}
+
 function scanTexts(value: unknown, depth = 0): string[] {
   const out = [JSON.stringify(value) ?? ""];
   const visit = (v: unknown): void => {
@@ -412,7 +418,14 @@ function scanTexts(value: unknown, depth = 0): string[] {
       // parsed, and each line of a multi-line `data` field failed to parse alone.
       const candidates = [v];
       const data: string[] = [];
-      for (const line of v.split(/\r\n|\r|\n/)) {
+      const lines = v.split(/\r\n|\r|\n/);
+      for (const line of lines) {
+        // Each line of a multi-line string is also a candidate (#223): an NDJSON
+        // body, and a FormData body, which the recorder stores as one JSON
+        // record per entry joined with `\n`. With two or more lines the whole
+        // string is not JSON, so without this a record's escaped value was
+        // never read as what it says.
+        if (lines.length > 1) candidates.push(line);
         if (!line.startsWith("data:")) continue;
         candidates.push(line.slice(5).trim());
         data.push(line.slice(line.startsWith("data: ") ? 6 : 5));
@@ -428,6 +441,12 @@ function scanTexts(value: unknown, depth = 0): string[] {
         }
       }
     } else if (Array.isArray(v)) {
+      // A FormData record (#223), `["s", name, value]` or
+      // `["f"|"fb", name, filename, type, text]`, puts `","` between the field
+      // name and its value, which the `key=` family never matches. A bare
+      // 32-hex or opaque token has no prefix for any other pattern, so an
+      // `api_key` field was written to the cassette. Also emit `name=value`.
+      if (isFormDataRecord(v)) out.push(`${v[1]}=${v[v.length - 1]}`);
       for (const item of v) visit(item);
     } else if (v !== null && typeof v === "object") {
       for (const item of Object.values(v)) visit(item);
