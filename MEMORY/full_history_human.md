@@ -1930,3 +1930,14 @@ comparing, but it checked custom stopwords exactly as the caller wrote them. A
 stopword like "Claude" or a decomposed "café" therefore never matched anything.
 Custom stopwords now go through the same normalization as the words they are
 meant to remove.
+
+## 2026-10-19 — An API key in a form upload or a multi-line JSON body is now caught (#223)
+
+The recorder refuses to save a recording that contains an API key, and CI
+re-checks committed recordings the same way. Neither check worked for a form
+upload (`FormData`), which the recorder saves as one small JSON line per
+field, or for a body made of several JSON lines. A field called `api_key`
+holding a plain key was sent to the real API and saved to the recording, and
+the CI check passed it. The check now reads each line on its own and sees a
+form field's name next to its value, so these are refused before any real
+request is made, the same as the equivalent JSON or URL-encoded body.

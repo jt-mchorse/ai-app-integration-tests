@@ -2328,3 +2328,22 @@ context_for_next_session:
   - README_COUNT_LINE_CONFLICTS_WITH_220_whichever_merges_second_sets_the_summed_measured_count
 followups: []
 ---
+
+---
+session: 2026-10-19T07:38Z
+issue: 223
+branch: session/2026-10-19-0738-issue-223
+focus: LEAK_SCANNER_PARSED_A_STRING_ONLY_WHOLE_OR_AS_SSE_DATA_SO_A_FORMDATA_OR_NDJSON_BODY_WAS_NEVER_READ_AND_A_FORMDATA_RECORD_NEVER_MATCHED_KEY_EQUALS
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 15
+  suite: "910 -> 925 passed (65 files); lint, typecheck, readme-count, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main: FormData api_key=<32-hex> recorded live (1 upstream call), key in the cassette, scan-committed-cassettes 'no leaked secrets' exit 0; two-line NDJSON with a nested access_token or newline+sk-ant passed assertNoLeakedSecrets. After: all refused with 0 upstream calls. Revert 10 of 15 red (5 green are controls: unescaped NDJSON key, 3 allow rows, ordinary FormData records)."
+context_for_next_session:
+  - "SCANTEXTS_NOW_PARSES_EACH_LINE_OF_A_MULTI_LINE_STRING_AND_EMITS_name_EQUALS_value_FOR_A_FORMDATA_RECORD_s_f_fb"
+  - "A_RECORD_SHAPED_ARRAY_ANYWHERE_IN_JSON_IS_TREATED_AS_A_RECORD_conservative_only_refuses_more"
+  - "PR_222_REBASED_ONTO_MAIN_README_921_66_whichever_of_222_and_this_merges_second_needs_the_summed_count"
+followups: []
+---
