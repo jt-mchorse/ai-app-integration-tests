@@ -1950,3 +1950,14 @@ it matched nothing, so record mode called the real API and saved no recording.
 The check added for #219 did not catch it because the URL parser accepts `*`
 in a hostname. Any entry containing `*` is now refused, and the error says
 wildcards are not supported and each hostname has to be listed.
+
+## 2026-10-20 — An API key inside a binary form-upload file is now caught (#229)
+
+When a form upload (`FormData`) includes a file that is not valid text, the
+recorder saves that file as base64. The leak check only decoded base64 when
+the whole request body was stored that way, which a form upload never is. A
+key inside such a file was therefore sent to the real API and saved to the
+recording, and the CI check of committed recordings passed it, even though the
+same bytes sent any other way were refused. The check now decodes that file
+too, using the same rule it already used for base64 bodies, so the request is
+refused before any real call is made. 11 new tests.
