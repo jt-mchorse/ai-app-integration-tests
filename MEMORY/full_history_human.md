@@ -1961,3 +1961,16 @@ recording, and the CI check of committed recordings passed it, even though the
 same bytes sent any other way were refused. The check now decodes that file
 too, using the same rule it already used for base64 bodies, so the request is
 refused before any real call is made. 11 new tests.
+
+## 2026-10-20 — A form upload sent as a Request object now records and replays (#231)
+
+A form upload (`FormData`) wrapped in a `Request` object was hashed from the
+bytes actually sent, and those bytes contain a random separator that changes
+every time. Each run therefore wrote a new recording that replay could never
+find. An API key in such a form also slipped past the leak check, because the
+check did not recognize a key in that format, so the key was sent to the real
+API and saved. The recorder now reads the form back into its fields and
+treats it exactly like a form passed the usual way: one recording for both
+styles, and the key is refused before any real call. 13 new tests. Two rare
+cases (a line break inside a field, a file with no type) still differ between
+the two styles; that is #233.

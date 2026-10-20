@@ -2386,3 +2386,23 @@ context_for_next_session:
   - "DEFERRED_request_object_FormData_hashing_separate_issue_per_plan"
 followups: []
 ---
+
+---
+session: 2026-10-20T07:50Z
+issue: 231
+branch: session/2026-10-20-0758-issue-231
+focus: A_FORMDATA_REQUEST_OBJECT_WAS_HASHED_FROM_ITS_MULTIPART_WIRE_BYTES_RANDOM_BOUNDARY_AND_SCANNED_IN_A_FORM_NO_KEY_PATTERN_MATCHES
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 13
+  suite: "958 -> 971 passed (68 files); lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main 43cd2b8: Request-FormData x2 = 2 cassettes, replay of either shape MissingCassetteError; Request + api_key opaque WRITTEN with 1 upstream call, init + same refused with 0. After: 1 cassette across both shapes, replay serves both, Request credential refused with 0 calls 0 cassettes. Revert of src/fetch-recorder.ts: 8 of 13 red, 5 controls green. PR #234."
+context_for_next_session:
+  - "FORMDATAREAD_IS_THE_ONE_FORMDATA_RECORD_BUILDER_init_body_and_multipart_Request_clone_formData_both_call_it"
+  - "INIT_BODY_PATH_UNCHANGED_no_existing_hash_moves"
+  - "MULTIPART_HEADER_OVER_NON_MULTIPART_BYTES_falls_back_to_the_byte_read"
+  - "DEFERRED_bare_LF_and_empty_file_type_differ_on_the_wire_form_still_two_cassettes_across_shapes_issue_233_needs_D005_decision"
+followups: [233]
+---
