@@ -351,27 +351,34 @@ const LEAK_LOCATIONS: ReadonlyArray<[string, (c: CassetteV1) => unknown, string]
 ];
 
 /**
+ * A base64-stored text as the scanner must read it (#175): its bytes, one
+ * character per byte (latin1), so an ASCII credential inside them is visible to
+ * the patterns verbatim.
+ *
+ * Text that is not canonical base64 is kept alongside its decoding (#193).
+ * Node's decoder skips every character outside the alphabet, so decoding a
+ * hand-edited body marked "base64" discards the text the file actually holds
+ * -- a cleartext key included -- and the committed-cassette rescan passed it.
+ * Canonical base64 still reads as its bytes only: there the text is just an
+ * encoding, and scanning it would refuse bytes whose base64 merely LOOKS like a
+ * key. One function for both callers (#229), so the body decode and the
+ * FormData `fb` decode cannot drift apart on that rule.
+ */
+function decodeForScan(b64: string): string {
+  const bytes = Buffer.from(b64, "base64");
+  const decoded = bytes.toString("latin1");
+  return bytes.toString("base64") === b64 ? decoded : `${b64}\n${decoded}`;
+}
+
+/**
  * The cassette as the scanner must read it (#175): every base64-stored body
- * decoded to its bytes, one character per byte (latin1), so an ASCII
- * credential inside it is visible to the patterns verbatim. #147 and #173 store
- * a body that is not valid UTF-8 as base64, and the scanner read only that
- * text: a key in such a request or response body was written to the cassette,
- * and the committed-cassette rescan, which calls this function, passed it too.
+ * decoded by `decodeForScan`. #147 and #173 store a body that is not valid
+ * UTF-8 as base64, and the scanner read only that text: a key in such a request
+ * or response body was written to the cassette, and the committed-cassette
+ * rescan, which calls this function, passed it too.
  */
 function scanView(cassette: CassetteV1): CassetteV1 {
-  // Text that is not canonical base64 is kept alongside its decoding (#193).
-  // Node's decoder skips every character outside the alphabet, so decoding a
-  // hand-edited body marked "base64" discards the text the file actually holds
-  // -- a cleartext key included -- and the committed-cassette rescan passed it.
-  // Canonical base64 still reads as its bytes only: there the text is just an
-  // encoding, and scanning it would refuse bytes whose base64 merely LOOKS
-  // like a key.
-  const decode = (b64: unknown): unknown => {
-    if (typeof b64 !== "string") return b64;
-    const bytes = Buffer.from(b64, "base64");
-    const decoded = bytes.toString("latin1");
-    return bytes.toString("base64") === b64 ? decoded : `${b64}\n${decoded}`;
-  };
+  const decode = (b64: unknown): unknown => (typeof b64 === "string" ? decodeForScan(b64) : b64);
   let view = cassette;
   if (cassette.request.bodyEncoding === "base64") {
     view = { ...view, request: { ...view.request, body: decode(view.request.body) } };
@@ -447,6 +454,15 @@ function scanTexts(value: unknown, depth = 0): string[] {
       // 32-hex or opaque token has no prefix for any other pattern, so an
       // `api_key` field was written to the cassette. Also emit `name=value`.
       if (isFormDataRecord(v)) out.push(`${v[1]}=${v[v.length - 1]}`);
+      // An `fb` record's last field is base64 (#147): a FormData file that is
+      // not valid UTF-8. Its body is `json` (one entry) or `raw` (several), never
+      // `base64`, so `scanView` never decoded it, and a key in such a file was
+      // sent live, written, and passed the committed-cassette rescan -- while
+      // the same bytes as a Uint8Array or Blob body were refused (#229). Read it
+      // as its bytes, by the rule `scanView` uses. No `name=bytes` as well: the
+      // `name=base64` above already matches the `key=` family for any payload
+      // of 18+ bytes, and a 24-char token is longer than that.
+      if (isFormDataRecord(v) && v[0] === "fb") out.push(decodeForScan(v[4] as string));
       for (const item of v) visit(item);
     } else if (v !== null && typeof v === "object") {
       for (const item of Object.values(v)) visit(item);

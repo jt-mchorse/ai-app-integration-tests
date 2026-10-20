@@ -91,6 +91,56 @@ describe("assertNoLeakedSecrets on base64-stored bodies", () => {
   });
 });
 
+// A FormData file that is not valid UTF-8 is stored as an `fb` record whose last
+// field is base64 (#147), inside a request body that is `json` (one entry) or
+// `raw` (several, `\n`-joined) -- never `base64`, so `scanView` never decoded
+// it (#229). Measured on main 518e04e through `createRecorderFetch`: the same
+// key as a Uint8Array, Blob or UTF-8 FormData file was refused with zero
+// upstream calls; as a non-UTF-8 FormData file it was sent live, written, and
+// the committed-cassette rescan reported it clean.
+const fbRecord = (name: string, payload: string) => ["fb", name, "a.bin", "", payload];
+
+function formCassette(body: unknown, bodyEncoding: "json" | "raw"): CassetteV1 {
+  return { ...cassette({}), request: { method: "POST", url: URL_, headers: {}, body, bodyEncoding } } as CassetteV1;
+}
+
+describe("a non-UTF-8 FormData file ('fb' record, #229)", () => {
+  const leak = b64(nonUtf8(`k ${KEY}`));
+
+  it("refuses a key inside a one-entry FormData file, naming the request body", () => {
+    expect(() => assertNoLeakedSecrets(formCassette(fbRecord("file", leak), "json"))).toThrow(
+      /unredacted secret .* in the request body/,
+    );
+  });
+
+  it("refuses a key inside the file of a multi-entry FormData body", () => {
+    const body = [JSON.stringify(["s", "purpose", "batch"]), JSON.stringify(fbRecord("file", leak))].join("\n");
+    expect(() => assertNoLeakedSecrets(formCassette(body, "raw"))).toThrow(/unredacted secret .* in the request body/);
+  });
+
+  it("decodes non-canonical base64 (line-wrapped) and keeps its text too (#193's rule)", () => {
+    const wrapped = leak.replace(/(.{20})/g, "$1\n");
+    expect(wrapped).not.toBe(leak);
+    expect(() => assertNoLeakedSecrets(formCassette(fbRecord("file", wrapped), "json"))).toThrow(/unredacted secret/);
+    // A hand-edited `fb` payload that is cleartext, not base64, is still read as text.
+    expect(() => assertNoLeakedSecrets(formCassette(fbRecord("file", `k ${KEY}`), "json"))).toThrow(
+      /unredacted secret/,
+    );
+  });
+
+  it.each([
+    ["a binary file with no credential in its bytes", fbRecord("file", b64(nonUtf8("PNG\x00 just pixels")))],
+    // Only an `fb` record's payload is base64: a text field holding base64 of a
+    // key is a string the sender chose, exactly as a raw text body is.
+    ["a text field whose value is base64 of a key", ["s", "note", leak]],
+    ["a UTF-8 file whose text is base64 of a key", ["f", "file", "a.txt", "text/plain", leak]],
+    // Not a FormData record (4 fields, not 5): not decoded.
+    ["an `fb`-tagged array of the wrong arity", ["fb", "file", "a.bin", leak]],
+  ])("does not refuse %s", (_label, record) => {
+    expect(() => assertNoLeakedSecrets(formCassette(record, "json"))).not.toThrow();
+  });
+});
+
 describe("through the recorder", () => {
   let dir: string;
   beforeEach(async () => {
@@ -127,6 +177,22 @@ describe("the committed-cassette rescan (#171)", () => {
     const fixtures = mkdtempSync(path.join(os.tmpdir(), "aiit-b64rescan-"));
     tmp.push(fixtures);
     writeFileSync(path.join(fixtures, "leak.json"), JSON.stringify(cassette({ respBody: b64(nonUtf8(KEY)) })));
+    const out = spawnSync("npx", ["tsx", path.join(REPO_ROOT, "scripts", "scan-committed-cassettes.ts"), fixtures], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      timeout: 120_000,
+    });
+    expect(out.status, out.stderr).toBe(1);
+    expect(out.stdout + out.stderr).toMatch(/leak\.json/);
+  });
+
+  it("fails on a committed cassette whose non-UTF-8 FormData file holds a key (#229)", () => {
+    const fixtures = mkdtempSync(path.join(os.tmpdir(), "aiit-fbrescan-"));
+    tmp.push(fixtures);
+    const body = [JSON.stringify(["s", "purpose", "batch"]), JSON.stringify(fbRecord("file", b64(nonUtf8(KEY))))].join(
+      "\n",
+    );
+    writeFileSync(path.join(fixtures, "leak.json"), JSON.stringify(formCassette(body, "raw")));
     const out = spawnSync("npx", ["tsx", path.join(REPO_ROOT, "scripts", "scan-committed-cassettes.ts"), fixtures], {
       cwd: REPO_ROOT,
       encoding: "utf8",
