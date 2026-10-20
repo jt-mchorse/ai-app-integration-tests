@@ -87,6 +87,36 @@ describe("request-side secrets are refused with zero upstream calls (#159)", () 
     expect(await written()).toBe(0);
   });
 
+  // A FormData file that is not valid UTF-8 is stored as an `fb` record whose
+  // payload is base64 (#147); its bytes were never decoded, so the key was sent
+  // live and written while the same bytes as a Uint8Array body were refused (#229).
+  const binaryFile = (text: string) => new Blob([new Uint8Array([0xff, ...new TextEncoder().encode(text)])]);
+
+  it.each([
+    ["the only entry", () => form()],
+    ["after a text field", () => form(["purpose", "batch"])],
+  ] as const)("in a non-UTF-8 FormData file: %s (#229)", async (_name, base) => {
+    const fetchRec = recorder();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const body = base();
+      body.append("file", binaryFile(`k ${FAKE_KEY}`), "a.bin");
+      await expect(fetchRec("https://api.example.com/v1/files", { method: "POST", body })).rejects.toThrow(
+        "in the request body",
+      );
+    }
+    expect(calls).toBe(0);
+    expect(await written()).toBe(0);
+  });
+
+  it("a non-UTF-8 FormData file with no credential records normally (#229)", async () => {
+    const body = form(["purpose", "batch"]);
+    body.append("file", binaryFile("PNG pixels, no key"), "a.bin");
+    const res = await recorder()("https://api.example.com/v1/files", { method: "POST", body });
+    expect(res.status).toBe(200);
+    expect(calls).toBe(1);
+    expect(await written()).toBe(1);
+  });
+
   it("a FormData body of ordinary fields records normally (#223)", async () => {
     const body = form(["model", "claude-haiku-4-5"], ["purpose", "batch"]);
     const res = await recorder()("https://api.example.com/v1/files", { method: "POST", body });

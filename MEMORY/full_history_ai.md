@@ -2366,3 +2366,23 @@ context_for_next_session:
   - "README_COUNT_222_224_AND_THIS_PR_each_edit_the_same_line_merge_second_needs_main_plus_delta"
 followups: []
 ---
+
+---
+session: 2026-10-20T07:26Z
+issue: 229
+branch: session/2026-10-20-0725-issue-229
+focus: AN_FB_FORMDATA_RECORD_IS_BASE64_INSIDE_A_JSON_OR_RAW_BODY_SO_SCANVIEWS_BODYENCODING_KEYED_DECODE_NEVER_RAN_ON_IT
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 11
+  suite: "947 -> 958 passed (67 files); lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main: non-UTF-8 FormData file with sk-ant key, 1 entry and purpose+file, each WRITTEN with upstreamCalls=1, rescan exit 0; Uint8Array/Blob/UTF-8 f-record REFUSED with 0 calls. After: both REFUSED with 0 calls, rescan exit 1 on main's cassettes. Revert 6 of 29 red (the 6 new refuse arms); 5 new controls green; an over-broad decode-every-record wrong fix turns 3 controls red. PR #230."
+context_for_next_session:
+  - "DECODEFORSCAN_IS_THE_ONE_CANONICAL_NONCANONICAL_BASE64_RULE_scanView_and_the_fb_record_both_call_it"
+  - "PLAN_SAID_ALSO_EMIT_name_EQUALS_decoded_DROPPED_name_EQUALS_base64_already_matches_key_family_for_any_18_plus_byte_payload_its_arm_was_green_on_main"
+  - "PRE_EXISTING_canonical_fb_payload_whose_base64_text_looks_like_a_key_is_refused_raw_text_still_scanned_not_changed"
+  - "DEFERRED_request_object_FormData_hashing_separate_issue_per_plan"
+followups: []
+---
