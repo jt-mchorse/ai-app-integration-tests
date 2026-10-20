@@ -189,6 +189,31 @@ async function fileRecord(name: string, file: File): Promise<string> {
   return JSON.stringify([read.binary ? "fb" : "f", name, file.name, file.type, read.text]);
 }
 
+/**
+ * A FormData body as the hash, the stored cassette and the leak scan read it:
+ * one tagged record per entry (#92). Both call shapes come through here --
+ * `init.body` and a multipart `Request` (#231) -- so they are one cassette.
+ */
+async function formDataRead(form: FormData): Promise<BodyRead> {
+  const records: string[] = [];
+  for (const [name, value] of form.entries()) {
+    records.push(
+      typeof value === "string"
+        ? JSON.stringify(["s", name, value])
+        : await fileRecord(name, value),
+    );
+  }
+  return { text: records.join("\n"), binary: false };
+}
+
+/** Whether a Request's own content type is `multipart/form-data` (#231). */
+function isMultipart(req: Request): boolean {
+  // Media types are case-insensitive (RFC 9110 §8.3.1), as #196 found for
+  // `text/event-stream`; the boundary parameter follows the `;`.
+  const type = (req.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+  return type === "multipart/form-data";
+}
+
 async function readBodyAsText(
   body: BodyInit | null | undefined,
   input: RequestInfo | URL,
@@ -257,15 +282,7 @@ async function readBodyAsText(
       // name/type participate in the hash alongside its bytes. `File extends
       // Blob`, so `.text()` reads it deterministically — the same property the
       // Blob branch above relies on.
-      const records: string[] = [];
-      for (const [name, value] of body.entries()) {
-        records.push(
-          typeof value === "string"
-            ? JSON.stringify(["s", name, value])
-            : await fileRecord(name, value),
-        );
-      }
-      return { text: records.join("\n"), binary: false };
+      return formDataRead(body);
     }
     // Skip ReadableStream — genuinely un-canonicalizable here, because it is
     // single-read: consuming it to hash it would take the body away from the
@@ -280,6 +297,21 @@ async function readBodyAsText(
     // with method GET (TypeError from fetch), and hashed "" where `fetch(url)`
     // hashes null, so the two call shapes were two cassettes (#143).
     if ((input as Request).body === null) return null;
+    // FormData sent as a `Request` (#231). Its bytes are the multipart wire
+    // form, which carries undici's RANDOM boundary: hashing them gave a new
+    // cassette on every run that replay never found, and a credential field
+    // reached the scanner as `name="api_key"\r\n\r\n<value>`, which no
+    // `key=` pattern matches, so it was sent live and written. Parsed back into
+    // FormData, it takes the `init.body` path above -- one hash, one stored
+    // body, one scan. A body that does not parse as multipart (a caller's own
+    // header over other bytes) keeps the byte read below.
+    if (isMultipart(input as Request)) {
+      try {
+        return await formDataRead(await (input as Request).clone().formData());
+      } catch {
+        // Not multipart after all: fall through to the bytes.
+      }
+    }
     try {
       const cloned = (input as Request).clone();
       return readBytes(await cloned.arrayBuffer());
