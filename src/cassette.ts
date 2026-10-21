@@ -447,6 +447,24 @@ function scanTexts(value: unknown, depth = 0): string[] {
           // Not JSON: the string itself was already pushed.
         }
       }
+      // A form-urlencoded string is also read as what it says (#237): a URL,
+      // whose query `normalizeUrl` rebuilds with `searchParams.append`, and a
+      // `URLSearchParams` body, stored as its `toString()`. Both encode `/` as
+      // `%2F`, `+` as `%2B`, `=` as `%3D` and a space as `+`, so the `key=`
+      // family stopped at the first `%` and `Bearer\s+` never matched
+      // `Bearer+`: the key was written and the committed-cassette rescan passed
+      // it. #183 decoded JSON escapes and never this one. Shape, not
+      // content-type: the recorder does not keep the content-type fetch sets
+      // for a `URLSearchParams` body, and decoding only adds texts. Without a
+      // `%` or `+` the decoding is the string itself. Each value is visited, so
+      // a `Bearer`/`Basic` value or encoded JSON is read too; it is shorter than
+      // `v`, so this ends.
+      if (v.includes("=") && /[%+]/.test(v)) {
+        for (const [name, decoded] of new URLSearchParams(v)) {
+          out.push(`${name}=${decoded}`);
+          visit(decoded);
+        }
+      }
     } else if (Array.isArray(v)) {
       // A FormData record (#223), `["s", name, value]` or
       // `["f"|"fb", name, filename, type, text]`, puts `","` between the field
@@ -465,7 +483,13 @@ function scanTexts(value: unknown, depth = 0): string[] {
       if (isFormDataRecord(v) && v[0] === "fb") out.push(decodeForScan(v[4] as string));
       for (const item of v) visit(item);
     } else if (v !== null && typeof v === "object") {
-      for (const item of Object.values(v)) visit(item);
+      // Keys too (#238): a key was read only through `JSON.stringify`, where an
+      // escape such as `\n` before `sk-` kills the leading `\b` -- the gap #183
+      // closed for values. A map keyed by free text puts a credential there.
+      for (const [key, item] of Object.entries(v)) {
+        visit(key);
+        visit(item);
+      }
     }
   };
   visit(value);
