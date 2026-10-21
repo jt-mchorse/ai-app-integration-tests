@@ -58,14 +58,36 @@ export interface SemanticAssertOptions {
 const FORMAT_CHARS = /(?!\u200B)\p{Cf}/gu;
 
 export function tokenize(text: string, stopwords?: ReadonlySet<string>): string[] {
-  const stops = stopwords === undefined ? DEFAULT_STOPWORDS : normalizedStopwords(stopwords);
+  const tokens = splitTokens(text);
+  if (stopwords === undefined) return tokens.filter((tok) => !DEFAULT_STOPWORDS.has(tok));
+  const { words, phrases } = normalizedStopwords(stopwords);
+  if (phrases.length === 0) return tokens.filter((tok) => !words.has(tok));
+  // Phrases are matched against the split sequence before single words are
+  // dropped, leftmost first and longest first at a position (#239).
+  const out: string[] = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const hit = phrases.find((ph) => ph.every((piece, k) => tokens[i + k] === piece));
+    if (hit !== undefined) {
+      i += hit.length;
+      continue;
+    }
+    if (!words.has(tokens[i])) out.push(tokens[i]);
+    i++;
+  }
+  return out;
+}
+
+// Every step of tokenizing except the stopword filter, applied to text and
+// caller stopwords alike (#239).
+function splitTokens(text: string): string[] {
   return normalizeText(text)
     .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
     .split(/\s+/)
-    .filter((tok) => tok.length > 0 && !stops.has(tok));
+    .filter((tok) => tok.length > 0);
 }
 
-// The character-level half of tokenizing, applied to text and stopwords alike.
+// The character-level half of tokenizing.
 function normalizeText(text: string): string {
   return text.replace(FORMAT_CHARS, "").normalize("NFC").toLowerCase();
 }
@@ -75,8 +97,41 @@ function normalizeText(text: string): string {
 // never equalled the NFC token: a stopword silently dropped nothing. Rebuilt
 // per call rather than cached: stopword sets are small, and a cache keyed on
 // the set would serve stale entries after the caller mutates it.
-function normalizedStopwords(stopwords: ReadonlySet<string>): ReadonlySet<string> {
-  return new Set([...stopwords].map(normalizeText));
+//
+// #221 applied only the character-level half, but tokens ALSO have punctuation
+// turned into spaces, so a stopword carrying punctuation still never equalled a
+// token (#239): {"don't"} left "don't stop" as ["don", "t", "stop"], and a
+// French set spelled with its elisions, {"l'", "d'"}, scored "L'heure
+// d'ouverture est 9h" against "Ouverture: 9h" at 0.400 where {"l", "d"} scored
+// 0.667. Each stopword now goes through the same split as text, and the number
+// of pieces decides:
+//
+//   one piece   "l'" -> "l", "Claude." -> "claude": a word. Text splits
+//               "l'heure" into "l" and "heure", so this is exactly the token
+//               meant.
+//   2+ pieces   "don't" -> "don" + "t", "e-mail", "thank you": a phrase, dropped
+//               only as that adjacent run, in order. Dropping each piece
+//               anywhere would also drop a standalone "mail" or "don", and
+//               rejecting it would break every standard English list, which
+//               carries "don't", "isn't", "won't".
+//   no pieces   "", "'", "-": nothing to add. The tokenizer already strips
+//               those characters, so the stopword's intent holds.
+interface NormalizedStopwords {
+  words: ReadonlySet<string>;
+  // Longest first, so "thank you very much" wins over "thank you".
+  phrases: readonly (readonly string[])[];
+}
+
+function normalizedStopwords(stopwords: ReadonlySet<string>): NormalizedStopwords {
+  const words = new Set<string>();
+  const phrases: string[][] = [];
+  for (const stop of stopwords) {
+    const pieces = splitTokens(stop);
+    if (pieces.length === 1) words.add(pieces[0]);
+    else if (pieces.length > 1) phrases.push(pieces);
+  }
+  phrases.sort((a, b) => b.length - a.length);
+  return { words, phrases };
 }
 
 // Jaccard similarity ∈ [0, 1] over token sets. Two empty token sets

@@ -136,7 +136,15 @@ expectSemanticallySimilar(
   deleted rather than split on, so a word carrying one is still one token;
   U+200B zero width space still separates words (#199). A small English seed
   list ships as default; pass `stopwords` for non-English or
-  domain-specific corpora.
+  domain-specific corpora. Caller stopwords are tokenized the same way
+  (#221, #239): `"Claude"` drops `claude`, and an elision like `"l'"` or
+  `"d'"` drops `l` / `d`, since that is what `l'heure` splits into. A
+  stopword that splits into *several* tokens (`"don't"`, `"e-mail"`,
+  `"thank you"`) is a phrase: it drops that run of tokens only where they
+  are adjacent and in order, so `"e-mail"` drops `e mail` but not a lone
+  `mail`, and a standard English list with `"don't"` / `"isn't"` works
+  as is. Where two phrases start at the same token, the longer one wins.
+  To drop a piece everywhere, list it as its own stopword (`"t"`).
 - Computes Jaccard similarity (intersection / union) over the token
   sets.
 - Throws `SemanticMismatchError` with both texts + the computed
