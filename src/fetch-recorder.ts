@@ -206,12 +206,43 @@ async function formDataRead(form: FormData): Promise<BodyRead> {
   return { text: records.join("\n"), binary: false };
 }
 
-/** Whether a Request's own content type is `multipart/form-data` (#231). */
-function isMultipart(req: Request): boolean {
+/**
+ * The boundary of a Request whose content type is `multipart/form-data` AND
+ * whose boundary has the form undici generates for a `FormData` body
+ * (`----formdata-undici-0<digits>`); otherwise null (#231, #235).
+ *
+ * #234 parsed EVERY multipart Request. Parsing drops a preamble and each
+ * part's own headers, so two hand-built fixed-boundary bodies that differ only
+ * there were one cassette and replay served the other's response, and every
+ * fixed-boundary Request moved off the hash it had before #234 (#235). Only
+ * undici's own serialization needs the parse -- its boundary is the random
+ * part -- so only its boundary form is a candidate.
+ */
+function undiciFormBoundary(req: Request): string | null {
   // Media types are case-insensitive (RFC 9110 §8.3.1), as #196 found for
   // `text/event-stream`; the boundary parameter follows the `;`.
-  const type = (req.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
-  return type === "multipart/form-data";
+  const [type, ...params] = (req.headers.get("content-type") ?? "").split(";");
+  if (type.trim().toLowerCase() !== "multipart/form-data") return null;
+  for (const param of params) {
+    const match = /^\s*boundary=(----formdata-undici-0\d+)\s*$/i.exec(param);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+/**
+ * Whether `form`, serialized by this runtime and with its fresh boundary put
+ * back to `boundary`, is exactly `bytes` (#235). True only when the parse lost
+ * nothing -- no preamble, no part header undici would not write -- so a
+ * hand-built body that merely copies undici's boundary form keeps its bytes.
+ */
+async function reserializesTo(form: FormData, boundary: string, bytes: Uint8Array): Promise<boolean> {
+  const again = new Response(form);
+  const fresh = /boundary=(\S+)/.exec(again.headers.get("content-type") ?? "")?.[1];
+  if (fresh === undefined) return false;
+  // latin1 maps each byte to one code unit, so the comparison is byte-exact.
+  const latin1 = (view: Uint8Array) => Buffer.from(view).toString("latin1");
+  return latin1(new Uint8Array(await again.arrayBuffer())).replaceAll(fresh, boundary) === latin1(bytes);
 }
 
 async function readBodyAsText(
@@ -303,11 +334,18 @@ async function readBodyAsText(
     // reached the scanner as `name="api_key"\r\n\r\n<value>`, which no
     // `key=` pattern matches, so it was sent live and written. Parsed back into
     // FormData, it takes the `init.body` path above -- one hash, one stored
-    // body, one scan. A body that does not parse as multipart (a caller's own
-    // header over other bytes) keeps the byte read below.
-    if (isMultipart(input as Request)) {
+    // body, one scan. Only undici's own serialization is parsed, and only when
+    // the parse round-trips (#235): any other multipart body -- a caller's
+    // fixed boundary, a preamble, a part's own Content-Type, or a FormData
+    // Request from a runtime with another boundary form -- keeps the byte read
+    // below, as before #231.
+    const boundary = undiciFormBoundary(input as Request);
+    if (boundary !== null) {
       try {
-        return await formDataRead(await (input as Request).clone().formData());
+        const req = input as Request;
+        const bytes = new Uint8Array(await req.clone().arrayBuffer());
+        const form = await new Response(bytes, { headers: req.headers }).formData();
+        if (await reserializesTo(form, boundary, bytes)) return await formDataRead(form);
       } catch {
         // Not multipart after all: fall through to the bytes.
       }
