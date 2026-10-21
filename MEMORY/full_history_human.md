@@ -1974,3 +1974,15 @@ treats it exactly like a form passed the usual way: one recording for both
 styles, and the key is refused before any real call. 13 new tests. Two rare
 cases (a line break inside a field, a file with no type) still differ between
 the two styles; that is #233.
+
+## 2026-10-21 — An API key in a query string, a form body, or a JSON key is now caught (#237, #238)
+
+When a request put an API key in the URL's query string or in a form body, the
+recorder saved it in the web's encoded form, where `+` becomes `%2B`, `/`
+becomes `%2F` and a space becomes `+`. The leak check read that encoded text,
+so a key containing one of those characters, or a `Bearer` token, was sent to
+the real API and saved, and the CI check of committed recordings passed it.
+The check now also reads the decoded form, so those requests are refused
+before any real call. In the same change, the check now also reads JSON object
+keys, not only values. A key hidden in a JSON key (for example after a line
+break) used to slip through. 28 new tests.

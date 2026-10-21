@@ -2406,3 +2406,23 @@ context_for_next_session:
   - "DEFERRED_bare_LF_and_empty_file_type_differ_on_the_wire_form_still_two_cassettes_across_shapes_issue_233_needs_D005_decision"
 followups: [233]
 ---
+
+---
+session: 2026-10-21T07:53Z
+issue: 237
+branch: session/2026-10-21-0752-issue-237
+focus: THE_SCANNER_READ_A_QUERY_STRING_AND_A_URLSEARCHPARAMS_BODY_PERCENT_ENCODED_AND_WALKED_ONLY_OBJECT_VALUES_NOT_KEYS
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 28
+  suite: "978 -> 1006 passed (70 files); lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main 29d3b89: ?api_key=<key with %2B>, URLSearchParams body, ?api_key=<AWS secret %2F>, ?authorization=Bearer+..., ?h=Basic+... each WRITTEN with upstream called; #238 response {\"note\\nsk-ant-...\":1} WRITTEN; rescan of the 6 'no leaked secrets', exit 0. After: all REFUSED (request-side with 0 upstream calls), rescan '6 of 6 refused' exit 1. Revert of src/cassette.ts: 15 of 28 red, 13 controls green; form-decode-only revert 11 red, key-walk-only revert 5 red. PR #241 closes #237 and #238."
+context_for_next_session:
+  - "FORM_DECODE_IS_SHAPE_GATED_equals_plus_percent_or_plus_NOT_CONTENT_TYPE_recorder_does_not_keep_the_content_type_fetch_sets_for_URLSearchParams"
+  - "EACH_DECODED_VALUE_IS_VISITED_so_Bearer_Basic_and_encoded_JSON_values_are_read_recursion_ends_because_the_value_is_shorter"
+  - "OBJECT_KEYS_ARE_VISITED_LIKE_VALUES_issue_238_shipped_in_the_same_PR"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_imports_src_cassette"
+followups: []
+---
