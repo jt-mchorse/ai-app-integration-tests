@@ -1986,3 +1986,15 @@ The check now also reads the decoded form, so those requests are refused
 before any real call. In the same change, the check now also reads JSON object
 keys, not only values. A key hidden in a JSON key (for example after a line
 break) used to slip through. 28 new tests.
+
+## 2026-10-21 — Stopwords with an apostrophe or hyphen now work or fail loudly (#239)
+
+The text-similarity check strips punctuation from the text it compares, but
+caller-supplied stopwords were not stripped the same way. A French stopword
+like `l'` or `d'` therefore never matched anything, and two French sentences
+scored 0.40 instead of 0.67. A stopword whose punctuation leaves a single word
+(`l'` becomes `l`) now works. One that breaks into several words (`don't`,
+`e-mail`, `thank you`) is treated as a phrase: its words are removed only when
+they appear together and in order, so a lone `mail` is kept. A first version
+raised an error instead; that was changed before merge because standard
+English stopword lists contain `don't`, `isn't` and similar. 26 new tests.

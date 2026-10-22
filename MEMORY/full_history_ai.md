@@ -2426,3 +2426,23 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_imports_src_cassette"
 followups: []
 ---
+
+---
+session: 2026-10-21T07:52Z
+issue: 239
+branch: session/2026-10-21-0752-issue-239
+focus: CALLER_STOPWORDS_GOT_221S_CHARACTER_LEVEL_NORMALIZATION_BUT_NOT_THE_PUNCTUATION_SPLIT_SO_L_APOSTROPHE_AND_DONT_NEVER_EQUALLED_A_TOKEN
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 26
+  suite: "978 -> 1004 passed (70 files); lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main 29d3b89: tokenize(\"don't stop\", {\"don't\"}) = [don,t,stop]; {\"e-mail\"} dropped nothing; French {l',d',est} 0.400 vs {l,d,est} 0.667. After: one-piece stopwords kept as that token (French 0.667 both spellings), multi-piece dropped as an adjacent in-order phrase (lone mail/t survive), zero-piece contribute nothing. First push threw RangeError on multi-piece; coordinator amended to phrase removal because NLTK-style English lists carry don't/isn't/won't. Revert of src/support/semantic-assert.ts: 15 of 26 red, 11 controls green; split-all-pieces wrong fix (built from main) turns 4 lone-piece controls + longest-phrase arm red. PR #240."
+context_for_next_session:
+  - "SPLITTOKENS_IS_THE_ONE_TOKEN_PIPELINE_text_and_caller_stopwords_both_call_it"
+  - "ONE_PIECE_WORD_MULTI_PIECE_ADJACENT_PHRASE_LONGEST_FIRST_ZERO_PIECE_IGNORED_phrases_match_the_raw_split_before_word_drops"
+  - "THROWING_ON_MULTI_PIECE_WAS_REJECTED_breaks_standard_english_lists"
+  - "DEFAULT_STOPWORDS_UNTOUCHED_they_have_no_punctuation"
+followups: []
+---
