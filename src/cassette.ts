@@ -394,6 +394,15 @@ function scanView(cassette: CassetteV1): CassetteV1 {
 const MAX_NESTED_JSON_DEPTH = 4;
 
 /**
+ * One multipart part (#243): its `Content-Disposition: form-data` name, any
+ * further header lines, the blank line, and the value up to the next delimiter
+ * line (or the end of a truncated body). CRLF or bare LF, as a hand-built body
+ * may use either.
+ */
+const MULTIPART_PART =
+  /Content-Disposition:[ \t]*form-data;[ \t]*name="([^"\r\n]*)"[^\r\n]*\r?\n(?:[^\r\n]+\r?\n)*?\r?\n([\s\S]*?)(?=\r?\n--|$)/gi;
+
+/**
  * Every text the patterns must see in `value` (#183): its serialisation, every
  * string inside it as the string itself, and the same again for any JSON a
  * string holds (a JSON response body, each SSE `data:` payload).
@@ -463,6 +472,21 @@ function scanTexts(value: unknown, depth = 0): string[] {
         for (const [name, decoded] of new URLSearchParams(v)) {
           out.push(`${name}=${decoded}`);
           visit(decoded);
+        }
+      }
+      // A multipart body is also read part by part (#243). The recorder parses
+      // undici's own FormData serialization into records (#231), but a body
+      // whose parse does not round-trip -- a File with an empty filename, a
+      // field name holding a literal `%0A`, Node 20's parser moving string
+      // fields ahead of files -- keeps its wire bytes (#235), as does every
+      // hand-built multipart body. There a field reads `name="api_key"`, a
+      // blank line and the value, which the `key=` family never matches: the
+      // key was sent live and written. Emit `name=value` per part, by shape as
+      // above; it only adds texts, and each value is shorter than `v`.
+      if (/form-data/i.test(v)) {
+        for (const [, name, value] of v.matchAll(MULTIPART_PART)) {
+          out.push(`${name}=${value}`);
+          visit(value);
         }
       }
     } else if (Array.isArray(v)) {
