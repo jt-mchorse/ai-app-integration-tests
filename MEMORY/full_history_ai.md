@@ -2466,3 +2466,23 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: [233, 243]
 ---
+
+---
+session: 2026-10-22T07:30Z
+issue: 243
+branch: session/2026-10-22-0730-issue-243
+focus: A_MULTIPART_BODY_KEPT_AS_WIRE_BYTES_HID_A_CREDENTIAL_FIELD_FROM_THE_SCANNER_EMPTY_FILENAME_FORMDATA_REQUEST_SENT_IT_LIVE_AND_WROTE_IT
+phase: shipped_partial
+delta:
+  files_changed: 4
+  tests_added: 13
+  suite: "1050 -> 1063 passed (73 files) on Node 25.5 and Node 20.9; lint, typecheck, readme-count, build, scan-committed-cassettes, example-app 108/11 clean"
+decisions_made: []
+measured: "main b147f48, Node 25.5 and 20.9: api_key + new File([x], \"\") as a Request = live 1, cassettes 1, secret written; named file and init.body refused. After: refused with 0 live calls on both. Fix is in scanTexts (each Content-Disposition form-data part emitted as name=value, by shape), not the recorder: also covers Node 20's parser reordering string fields ahead of files, hand-built multipart string/Request bodies, base64-stored multipart and the committed-cassette rescan. Revert of src/cassette.ts + src/fetch-recorder.ts: Node 20 8 of 13 red, Node 25 7 of 13 red (file-before-field row is Node-20-only); 5 controls green on both. PR #245 (Refs #243, issue left open)."
+context_for_next_session:
+  - "NODE_20_UNDICI_PARSER_EMITS_STRING_FIELDS_BEFORE_FILES_and_reads_an_empty_filename_as_File_undefined_so_any_file_before_field_formdata_request_fails_235_roundtrip_on_CI"
+  - "BYTE_FALLBACK_HASH_STILL_CARRIES_UNDICIS_RANDOM_BOUNDARY_design_options_on_243_placeholder_hash_vs_tolerate_rewrites_vs_refuse_lean_placeholder_hash_with_real_bytes_stored"
+  - "SCANTEXTS_MULTIPART_PART_IS_SHAPE_BASED_LIKE_237_only_adds_texts"
+  - "NOT_RUN_LOCALLY_playwright_job_nothing_it_covers_changed"
+followups: [243]
+---

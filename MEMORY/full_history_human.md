@@ -2013,3 +2013,17 @@ escaped line break differently from newer Node versions, so which form to
 record is written up on #233 for a decision. While testing, I found that a form
 upload containing a file with an empty filename skips the leak check and sends
 an API key to the real service (#243). 18 new tests.
+
+## 2026-10-22 — A credential in a form upload the recorder keeps as raw bytes is refused before it is sent (#243)
+
+A form upload sent as a `Request` with a file whose filename was empty skipped
+the leak check: the recorder kept its raw multipart bytes, where an `api_key`
+field is a header line, a blank line and the value, a shape the leak patterns
+never matched. The key was sent to the real service and saved in the
+recording. The leak scanner now reads each part of a multipart body as
+`name=value`, so the existing check refuses it before the call. That also
+covers other ways a body ends up as raw bytes: Node 20 (which CI uses) reorders
+fields when a file comes before them, and hand-built multipart bodies were
+never parsed at all. Recordings of such uploads still get a new name on every
+run, because the random boundary is part of the key; the options for that are
+written up on #243 for a decision. 13 new tests.
