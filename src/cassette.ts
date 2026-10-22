@@ -317,7 +317,19 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   // length bound does not have to. A leak guard that also refuses a `model=`
   // name or a base64 image chunk gets switched off, so the negative rows in
   // `test/cassette-leak-scanner.test.ts` are as load-bearing as the positive.
-  /\b(?:api[-_]?key|access[-_]?token|auth[-_]?token|key)["']?\s*[=:]\s*["']?([A-Za-z0-9_\-.+/=]{24,})/i,
+  //
+  // The compound names take a `(?<![A-Za-z0-9])` rather than that `\b` (#246).
+  // `_` is a word character, so `\b` refused `x-api-key` and passed `x_api_key`,
+  // `openai_api_key` and `x_access_token` even though the name itself already
+  // treats `-` and `_` alike (`[-_]?`). A compound name is a credential whatever
+  // is joined in front of it, so only a letter or digit (`myapikey`) blocks it.
+  // `subscription[-_]?key` is Azure API Management's name, and was refused
+  // as `subscription-key` but passed as `subscription_key` for the same reason.
+  // Bare `key` keeps the `\b`, because it is the part that stops `monkey=`:
+  // `cache_key` / `idempotency_key` stay accepted and `cache-key` /
+  // `idempotency-key` stay refused. `test/leak-scanner-snake-case-prefix.test.ts`
+  // pins that table.
+  /(?:(?<![A-Za-z0-9])(?:api[-_]?key|access[-_]?token|auth[-_]?token|subscription[-_]?key)|\bkey)["']?\s*[=:]\s*["']?([A-Za-z0-9_\-.+/=]{24,})/i,
 ];
 
 // Where a match was found, and what will actually remove it from there (#151).
