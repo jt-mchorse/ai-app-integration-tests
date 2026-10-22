@@ -443,3 +443,26 @@ non-UTF-8 request or response body was written to the cassette and passed the
 committed-cassette rescan. `assertNoLeakedSecrets` now scans a view in which
 each `bodyEncoding: "base64"` body is decoded one character per byte (latin1),
 so an ASCII credential in the bytes appears verbatim to every pattern.
+
+### FormData records are in their wire form (#233, D-016)
+
+Since #231, FormData sent as a Request is parsed back and hashed by the same
+entry records as FormData sent as `init.body`. The multipart wire form rewrites
+two things, and a Request can only be read back in that form. Every bare CR or
+LF in a string value becomes CRLF, and a file with an empty type goes out as
+`application/octet-stream`. So `init.body` recorded `"a\nb"` and `""` where
+the Request recorded `"a\r\nb"` and `application/octet-stream`. That gave two
+cassettes for one wire request, and replay across the two shapes missed. Both
+shapes now record values and file types in the wire form. The conversion is
+idempotent, so the Request side does not change, and file bytes are never
+rewritten. The caller's FormData still goes upstream as it was. The hash moves
+only for an `init.body` FormData that has a bare CR or LF in a value, or an
+untyped file. Those cassettes miss loudly (D-005) and are re-recorded. Seven
+FormData hashes captured from the previous code are pinned to show the other
+bodies do not move.
+
+Field names and filenames are left as they are. The wire percent-escapes them
+(`%0D%0A`, `%0A`, `%22`), and Node 20's parser reads the escape back literally,
+where Node 22 and later decode it. So the record a Request gives for such a
+name depends on the runtime, and choosing a canonical form for names is still
+open on #233.

@@ -183,23 +183,40 @@ function readBytes(view: ArrayBuffer | ArrayBufferView): BodyRead {
   }
 }
 
+/**
+ * A string value as the multipart wire carries it (#233): every bare CR or LF
+ * becomes CRLF, the HTML spec's "convert to CRLF" step for
+ * multipart/form-data. A `Request` can only be read back in that form, so
+ * without this `"a\nb"` sent as `init.body` and as a `Request` were two
+ * cassettes. Idempotent, so the `Request` side's records do not change. Field
+ * names are not converted: the wire percent-escapes them too, and Node 20's
+ * parser reads the escape back literally where Node 22+ decodes it, so their
+ * canonical form is still an open decision on #233.
+ */
+const wireLines = (text: string): string => text.replace(/\r\n|\r|\n/g, "\r\n");
+
 /** A FormData file entry's record: `f` with its text, or `fb` with base64 (#147). */
 async function fileRecord(name: string, file: File): Promise<string> {
   const read = readBytes(await file.arrayBuffer());
-  return JSON.stringify([read.binary ? "fb" : "f", name, file.name, file.type, read.text]);
+  // An untyped file goes out as `application/octet-stream` (#233), on every
+  // runtime, so that is the type both call shapes record.
+  const type = file.type === "" ? "application/octet-stream" : file.type;
+  return JSON.stringify([read.binary ? "fb" : "f", name, file.name, type, read.text]);
 }
 
 /**
  * A FormData body as the hash, the stored cassette and the leak scan read it:
  * one tagged record per entry (#92). Both call shapes come through here --
- * `init.body` and a multipart `Request` (#231) -- so they are one cassette.
+ * `init.body` and a multipart `Request` (#231) -- so they are one cassette,
+ * and string values and file types are recorded in their wire form (#233,
+ * D-016) because that is the only form a `Request` can be read in.
  */
 async function formDataRead(form: FormData): Promise<BodyRead> {
   const records: string[] = [];
   for (const [name, value] of form.entries()) {
     records.push(
       typeof value === "string"
-        ? JSON.stringify(["s", name, value])
+        ? JSON.stringify(["s", name, wireLines(value)])
         : await fileRecord(name, value),
     );
   }

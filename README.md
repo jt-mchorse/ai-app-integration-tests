@@ -43,7 +43,7 @@ retry budgets, time-bounded waits, and semantic equality.
 ## Architecture
 
 See [`docs/architecture.md`](docs/architecture.md) for the full
-breakdown and the design decisions behind each layer (D-002…D-015).
+breakdown and the design decisions behind each layer (D-002…D-016).
 Quick diagram:
 
 ```mermaid
@@ -155,8 +155,8 @@ const surfaced = await waitFor(() => readUiResponse(), { timeoutMs: 5000, interv
 ## Benchmarks / Results
 
 The relevant metric for this layer is "tests stay green and fast" —
-1032 vitest tests run in a few seconds locally with zero network access
-(71 files, ~5.5 s on an M-series Mac); the 7 Playwright streaming tests
+1050 vitest tests run in a few seconds locally with zero network access
+(72 files, ~5.5 s on an M-series Mac); the 7 Playwright streaming tests
 run in ~5 s (CI target: <60 s per the issue acceptance criteria,
 comfortably met).
 

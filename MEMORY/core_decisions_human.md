@@ -293,3 +293,20 @@ now, and D-013 already pins that the structured fields stay full precision.
 **Reversibility:** Cheap.
 
 **Related issues:** #147, #145, #88, #57
+
+## D-016 — FormData values and file types are recorded in their multipart wire form (2026-10-22)
+
+**Decision:** The recorder records each FormData string value and file type in the form the multipart wire carries it, for both call shapes. Every bare CR or LF in a string value becomes CRLF, and a file with an empty type is recorded as `application/octet-stream`. Field names, filenames and file bytes are not changed.
+
+**Why:** After #231, FormData sent as a Request is parsed back and hashed by the same records as FormData sent as `init.body`. But a Request can only be read back in its wire form. A value `"a\nb"` was recorded as `"a\nb"` through `init.body` and as `"a\r\nb"` through a Request, and an untyped file as `""` and as `application/octet-stream`. That is two cassettes for one wire request, and replay across the shapes threw `MissingCassetteError`. The Request side cannot be normalized back, because on the wire a bare LF and a CRLF are the same bytes. So the `init.body` side moves to the wire form. The conversion is idempotent, so nothing recorded from a Request changes. The hash moves only for an `init.body` FormData with a bare CR or LF in a value, or an untyped file. Those were already two cassettes, they miss loudly under D-005, and they re-record. Seven other FormData hashes from the previous code are pinned to show they do not move.
+
+Field names are left out. The wire percent-escapes a name's newline (`%0D%0A`). Node 22 and later decode that when parsing, but Node 20, which CI runs, reads it literally. Converting names to CRLF fixed them on Node 25 and left them split on Node 20, and recording the escaped form instead would also move the hash of every name with a quote in it. That choice is written up on #233.
+
+**Alternatives considered:**
+- Document it as a known limitation. Rejected: the fix is one idempotent function, and the hash move only hits bodies that were already split.
+- Normalize the Request side back. Rejected: impossible, because the wire has lost the difference.
+- Convert field names to CRLF too. Rejected for now: built and run, it was green on Node 25 and 4 red on Node 20.
+
+**Reversibility:** Cheap.
+
+**Related issues:** #233, #231, #235, #92
