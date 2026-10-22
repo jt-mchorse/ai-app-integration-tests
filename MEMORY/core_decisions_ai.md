@@ -155,3 +155,16 @@
   reversibility: cheap
   related_issues: ["#147", "#145", "#88", "#57"]
   superseded_by: null
+
+- id: D-016
+  date: 2026-10-22
+  decision: a_FormData_bodys_STRING_VALUES_and_FILE_TYPES_are_recorded_in_their_MULTIPART_WIRE_FORM_for_BOTH_call_shapes_every_bare_CR_or_LF_in_a_string_value_becomes_CRLF_and_an_EMPTY_file_type_is_recorded_as_application_octet_stream_FIELD_NAMES_FILENAMES_and_file_bytes_are_left_as_they_are
+  rationale: after_231_a_FormData_Request_is_parsed_back_and_hashed_by_the_init_body_records_BUT_A_REQUEST_CAN_ONLY_BE_READ_BACK_IN_WIRE_FORM_so_init_body_recorded_a_LF_b_and_EMPTY_TYPE_where_the_Request_recorded_a_CRLF_b_and_application_octet_stream_TWO_CASSETTES_FOR_ONE_WIRE_REQUEST_and_replay_across_shapes_threw_MissingCassetteError_fails_safe_nothing_misserved
+  ONLY_THE_INIT_BODY_SIDE_CAN_MOVE: "the Request side has lost the distinction (a bare LF and a CRLF are the same bytes on the wire), so the only direction that unifies the shapes is init.body -> wire form. The conversion is idempotent, so every Request-shape record is unchanged."
+  THE_HASH_MOVE_IS_SCOPED_AND_PINNED: "only init.body FormData with a bare CR/LF in a string value, or an untyped file, re-keys; those replay loud (D-005) and re-record (D-003 rates a hash change cheap). Seven FormData hashes captured from main (string field, CRLF value, typed file, LF in a filename, binary typed file, LF inside file bytes, LF in a field name) are pinned and green."
+  NAMES_ARE_RUNTIME_DEPENDENT_SO_NOT_DECIDED_HERE: "the wire percent-escapes a name's CRLF as %0D%0A and a filename's LF/CR/quote as %0A/%0D/%22. Node 22+ undici decodes the escape on parse (n\r\nm); Node 20.9, which CI runs, reads it literally (n%0D%0Am). Converting names to CRLF fixed them on 25 and left them split on 20, while recording the escaped form would move every quote-in-name hash. Left for JT on #233 rather than moving those hashes twice."
+  alternatives_rejected: ["DOCUMENT_AS_A_KNOWN_LIMITATION_REJECTED_the_fix_is_one_idempotent_function_and_the_hash_move_is_scoped_to_bodies_that_were_already_two_cassettes", "NORMALIZE_THE_REQUEST_SIDE_BACK_REJECTED_impossible_the_wire_has_lost_bare_LF_vs_CRLF", "CONVERT_FIELD_NAMES_TO_CRLF_TOO_REJECTED_BUILT_AND_RUN_green_on_Node_25_4_red_on_Node_20_the_CI_runtime"]
+  measured: "main, Node 25.5 and 20.9: LF value, CR value, LF-CR value, untyped file -> 2 cassettes each; after: 1 each on both runtimes, and init.body recordings replay as a Request. Revert probe on src/fetch-recorder.ts, both runtimes: 9 red, 9 green controls (7 hash pins, name/filename/bytes record, upstream FormData unconverted)."
+  reversibility: cheap
+  related_issues: ["#233", "#231", "#235", "#92"]
+  superseded_by: null
