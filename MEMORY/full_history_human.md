@@ -1998,3 +1998,18 @@ scored 0.40 instead of 0.67. A stopword whose punctuation leaves a single word
 they appear together and in order, so a lone `mail` is kept. A first version
 raised an error instead; that was changed before merge because standard
 English stopword lists contain `don't`, `isn't` and similar. 26 new tests.
+
+## 2026-10-22 — FormData with a line break in a value, or an untyped file, is one recording again (#233)
+
+A form upload sent as a `Request` and the same upload sent as a plain fetch
+body were saved as two different recordings when a text field contained a bare
+line break, or when a file had no type. On the wire, line breaks are rewritten
+to CRLF and a missing type becomes `application/octet-stream`, and a `Request`
+can only be read back in that rewritten form. Both shapes now record values
+and file types the way the wire carries them, so they match. Only recordings of
+those specific bodies change their key, and they fail loudly and re-record.
+Field names were left alone: Node 20, which CI uses, reads back a field name's
+escaped line break differently from newer Node versions, so which form to
+record is written up on #233 for a decision. While testing, I found that a form
+upload containing a file with an empty filename skips the leak check and sends
+an API key to the real service (#243). 18 new tests.

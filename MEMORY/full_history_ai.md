@@ -2446,3 +2446,23 @@ context_for_next_session:
   - "DEFAULT_STOPWORDS_UNTOUCHED_they_have_no_punctuation"
 followups: []
 ---
+
+---
+session: 2026-10-22T07:16Z
+issue: 233
+branch: session/2026-10-22-0716-issue-233
+focus: FORMDATA_VALUES_AND_UNTYPED_FILES_WERE_RECORDED_IN_CALLER_FORM_FROM_INIT_BODY_AND_WIRE_FORM_FROM_A_REQUEST_SO_ONE_WIRE_REQUEST_WAS_TWO_CASSETTES
+phase: shipped_partial
+delta:
+  files_changed: 6
+  tests_added: 18
+  suite: "1032 -> 1050 passed (72 files) on Node 25.5 and Node 20.9; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: [D-016]
+measured: "main b7d4734, Node 25.5 and 20.9: value a\\nb, a\\rb, a\\n\\rb and an untyped file each 2 cassettes across Request/init.body; after: 1 each on both runtimes, init.body recordings replay as a Request. Revert of src/fetch-recorder.ts on both runtimes: 9 of 18 red, 9 controls green (7 main-captured hash pins, name/filename/bytes record, upstream FormData unconverted). Names-to-CRLF variant (the issue's full shape) built and run: green on Node 25, name cases red on Node 20. PR #244 (Refs #233, issue left open)."
+context_for_next_session:
+  - "NODE_20_UNDICI_DOES_NOT_PERCENT_DECODE_MULTIPART_NAMES_OR_FILENAMES_node_22_plus_does_so_a_Request_name_record_is_runtime_dependent_CI_RUNS_NODE_20_and_homebrew_node_at_20_links_to_25_use_nvm_v20_9_0"
+  - "WIRELINES_APPLIES_TO_STRING_VALUES_ONLY_names_and_filenames_untouched_pending_JT_design_call_on_233_recommended_escaped_wire_form"
+  - "EMPTY_FILENAME_FILE_IN_A_FORMDATA_REQUEST_FAILS_235_ROUNDTRIP_AND_LEAKS_A_CREDENTIAL_LIVE_AND_TO_DISK_filed_243"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: [233, 243]
+---
