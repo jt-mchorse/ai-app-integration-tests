@@ -355,7 +355,11 @@ async function readBodyAsText(
     // the parse round-trips (#235): any other multipart body -- a caller's
     // fixed boundary, a preamble, a part's own Content-Type, or a FormData
     // Request from a runtime with another boundary form -- keeps the byte read
-    // below, as before #231.
+    // below, as before #231. So does a FormData Request whose parse does not
+    // round-trip (an empty-filename File, Node 20's parser moving string
+    // fields ahead of files): the scanner reads each multipart part as
+    // `name=value` (#243), so a credential field there is still refused
+    // before the live call. Its hash still carries the random boundary.
     const boundary = undiciFormBoundary(input as Request);
     if (boundary !== null) {
       try {
