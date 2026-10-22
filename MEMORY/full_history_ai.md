@@ -2494,3 +2494,22 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_playwright_job_nothing_it_covers_changed"
 followups: [243]
 ---
+
+---
+session: 2026-10-22T07:59Z
+issue: 246
+branch: session/2026-10-22-0759-issue-246
+focus: A_SNAKE_CASE_PREFIXED_CREDENTIAL_NAME_X_API_KEY_SUBSCRIPTION_KEY_WENT_LIVE_AND_INTO_THE_CASSETTE_BECAUSE_BACKSLASH_B_TREATS_UNDERSCORE_AS_A_WORD_CHAR
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 16
+  suite: "1063 -> 1079 passed (74 files) on Node 25.5 and Node 20.9; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main 0e76ebc, Node 25.5 and 20.9: {x_api_key}, {openai_api_key}, {x_access_token}, ?subscription_key= = live 1, cassettes 1, key on disk; {x-api-key}, ?subscription-key= refused. After: all refused with 0 live calls. Compound names take (?<![A-Za-z0-9]) instead of \\b; subscription[-_]?key added as a compound (the issue's fix shape alone left subscription_key passing); bare key keeps \\b so monkey/cache_key/idempotency_key recorded and cache-key/idempotency-key refused, pinned in a table. Revert of src/cassette.ts: 7 of 16 red, 9 controls green. Wrong-fix probes: no boundary -> myapikey pin red; lookbehind on bare key -> cache_key/idempotency_key/rescan red. PR #248 (Closes #246)."
+context_for_next_session:
+  - "BARE_KEY_UNDERSCORE_HYPHEN_ASYMMETRY_IS_KEPT_ON_PURPOSE_cache_key_recorded_cache-key_refused_pinned_in_test_leak-scanner-snake-case-prefix"
+  - "247_MULTIPART_PART_unquoted_name_and_filename_before_name_is_next_same_file"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: [247]
+---

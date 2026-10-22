@@ -2027,3 +2027,15 @@ fields when a file comes before them, and hand-built multipart bodies were
 never parsed at all. Recordings of such uploads still get a new name on every
 run, because the random boundary is part of the key; the options for that are
 written up on #243 for a decision. 13 new tests.
+
+## 2026-10-22 — A credential sent under a name like `x_api_key` or `subscription_key` is refused before it is sent (#246)
+
+The leak check recognised `api_key` and `x-api-key` but not `x_api_key`,
+`openai_api_key`, `x_access_token` or `subscription_key`. The pattern began with
+a word-boundary test, and an underscore counts as part of a word, so a name
+with an underscore-joined prefix never matched. The key was sent to the real
+service and saved in the recording, and the CI check of committed recordings
+passed it too. Credential names like `api_key` and `access_token` now match
+whatever is joined in front of them, and `subscription_key` (Azure's name) was
+added. A plain `key` keeps the old rule so `monkey` and `cache_key` are not
+mistaken for credentials; that table is pinned by the tests. 16 new tests.
