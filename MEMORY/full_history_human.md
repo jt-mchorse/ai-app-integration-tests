@@ -2039,3 +2039,17 @@ passed it too. Credential names like `api_key` and `access_token` now match
 whatever is joined in front of them, and `subscription_key` (Azure's name) was
 added. A plain `key` keeps the old rule so `monkey` and `cache_key` are not
 mistaken for credentials; that table is pinned by the tests. 16 new tests.
+
+## 2026-10-23 — A credential in a multipart part is refused however its `Content-Disposition` header spells the name (#247)
+
+The #243 fix read each multipart part as `name=value`, but only when the
+header said `form-data; name="..."` exactly: the name in double quotes and
+first. An unquoted `name=api_key`, a `filename` before the name, a space
+before the `;`, single quotes, a header folded onto a second line and the
+encoded `name*=utf-8''api_key` form all got past it. The key was sent to the
+real service and saved in the recording, and Node's own parser reads the first
+two as a field called `api_key`, so a real server would have received it. The
+scanner now reads the header's parameters properly and finds the name in any of
+those spellings. A `;` inside a quoted filename doesn't split the list, and an
+apostrophe in an unquoted filename doesn't hide the name after it. 22 new
+tests.

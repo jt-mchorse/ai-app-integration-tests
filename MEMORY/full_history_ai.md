@@ -2513,3 +2513,22 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: [247]
 ---
+
+---
+session: 2026-10-23T07:18Z
+issue: 247
+branch: session/2026-10-23-0730-issue-247
+focus: A_MULTIPART_PART_WITH_AN_UNQUOTED_NAME_OR_FILENAME_BEFORE_NAME_BYPASSED_245S_PART_READER_AND_SENT_THE_CREDENTIAL_LIVE_AND_WROTE_IT
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 22
+  suite: "1079 -> 1101 passed (74 files) on Node 25.5; lint, typecheck, readme-count, build, scan-committed-cassettes, example-app 108/11 clean"
+decisions_made: []
+measured: "main f3c341e, Node 25.5: name=api_key, filename before name, space before ;, name='api_key', folded header, name*=utf-8''api_key = live 1, cassettes 1, key on disk, as init.body and as a Request; quoted-name-first control refused. After: all refused with 0 live calls; purpose controls still record. MULTIPART_PART now captures the whole unfolded parameter list; dispositionNames splits on ; outside quotes, takes name/name* anywhere, strips \" or ' pairs, percent-decodes name* (latin1 fallback). Revert of src/cassette.ts: 14 of 22 red, 8 controls green. Wrong-fix probes: every ' a quote -> 2 apostrophe-filename rows red; split ; inside quotes -> quoted-filename control red. PR #249 (Closes #247)."
+context_for_next_session:
+  - "A_SINGLE_QUOTE_OPENS_A_QUOTE_ONLY_RIGHT_AFTER_EQUALS_so_filename=it's.txt_does_not_swallow_the_name_pinned_in_test"
+  - "RFC2231_SPLIT_PARAMETERS_name*0_name*1*_NOT_HANDLED_deferred_no_runtime_emits_them"
+  - "NOT_RUN_LOCALLY_next_build_and_playwright_jobs_and_node_20_nothing_they_cover_changed"
+followups: []
+---
