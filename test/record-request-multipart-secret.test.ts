@@ -176,3 +176,71 @@ describe("controls", () => {
     expect(await written()).toHaveLength(1);
   });
 });
+
+/**
+ * #247: #245's part reader matched only `form-data; name="..."`, the name
+ * quoted and first. Every REFUSE row below went live and was written on `main`
+ * (f3c341e), Node 25.5; the first two are what Node's own parser reads as a
+ * field named `api_key`. The controls have to stay accepted.
+ */
+const SPELLINGS = [
+  ["an unquoted name", (n: string) => `form-data; name=${n}`],
+  ["a filename before the name", (n: string) => `form-data; filename="k.txt"; name="${n}"`],
+  ["a space before the `;`", (n: string) => `form-data ; name="${n}"`],
+  ["a single-quoted name", (n: string) => `form-data; name='${n}'`],
+  ["a folded header line", (n: string) => `form-data;\r\n name="${n}"`],
+  ["an RFC 2231 `name*`", (n: string) => `form-data; name*=utf-8''${n.replace("_", "%5F")}`],
+  // A `'` opens a quote only right after `=`: read as a quote here, it would
+  // swallow the `; name=` after it.
+  ["an apostrophe in an unquoted filename before the name", (n: string) => `form-data; filename=it's.txt; name=${n}`],
+] as const;
+
+/** One hand-built part whose `Content-Disposition` reads `disposition`. */
+function part(disposition: string, value: string): string {
+  return `--${BOUNDARY}\r\nContent-Disposition: ${disposition}\r\n\r\n${value}\r\n--${BOUNDARY}--\r\n`;
+}
+
+describe("a credential field is refused in any Content-Disposition spelling (#247)", () => {
+  it.each(SPELLINGS)("%s, as a Request and as an init string", async (_name, disposition) => {
+    const body = part(disposition("api_key"), FAKE_OPAQUE);
+    const fetchRec = recorder();
+    await expect(fetchRec(new Request(URL_, { method: "POST", headers: HEADERS, body }))).rejects.toThrow(
+      "in the request body",
+    );
+    await expect(fetchRec(URL_, { method: "POST", headers: HEADERS, body })).rejects.toThrow("in the request body");
+    expect(calls).toBe(0);
+    expect(await written()).toHaveLength(0);
+  });
+
+  it.each(SPELLINGS)("%s, through the committed-cassette scan", (_name, disposition) => {
+    const cassette: CassetteV1 = {
+      schema_version: "1",
+      request_hash: "0".repeat(32),
+      request: {
+        method: "POST",
+        url: URL_,
+        headers: HEADERS,
+        body: part(disposition("api_key"), FAKE_OPAQUE),
+        bodyEncoding: "raw",
+      },
+      response: { kind: "non_streaming", status: 200, headers: {}, body: "{}" },
+      recorded_at: "2026-10-23T00:00:00Z",
+    };
+    expect(() => assertNoLeakedSecrets(cassette)).toThrow("in the request body");
+  });
+});
+
+describe("controls (#247)", () => {
+  it.each(SPELLINGS)("%s under a non-credential name with a long value still records", async (_name, disposition) => {
+    await recorder()(URL_, { method: "POST", headers: HEADERS, body: part(disposition("purpose"), FAKE_OPAQUE) });
+    expect(calls).toBe(1);
+    expect(await written()).toHaveLength(1);
+  });
+
+  it("a `; name=api_key` inside a quoted filename does not make a credential name", async () => {
+    const disposition = `form-data; filename="a; name=api_key"; name="purpose"`;
+    await recorder()(URL_, { method: "POST", headers: HEADERS, body: part(disposition, FAKE_OPAQUE) });
+    expect(calls).toBe(1);
+    expect(await written()).toHaveLength(1);
+  });
+});

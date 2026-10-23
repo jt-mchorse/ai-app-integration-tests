@@ -406,13 +406,73 @@ function scanView(cassette: CassetteV1): CassetteV1 {
 const MAX_NESTED_JSON_DEPTH = 4;
 
 /**
- * One multipart part (#243): its `Content-Disposition: form-data` name, any
- * further header lines, the blank line, and the value up to the next delimiter
- * line (or the end of a truncated body). CRLF or bare LF, as a hand-built body
- * may use either.
+ * One multipart part (#243): its `Content-Disposition: form-data` parameters
+ * (#247: the whole list, folded continuation lines included), any further
+ * header lines, the blank line, and the value up to the next delimiter line
+ * (or the end of a truncated body). CRLF or bare LF, as a hand-built body may
+ * use either.
  */
 const MULTIPART_PART =
-  /Content-Disposition:[ \t]*form-data;[ \t]*name="([^"\r\n]*)"[^\r\n]*\r?\n(?:[^\r\n]+\r?\n)*?\r?\n([\s\S]*?)(?=\r?\n--|$)/gi;
+  /Content-Disposition:[ \t]*form-data((?:[^\r\n]|\r?\n[ \t])*)\r?\n(?:[^\r\n]+\r?\n)*?\r?\n([\s\S]*?)(?=\r?\n--|$)/gi;
+
+/**
+ * Every field name a `Content-Disposition` parameter list gives its part
+ * (#247). #245 matched only `form-data; name="..."`: the name quoted and
+ * first. An unquoted `name=api_key`, a `filename` before `name`, a space
+ * before the `;`, a single-quoted name, a folded header line and RFC 2231
+ * `name*=utf-8''api_key` all passed, and Node's own parser reads the first two
+ * as a field named `api_key`: the key was sent live and written. So split on
+ * `;` outside quotes, take `name` and `name*` wherever they appear, strip a
+ * double or single quote pair, and percent-decode `name*` after its
+ * `charset'lang'` prefix. A `'` opens a quote only right after `=`, so an
+ * apostrophe in an unquoted filename does not swallow the rest.
+ */
+function dispositionNames(params: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  let quote = "";
+  for (let i = 0; i < params.length; i++) {
+    const c = params[i];
+    if (quote) {
+      if (c === "\\" && quote === '"' && i + 1 < params.length) current += c + params[++i];
+      else {
+        if (c === quote) quote = "";
+        current += c;
+      }
+    } else if (c === ";") {
+      parts.push(current);
+      current = "";
+    } else {
+      if (c === '"' || (c === "'" && /=\s*$/.test(current))) quote = c;
+      current += c;
+    }
+  }
+  parts.push(current);
+  const names: string[] = [];
+  for (const part of parts) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    const key = part.slice(0, eq).trim().toLowerCase();
+    if (key !== "name" && key !== "name*") continue;
+    let value = part.slice(eq + 1).trim();
+    const q = value[0];
+    if ((q === '"' || q === "'") && value.length >= 2 && value.endsWith(q)) {
+      value = value.slice(1, -1);
+      if (q === '"') value = value.replace(/\\(.)/g, "$1");
+    }
+    if (key === "name*") {
+      const encoded = value.replace(/^[^']*'[^']*'/, "");
+      try {
+        value = decodeURIComponent(encoded);
+      } catch {
+        // A non-UTF-8 charset (`iso-8859-1''%E9`): one byte per escape.
+        value = encoded.replace(/%([0-9a-f]{2})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+      }
+    }
+    names.push(value);
+  }
+  return names;
+}
 
 /**
  * Every text the patterns must see in `value` (#183): its serialisation, every
@@ -494,10 +554,11 @@ function scanTexts(value: unknown, depth = 0): string[] {
       // hand-built multipart body. There a field reads `name="api_key"`, a
       // blank line and the value, which the `key=` family never matches: the
       // key was sent live and written. Emit `name=value` per part, by shape as
-      // above; it only adds texts, and each value is shorter than `v`.
+      // above; it only adds texts, and each value is shorter than `v`. Every
+      // name the parameter list gives, in any spelling (#247).
       if (/form-data/i.test(v)) {
-        for (const [, name, value] of v.matchAll(MULTIPART_PART)) {
-          out.push(`${name}=${value}`);
+        for (const [, params, value] of v.matchAll(MULTIPART_PART)) {
+          for (const name of dispositionNames(params)) out.push(`${name}=${value}`);
           visit(value);
         }
       }
