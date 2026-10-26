@@ -2066,3 +2066,17 @@ memory. `token` and `secret` on their own follow the same rule as `key`, so
 `x-vault-token` is refused while a pagination name like `next_page_token` still
 records. OAuth's `code` was left out on purpose because ordinary error replies
 use a `code` field. 28 new tests.
+
+## 2026-10-26 — A credential sent under a camelCase name like `openaiApiKey` is refused before it is sent (#251)
+
+The #246 fix made credential names match whatever was joined in front of them
+with `-` or `_`, but any letter in front still blocked the match. That meant
+camelCase names, the normal style in JavaScript request bodies, slipped
+through: `openaiApiKey`, LangChain's `openAIApiKey`, `xApiKey` and
+`userAccessToken` were sent to the real service and saved in the recording.
+A credential name that starts with a capital letter right after another
+letter or digit now counts as joined. All-lowercase glue like `myapikey` still
+does not, and `cacheKey` and `nextPageToken` still record, like `cache_key`.
+The fix the issue sketched (a lowercase letter before the capital) would have
+missed `openAIApiKey`, and a test pins that. Header names are lower-cased before
+the check, so a camelCase header name isn't covered by this fix. 22 new tests.
