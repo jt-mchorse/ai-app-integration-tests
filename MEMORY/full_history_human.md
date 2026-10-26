@@ -2091,3 +2091,16 @@ the leak check saw one long filename and no field name, and the key was sent
 and saved. The check now reads the header both ways and refuses the request if
 either reading names a credential. Ordinary filenames with an escaped quote
 still record. 5 new tests.
+
+## 2026-10-26 — OpenAI responses with token probabilities can be recorded again (#256)
+
+The #250 fix made the plain names `token` and `assertion` count as credential
+names everywhere in a recording. With `logprobs` turned on, OpenAI returns every
+generated token under a field called `token`. Some real tokens are long runs of
+dashes or equals signs, or long code identifiers, and those look exactly like
+a credential value, so the recording was refused after the real call had
+already been made. Eval results with an `assertion` field were refused the
+same way. The plain names now count only where the OAuth specs actually put
+them: the URL query, request headers, and form bodies. Compound names like
+`access_token`, `refresh_token` and `client_assertion` are still refused
+everywhere. 45 new tests use real tokenizer tokens.

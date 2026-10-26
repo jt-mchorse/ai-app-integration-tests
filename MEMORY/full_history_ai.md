@@ -2591,3 +2591,23 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: []
 ---
+
+---
+session: 2026-10-26T07:44Z
+issue: 256
+branch: session/2026-10-26-0744-issue-256
+focus: REGRESSION_FROM_253_BARE_TOKEN_AND_ASSERTION_NAMES_REFUSED_OPENAI_LOGPROBS_RESPONSES_AND_EVAL_JSON_AFTER_THE_LIVE_CALL
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 45
+  suite: "1156 -> 1201 passed (77 files) on Node 25.5; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main d2eb5db: logprobs token -x32, =x32, .translatesAutoresizingMaskIntoConstraints in a JSON body and in an SSE frame REFUSE; {assertion}, {lastAssertion} REFUSE. tiktoken 0.14: cl100k_base 71 single tokens match [A-Za-z0-9_\\-.+/=]{24,}, o200k_base 45. After: all PASS; RFC 7009 token= form body, ?token= query, x-vault-token header, FormData token field, assertion= form, clientAssertion= query, access_token/refresh_token JSON and SSE, client_assertion JSON still REFUSE. scanTexts collects form-surface texts (form-urlencoded-shaped string + its decoded pairs, multipart parts, FormData records); FORM_SURFACE_PATTERNS (bare token, bare/camel assertion) read those + request URL + request headers only. client[-_]?assertion moved into CREDENTIAL_NAMES (everywhere). Revert of src/cassette.ts: 31 of 45 red, 14 controls green. Wrong-fix probes: decoded pairs without the form-shape guard -> 2 red; '='-separator-only rule instead of surfaces -> 3 red. PR #257 (Closes #256)."
+context_for_next_session:
+  - "BARE_TOKEN_AND_ASSERTION_ARE_FORM_SURFACE_ONLY_url_request_headers_form_bodies_pinned_in_test_leak-scanner-logprobs-token"
+  - "BARE_SECRET_FROM_253_STILL_READS_EVERY_TEXT_a_json_secret_field_is_a_plausible_credential_not_changed"
+  - "A_JSON_REQUEST_BODY_TOKEN_FIELD_NOW_RECORDS_the_accepted_tradeoff_of_256"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: []
+---
