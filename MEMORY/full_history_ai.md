@@ -2572,3 +2572,22 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: [252]
 ---
+
+---
+session: 2026-10-26T07:34Z
+issue: 252
+branch: session/2026-10-26-0734-issue-252
+focus: DISPOSITIONNAMES_READ_A_BACKSLASH_IN_A_QUOTED_PARAMETER_ONLY_AS_AN_ESCAPE_NODE_25_UNDICI_READS_IT_LITERALLY_HIDING_A_FOLLOWING_NAME_API_KEY
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 5
+  suite: "1151 -> 1156 passed (76 files) on Node 25.5 and Node 20.9; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main 42da6d4: filename=\"a\\\"; name=\"api_key\" body: Node 25.5 undici [[api_key, File:a\\]] and recorder WRITTEN calls 1; Node 20.9 undici [[undefined, ...]] WRITTEN calls 1; control name=\"api_key\" REFUSED on both. After: REFUSED calls 0. dispositionNames = union of readDispositionNames(params, backslashEscapes true/false). Revert of src/cassette.ts: 2 of 5 red, 3 controls green. Wrong-fix probe: literal-only reading -> api\\_key escape row red. PR #255 (Closes #252)."
+context_for_next_session:
+  - "DISPOSITIONNAMES_READS_BACKSLASH_BOTH_WAYS_union_only_widens_what_is_refused"
+  - "NODE_25_UNDICI_FAILS_TO_PARSE_filename_with_an_escaped_quote_a_backslash_quote_b_txt_parse_error_not_our_bug"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: []
+---
