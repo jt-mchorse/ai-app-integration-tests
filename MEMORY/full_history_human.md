@@ -2080,3 +2080,14 @@ does not, and `cacheKey` and `nextPageToken` still record, like `cache_key`.
 The fix the issue sketched (a lowercase letter before the capital) would have
 missed `openAIApiKey`, and a test pins that. Header names are lower-cased before
 the check, so a camelCase header name isn't covered by this fix. 22 new tests.
+
+## 2026-10-26 — A multipart field hidden behind a filename ending in a backslash is refused (#252)
+
+The #247 reader treated a backslash inside a quoted filename as escaping the
+quote after it, the way the HTTP spec and Node 20 do. Node 25 treats the
+backslash as an ordinary character instead. So in a hand-built body with
+`filename="a\"; name="api_key"`, Node 25 sees a field called `api_key`, while
+the leak check saw one long filename and no field name, and the key was sent
+and saved. The check now reads the header both ways and refuses the request if
+either reading names a credential. Ordinary filenames with an escaped quote
+still record. 5 new tests.
