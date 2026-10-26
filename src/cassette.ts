@@ -329,7 +329,25 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   // `cache_key` / `idempotency_key` stay accepted and `cache-key` /
   // `idempotency-key` stay refused. `test/leak-scanner-snake-case-prefix.test.ts`
   // pins that table.
-  /(?:(?<![A-Za-z0-9])(?:api[-_]?key|access[-_]?token|auth[-_]?token|subscription[-_]?key)|\bkey)["']?\s*[=:]\s*["']?([A-Za-z0-9_\-.+/=]{24,})/i,
+  //
+  // The name list is enumerated from the specs and vendor docs, not from memory
+  // (#250): it held four names, so an ordinary OAuth token request carrying
+  // `client_secret`, `refresh_token` or `password` went live and was written.
+  //   - RFC 6749: `client_secret` (§2.3.1), `password` (§4.3.2), `access_token`
+  //     and `refresh_token` (§5.1, §6); OIDC Core adds `id_token`.
+  //   - RFC 7521/7523: `assertion`, `client_assertion`.
+  //   - RFC 8693: `subject_token`, `actor_token`. RFC 7009/7662: bare `token`.
+  //   - Vendor names: `api_token` / `x-api-token`, `private-token` (GitLab),
+  //     `session_token` / `security_token` (AWS STS, `X-Amz-Security-Token=`),
+  //     `access_key` / `secret_key` / `aws_secret_access_key`, `api_secret`,
+  //     `x-client-secret`, and `<vendor>-token` headers (`x-vault-token`).
+  // `password` and `assertion` mean a credential whatever is joined in front
+  // (`db_password`, `client_assertion`), so they take the lookbehind. `token`
+  // and `secret` are generic nouns like `key` and take its `\b`: `x-vault-token`
+  // is refused, `next_page_token` is not. RFC 6749's `code` is left out: it is
+  // the error-code field of every JSON error body, single-use, and a name rule
+  // on it would refuse ordinary responses.
+  /(?:(?<![A-Za-z0-9])(?:api[-_]?(?:key|token|secret)|access[-_]?(?:token|key)|auth[-_]?token|subscription[-_]?key|client[-_]?secret|refresh[-_]?token|id[-_]?token|subject[-_]?token|actor[-_]?token|private[-_]?token|session[-_]?token|security[-_]?token|secret[-_]?key|password|assertion)|\b(?:key|token|secret))["']?\s*[=:]\s*["']?([A-Za-z0-9_\-.+/=]{24,})/i,
 ];
 
 // Where a match was found, and what will actually remove it from there (#151).
