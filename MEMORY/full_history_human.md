@@ -2053,3 +2053,16 @@ scanner now reads the header's parameters properly and finds the name in any of
 those spellings. A `;` inside a quoted filename doesn't split the list, and an
 apostrophe in an unquoted filename doesn't hide the name after it. 22 new
 tests.
+
+## 2026-10-26 — OAuth secrets and credential headers like `x-api-token` are refused before they are sent (#250)
+
+The leak check knew four credential names: `api_key`, `access_token`,
+`auth_token` and `subscription_key`. An ordinary OAuth token request carries
+`client_secret`, `refresh_token` or `password` instead, and each of those was
+sent to the real service and saved in the recording; so were headers like
+`x-api-token`, GitLab's `private-token` and `x-client-secret`. The list is now
+taken from the OAuth specs and common vendor header names rather than from
+memory. `token` and `secret` on their own follow the same rule as `key`, so
+`x-vault-token` is refused while a pagination name like `next_page_token` still
+records. OAuth's `code` was left out on purpose because ordinary error replies
+use a `code` field. 28 new tests.

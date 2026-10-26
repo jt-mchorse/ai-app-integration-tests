@@ -2532,3 +2532,23 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_next_build_and_playwright_jobs_and_node_20_nothing_they_cover_changed"
 followups: []
 ---
+
+---
+session: 2026-10-26T07:16Z
+issue: 250
+branch: session/2026-10-26-0716-issue-250
+focus: OAUTH_CREDENTIAL_PARAMETERS_CLIENT_SECRET_REFRESH_TOKEN_PASSWORD_AND_CREDENTIAL_HEADER_NAMES_WENT_LIVE_AND_INTO_THE_CASSETTE_THE_KEY_FAMILY_NAME_LIST_HAD_FOUR_ENTRIES
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 28
+  suite: "1101 -> 1129 passed (75 files) on Node 25.5 and Node 20.9; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main e5bd908, Node 25.5: form POST with client_secret, refresh_token, password, assertion, client_assertion, token and headers x-api-token, private-token, x-client-secret, x-vault-token = upstream 1, cassettes 1, secret on disk; access_token, x-auth-key, x-access-key refused. After: all refused with 0 upstream calls. Name list enumerated from RFC 6749/7009/7521/7523/8693, OIDC and vendor names; token and secret take bare key's \\b, password and assertion take the lookbehind; code left out (JSON error-code field). Revert of src/cassette.ts: 21 of 28 red, 7 controls green. Wrong-fix probe: lookbehind on token/secret -> next_page_token control + rescan red. PR #253 (Closes #250)."
+context_for_next_session:
+  - "BARE_TOKEN_AND_SECRET_FOLLOW_BARE_KEY_BACKSLASH_B_so_x-vault-token_refused_next_page_token_recorded_pinned_in_test_leak-scanner-oauth-credential-names"
+  - "RFC6749_CODE_DELIBERATELY_NOT_A_CREDENTIAL_NAME_json_error_bodies_use_code_pinned_as_a_control"
+  - "251_CAMELCASE_PREFIX_edits_the_same_regex_next"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: [251]
+---
