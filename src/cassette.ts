@@ -477,15 +477,27 @@ const MULTIPART_PART =
  * double or single quote pair, and percent-decode `name*` after its
  * `charset'lang'` prefix. A `'` opens a quote only right after `=`, so an
  * apostrophe in an unquoted filename does not swallow the rest.
+ *
+ * A backslash inside `"…"` is read both ways (#252). RFC 7230's quoted-pair
+ * makes `\"` an escaped quote, and Node 20's parser agrees, but Node 25's
+ * undici reads the backslash literally: `filename="a\"; name="api_key"` is a
+ * field named `api_key` to Node 25 and a filename running to the end to this
+ * reader, so the key was sent live and written. The scanner only adds texts,
+ * so the names from both readings are kept.
  */
 function dispositionNames(params: string): string[] {
+  return [...new Set([...readDispositionNames(params, true), ...readDispositionNames(params, false)])];
+}
+
+/** `dispositionNames` under one reading of a backslash inside `"…"` (#252). */
+function readDispositionNames(params: string, backslashEscapes: boolean): string[] {
   const parts: string[] = [];
   let current = "";
   let quote = "";
   for (let i = 0; i < params.length; i++) {
     const c = params[i];
     if (quote) {
-      if (c === "\\" && quote === '"' && i + 1 < params.length) current += c + params[++i];
+      if (backslashEscapes && c === "\\" && quote === '"' && i + 1 < params.length) current += c + params[++i];
       else {
         if (c === quote) quote = "";
         current += c;
@@ -509,7 +521,7 @@ function dispositionNames(params: string): string[] {
     const q = value[0];
     if ((q === '"' || q === "'") && value.length >= 2 && value.endsWith(q)) {
       value = value.slice(1, -1);
-      if (q === '"') value = value.replace(/\\(.)/g, "$1");
+      if (q === '"' && backslashEscapes) value = value.replace(/\\(.)/g, "$1");
     }
     if (key === "name*") {
       const encoded = value.replace(/^[^']*'[^']*'/, "");

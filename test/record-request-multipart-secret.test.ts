@@ -193,6 +193,10 @@ const SPELLINGS = [
   // A `'` opens a quote only right after `=`: read as a quote here, it would
   // swallow the `; name=` after it.
   ["an apostrophe in an unquoted filename before the name", (n: string) => `form-data; filename=it's.txt; name=${n}`],
+  // #252: Node 25's undici reads the backslash literally, so the filename ends
+  // at `a\` and this is a field named `api_key`; read only as an escape, the
+  // filename ran to the end and the row went live and was written on 42da6d4.
+  ["a quoted filename ending in a backslash", (n: string) => `form-data; filename="a\\"; name="${n}"`],
 ] as const;
 
 /** One hand-built part whose `Content-Disposition` reads `disposition`. */
@@ -242,5 +246,23 @@ describe("controls (#247)", () => {
     await recorder()(URL_, { method: "POST", headers: HEADERS, body: part(disposition, FAKE_OPAQUE) });
     expect(calls).toBe(1);
     expect(await written()).toHaveLength(1);
+  });
+});
+
+describe("controls (#252)", () => {
+  it("an escaped quote in a filename before a non-credential name still records", async () => {
+    // Read with the backslash as an escape, the name is `purpose`; read
+    // literally, the list never reaches a `name`. Neither is a credential.
+    const disposition = `form-data; filename="a\\"b.txt"; name="purpose"`;
+    await recorder()(URL_, { method: "POST", headers: HEADERS, body: part(disposition, FAKE_OPAQUE) });
+    expect(calls).toBe(1);
+    expect(await written()).toHaveLength(1);
+  });
+
+  it("an escaped character in a quoted name is still read as the escape", async () => {
+    // RFC 7230's quoted-pair: `api\_key` is `api_key` to the escape reading.
+    const body = part(`form-data; name="api\\_key"`, FAKE_OPAQUE);
+    await expect(recorder()(URL_, { method: "POST", headers: HEADERS, body })).rejects.toThrow("in the request body");
+    expect(calls).toBe(0);
   });
 });
