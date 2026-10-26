@@ -237,6 +237,25 @@ export function redactHeaders(headers: Record<string, string>): Record<string, s
 }
 
 /**
+ * The compound credential names of the `key=`-family pattern below (#113,
+ * #246, #250), in one place so its `/i` form and its case-sensitive camelCase
+ * form (#251) cannot drift apart. Letters, `[-_]?` and groups only: `anyCase`
+ * relies on that.
+ */
+const CREDENTIAL_NAMES =
+  "api[-_]?(?:key|token|secret)|access[-_]?(?:token|key)|auth[-_]?token|subscription[-_]?key|" +
+  "client[-_]?secret|refresh[-_]?token|id[-_]?token|subject[-_]?token|actor[-_]?token|" +
+  "private[-_]?token|session[-_]?token|security[-_]?token|secret[-_]?key|password|assertion";
+
+/** What follows a credential name: `=` or `:`, optional quotes, a 24+ char value. */
+const CREDENTIAL_VALUE = String.raw`["']?\s*[=:]\s*["']?([A-Za-z0-9_\-.+/=]{24,})`;
+
+/** Each letter `x` as `[xX]`: a case-insensitive name in a case-sensitive pattern (#251). */
+function anyCase(source: string): string {
+  return source.replace(/[a-z]/g, (c) => `[${c}${c.toUpperCase()}]`);
+}
+
+/**
  * Belt-and-suspenders check (D-004): scan the entire serialized cassette for
  * anything that *looks* like an API key. Throws if any candidate is found so
  * a leaking cassette never gets committed.
@@ -347,7 +366,21 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   // is refused, `next_page_token` is not. RFC 6749's `code` is left out: it is
   // the error-code field of every JSON error body, single-use, and a name rule
   // on it would refuse ordinary responses.
-  /(?:(?<![A-Za-z0-9])(?:api[-_]?(?:key|token|secret)|access[-_]?(?:token|key)|auth[-_]?token|subscription[-_]?key|client[-_]?secret|refresh[-_]?token|id[-_]?token|subject[-_]?token|actor[-_]?token|private[-_]?token|session[-_]?token|security[-_]?token|secret[-_]?key|password|assertion)|\b(?:key|token|secret))["']?\s*[=:]\s*["']?([A-Za-z0-9_\-.+/=]{24,})/i,
+  new RegExp(String.raw`(?:(?<![A-Za-z0-9])(?:${CREDENTIAL_NAMES})|\b(?:key|token|secret))${CREDENTIAL_VALUE}`, "i"),
+  // The camelCase join (#251). #248's lookbehind blocks every letter in front
+  // of a compound name, so `openaiApiKey`, `xApiKey` and `userAccessToken` (the
+  // usual join in a JS/TS JSON body) went live and were written while `apiKey`
+  // and `openai_api_key` were refused. A camelCase join is the name's first
+  // letter in UPPERCASE after a letter or digit, which needs a case-sensitive
+  // pattern: under `/i` the `[A-Z]` would match any letter and refuse the pinned
+  // `myapikey`. The uppercase letter is the name's own, not the one before it,
+  // so LangChain's `openAIApiKey` (`I` then `Api`) matches too. The rest of the
+  // name is matched in any case (`APIKey`, `ApiKey`). `key`, `token` and
+  // `secret` get no camelCase join, as they get no `_` join: `cacheKey` and
+  // `nextPageToken` still record, like `cache_key`. A header name reaches the
+  // scanner lower-cased, so this covers the URL, body and response only.
+  // `test/leak-scanner-camel-case-prefix.test.ts` pins the table.
+  new RegExp(String.raw`(?<=[A-Za-z0-9])(?=[A-Z])(?:${anyCase(CREDENTIAL_NAMES)})${CREDENTIAL_VALUE}`),
 ];
 
 // Where a match was found, and what will actually remove it from there (#151).

@@ -2552,3 +2552,23 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: [251]
 ---
+
+---
+session: 2026-10-26T07:29Z
+issue: 251
+branch: session/2026-10-26-0729-issue-251
+focus: A_CAMELCASE_PREFIXED_CREDENTIAL_NAME_OPENAIAPIKEY_USERACCESSTOKEN_WENT_LIVE_AND_INTO_THE_CASSETTE_BECAUSE_248S_LOOKBEHIND_BLOCKS_EVERY_LETTER
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 22
+  suite: "1129 -> 1151 passed (76 files) on Node 25.5 and Node 20.9; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main 060a20c, Node 25.5: JSON body openaiApiKey, openAIApiKey, xApiKey, googleApiKey, userAccessToken, userPassword, clientAssertion = upstream 1, cassettes 1; apiKey, openai_api_key refused. After: all refused with 0 upstream calls; myapikey, v2accesstoken, cache_key, idempotency_key, cacheKey, nextPageToken, monkey record. CREDENTIAL_NAMES is one string; the key-family pattern is built twice from it (/i, and case-sensitive (?<=[A-Za-z0-9])(?=[A-Z]) + anyCase(names)). Revert of src/cassette.ts: 11 of 22 red, 11 controls green. Wrong-fix probes: the issue's (?<=[a-z0-9]) -> openAIApiKey + rescan red; /i on the camel form -> myapikey, v2accesstoken, rescan red. PR #254 (Closes #251)."
+context_for_next_session:
+  - "THE_ISSUES_OWN_FIX_SHAPE_LOOKBEHIND_A_Z_LOWER_MISSES_ITS_OWN_OPENAIAPIKEY_ROW_the_uppercase_must_be_the_names_first_letter"
+  - "HEADER_NAMES_ARE_LOWERCASED_BEFORE_THE_SCAN_so_a_camelCase_header_openaiApiKey_is_indistinguishable_from_myapikey_recorder_change_not_filed"
+  - "MACOS_CASE_INSENSITIVE_FS_COLLIDES_FIXTURE_NAMES_THAT_DIFFER_ONLY_IN_CASE_index_them"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: [252]
+---
