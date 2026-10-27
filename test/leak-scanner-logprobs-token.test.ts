@@ -19,6 +19,14 @@
  * a request header, and a form body (form-urlencoded, multipart, a FormData
  * record). Compound names (`access_token`, `refresh_token`,
  * `client_assertion`, ...) are refused everywhere, as before.
+ *
+ * #258 (regression from #257): a form body was a form only in the canonical
+ * `URLSearchParams.toString()` shape. A trailing `&`, a raw space, a trailing
+ * newline, a BOM or a bare flag lost the rule, and the token went live and was
+ * written. `PARSED_FORMS` is built from what URLSearchParams, undici's
+ * `Response.formData()` and Python's `parse_qsl` read as a `token` /
+ * `assertion` field; every row but the canonical one and `a=&token=` was
+ * written on main 6c289a7.
  */
 import { spawnSync } from "node:child_process";
 import { promises as fs } from "node:fs";
@@ -35,6 +43,9 @@ const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const HOSTS = new Set(["api.openai.com", "auth.example.com"]);
 const CHAT_URL = "https://api.openai.com/v1/chat/completions";
 const LF = String.fromCharCode(10);
+const CR = String.fromCharCode(13);
+const TAB = String.fromCharCode(9);
+const BOM = String.fromCharCode(0xfeff);
 // No prefix of its own, so only the name marks it. Built from parts so this
 // file is not a leak.
 const FAKE_OPAQUE = ["fake", "opaque", "z".repeat(24)].join("");
@@ -162,6 +173,88 @@ const REFUSES: Array<readonly [string, CassetteV1]> = [
   ["client_assertion in a JSON request body", cassette({ body: { client_assertion: FAKE_OPAQUE } })],
 ];
 
+// [label, body, field]: a form body each of URLSearchParams, undici's
+// `formData()` and Python's `parse_qsl` reads as `field` = FAKE_OPAQUE (or
+// FAKE_OPAQUE with the whitespace around it). Checked for the first two below.
+const REVOKE_URL = "https://auth.example.com/oauth/revoke";
+const JWT_GRANT = "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer";
+const PARSED_FORMS: Array<readonly [string, string, "token" | "assertion"]> = [
+  ["canonical", `token=${FAKE_OPAQUE}&token_type_hint=access_token`, "token"],
+  ["a trailing &", `token=${FAKE_OPAQUE}&token_type_hint=access_token&`, "token"],
+  ["a leading &", `&token=${FAKE_OPAQUE}`, "token"],
+  ["an empty segment", `a=b&&token=${FAKE_OPAQUE}`, "token"],
+  ["a raw space in another value", `client_id=my app&token=${FAKE_OPAQUE}`, "token"],
+  ["a raw space after the token", `token=${FAKE_OPAQUE}&scope=read write`, "token"],
+  ["a tab in a value", `client_id=my${TAB}app&token=${FAKE_OPAQUE}`, "token"],
+  ["a trailing LF", `token=${FAKE_OPAQUE}&token_type_hint=access_token${LF}`, "token"],
+  ["a trailing CRLF", `token=${FAKE_OPAQUE}&token_type_hint=access_token${CR}${LF}`, "token"],
+  ["a leading LF", `${LF}token=${FAKE_OPAQUE}`, "token"],
+  ["a leading BOM", `${BOM}token=${FAKE_OPAQUE}&token_type_hint=access_token`, "token"],
+  ["a BOM before a later pair", `a=b&${BOM}token=${FAKE_OPAQUE}`, "token"],
+  ["a bare flag first", `verbose&token=${FAKE_OPAQUE}`, "token"],
+  ["a bare flag last", `token=${FAKE_OPAQUE}&verbose`, "token"],
+  ["an empty name", `=x&token=${FAKE_OPAQUE}`, "token"],
+  ["an empty value", `a=&token=${FAKE_OPAQUE}`, "token"],
+  ["JSON with a space in a value", `state={"x": 1}&token=${FAKE_OPAQUE}`, "token"],
+  ["assertion= with a trailing &", `${JWT_GRANT}&assertion=${FAKE_OPAQUE}&`, "assertion"],
+  ["assertion= with a trailing LF", `${JWT_GRANT}&assertion=${FAKE_OPAQUE}${LF}`, "assertion"],
+  ["assertion= with a raw space", `scope=a b&assertion=${FAKE_OPAQUE}`, "assertion"],
+  ["assertion= after a bare flag", `verbose&assertion=${FAKE_OPAQUE}`, "assertion"],
+  ["assertion= after a BOM", `${BOM}assertion=${FAKE_OPAQUE}`, "assertion"],
+];
+
+// A form only through its recorded content-type (#258): a line break inside a
+// value ends the shape on purpose, so prose that starts with `x=1` and has a
+// `token:` on a later line is not read as a form.
+const LF_IN_VALUE = `note=line1${LF}line2&token=${FAKE_OPAQUE}`;
+
+const formCassette = (body: string, headers: Record<string, string> = {}): CassetteV1 =>
+  cassette({ url: REVOKE_URL, headers, body });
+
+const DECLARED_FORMS: Array<readonly [string, CassetteV1]> = [
+  [
+    "a request body declared form-urlencoded, LF inside a value",
+    formCassette(LF_IN_VALUE, { "content-type": "application/x-www-form-urlencoded" }),
+  ],
+  [
+    "the same with Content-Type spelled in mixed case and a charset",
+    formCassette(LF_IN_VALUE, { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" }),
+  ],
+  [
+    "a response declared form-urlencoded, LF inside a value",
+    cassette({
+      response: {
+        kind: "non_streaming",
+        status: 200,
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: LF_IN_VALUE,
+      },
+    }),
+  ],
+];
+
+// Records before and after #258: the looser form shape must not read a JSON
+// text, an SSE frame, or what `URLSearchParams` decodes out of one, as a form.
+const FORM_SHAPE_RECORDS: Array<readonly [string, CassetteV1]> = [
+  ["content 'a = b c 100%' beside a logprobs token", jsonResponse(chatBody("=".repeat(32), "a = b c 100%"))],
+  ["content 'a=b c 100%' beside a logprobs token", jsonResponse(chatBody("=".repeat(32), "a=b c 100%"))],
+  ["content 'x=1 & y=2 50%' beside a logprobs token", jsonResponse(chatBody("-".repeat(32), "x=1 & y=2 50%"))],
+  [
+    "a pretty-printed logprobs body",
+    jsonResponse(JSON.stringify(JSON.parse(chatBody("-".repeat(32))), null, 2)),
+  ],
+  [
+    "an SSE event with event: and id: lines",
+    sseResponse([`event: chunk${LF}id: 1${LF}${chatFrames("=".repeat(32))[0]}`, "data: [DONE]\n\n"]),
+  ],
+  ["an SSE frame with content 'a=b c 100%'", sseResponse(chatFrames("=".repeat(32)).map((f) => f.replace('"content":"', '"content":"a=b c 100% ')))],
+  ["NDJSON logprobs lines", jsonResponse(`${chatBody("-".repeat(32), "x")}${LF}${chatBody("=".repeat(32), "a=b %")}`)],
+  [
+    "content 'x=1' then a 'token:' on the next line",
+    jsonResponse(chatBody("x", `x=1${LF}next token: ValidateAntiForgeryToken`)),
+  ],
+];
+
 describe("a logprobs or eval response records (#256)", () => {
   it.each(RECORDS)("%s", (_label, c) => {
     expect(() => assertNoLeakedSecrets(c)).not.toThrow();
@@ -175,6 +268,37 @@ describe("controls: bare token on a form surface, and compound names anywhere, a
 
   it("names the request body for a form-body token=", () => {
     expect(() => assertNoLeakedSecrets(REFUSES[0][1])).toThrow("in the request body");
+  });
+});
+
+describe("a form body in any shape a form parser reads is refused (#258)", () => {
+  it.each(PARSED_FORMS)("%s: the parsers read the field", async (_label, body, field) => {
+    const read = (pairs: Iterable<[string, FormDataEntryValue | string]>) =>
+      [...pairs].filter(([, v]) => String(v).trim() === FAKE_OPAQUE).map(([k]) => k.trim());
+    const fd = await new Response(body, {
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+    }).formData();
+    expect(read(new URLSearchParams(body))).toEqual([field]);
+    expect(read(fd)).toEqual([field]);
+  });
+
+  // No content-type header: the body's shape alone makes it a form.
+  it.each(PARSED_FORMS)("%s: refused by its shape, in the request body", (_label, body) => {
+    expect(() => assertNoLeakedSecrets(formCassette(body))).toThrow(/unredacted secret.* in the request body/);
+  });
+
+  it.each(DECLARED_FORMS)("%s", (_label, c) => {
+    expect(() => assertNoLeakedSecrets(c)).toThrow("unredacted secret");
+  });
+
+  it("names the response for a response declared form-urlencoded", () => {
+    expect(() => assertNoLeakedSecrets(DECLARED_FORMS[2][1])).toThrow("in the response");
+  });
+});
+
+describe("the parsers' form shape still does not read JSON or SSE as a form (#258)", () => {
+  it.each(FORM_SHAPE_RECORDS)("%s", (_label, c) => {
+    expect(() => assertNoLeakedSecrets(c)).not.toThrow();
   });
 });
 
@@ -238,15 +362,36 @@ describe("through the recorder", () => {
     expect(calls).toBe(0);
   });
 
+  // No content-type header, so the recorded request carries none and only the
+  // body's shape can refuse it.
+  it.each(PARSED_FORMS)("%s: refused before the live call, nothing written", async (_label, body) => {
+    await expect(recorder("", "text/plain")(REVOKE_URL, { method: "POST", body })).rejects.toThrow("unredacted secret");
+    expect(calls).toBe(0);
+    expect(await written()).toHaveLength(0);
+  });
+
+  it("a declared form body with a line break inside a value is refused before the live call", async () => {
+    const init = { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: LF_IN_VALUE };
+    await expect(recorder("", "text/plain")(REVOKE_URL, init)).rejects.toThrow("unredacted secret");
+    expect(calls).toBe(0);
+    expect(await written()).toHaveLength(0);
+  });
+
   it("the committed-cassette rescan passes every logprobs row and refuses every control", async () => {
     const fixtures = path.join(dir, "fixtures");
     await fs.mkdir(fixtures);
     // Indexed: two labels differing only in case collide on macOS.
     const name = (kind: string, i: number, label: string) => `${kind}-${i}-${label.replace(/\W+/g, "-")}.json`;
-    const clean = RECORDS.map(([label], i) => name("clean", i, label));
-    const leaks = REFUSES.map(([label], i) => name("leak", i, label));
-    for (const [i, [, c]] of RECORDS.entries()) await fs.writeFile(path.join(fixtures, clean[i]), JSON.stringify(c));
-    for (const [i, [, c]] of REFUSES.entries()) await fs.writeFile(path.join(fixtures, leaks[i]), JSON.stringify(c));
+    const records = [...RECORDS, ...FORM_SHAPE_RECORDS];
+    const refuses = [
+      ...REFUSES,
+      ...PARSED_FORMS.map(([label, body]): readonly [string, CassetteV1] => [label, formCassette(body)]),
+      ...DECLARED_FORMS,
+    ];
+    const clean = records.map(([label], i) => name("clean", i, label));
+    const leaks = refuses.map(([label], i) => name("leak", i, label));
+    for (const [i, [, c]] of records.entries()) await fs.writeFile(path.join(fixtures, clean[i]), JSON.stringify(c));
+    for (const [i, [, c]] of refuses.entries()) await fs.writeFile(path.join(fixtures, leaks[i]), JSON.stringify(c));
     const r = spawnSync("npx", ["tsx", path.join(REPO_ROOT, "scripts", "scan-committed-cassettes.ts"), fixtures], {
       cwd: REPO_ROOT,
       encoding: "utf8",

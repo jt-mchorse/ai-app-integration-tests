@@ -2104,3 +2104,15 @@ same way. The plain names now count only where the OAuth specs actually put
 them: the URL query, request headers, and form bodies. Compound names like
 `access_token`, `refresh_token` and `client_assertion` are still refused
 everywhere. 45 new tests use real tokenizer tokens.
+
+## 2026-10-27 — A hand-built OAuth form body is refused again (#258)
+
+The #256 fix limited the plain names `token` and `assertion` to form bodies,
+the URL and headers. But it only counted a body as a form if it looked exactly
+like what `URLSearchParams` produces. A body with a trailing `&`, a space in a
+value, a trailing newline, a byte-order mark or a bare flag like `verbose` is
+still parsed as a form by Node, undici and Python, so the server got the token.
+The leak check did not see a form, so the token was sent and saved. The check
+now accepts the same shapes those parsers accept. A body sent with a
+form-urlencoded content-type counts as a form whatever it looks like. OpenAI
+token-probability responses still record. 79 new tests.

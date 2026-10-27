@@ -2611,3 +2611,24 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: []
 ---
+
+---
+session: 2026-10-27T07:54Z
+issue: 258
+branch: session/2026-10-27-0754-issue-258
+focus: REGRESSION_FROM_257_A_FORM_BODY_OUTSIDE_THE_CANONICAL_URLSEARCHPARAMS_SHAPE_LOST_THE_BARE_TOKEN_ASSERTION_RULE_AND_WAS_WRITTEN
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 79
+  suite: "1201 -> 1280 passed (77 files) on Node 25.5 and Node 20.9; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main 6c289a7: 23 form bodies, each read as token/assertion=T by URLSearchParams, undici formData() and python parse_qsl; through createRecorderFetch with a counting upstream 21 of 23 = upstream 1 and T on disk (trailing/leading &, &&, raw space/tab in a value, trailing LF/CRLF, leading LF, LF inside a value, leading BOM, BOM before a later pair, bare flag first/last, empty name, JSON value with a space, assertion= variants); canonical and a=&token= refused. After: 23 of 23 refused with 0 upstream calls. isForm(v, strict): parsers' shape (trim, empty segments, bare/empty names, value [^&\\r\\n]*, names keep the URL-safe set); a request body / non_streaming response with a recorded form-urlencoded content-type is a form surface (LEAK_LOCATIONS 4th field is now a function). A string decoded out of a NON-form string keeps the strict FORM_URLENCODED. Wrong-fix probe without that strict rule: 2 red (the % logprobs row + rescan). Revert of src/cassette.ts: 46 of 124 red, 78 green (44 unchanged 257 cases, 22 parser arms, 4 controls, 8 record guards). PR #260 (Closes #258)."
+context_for_next_session:
+  - "FORM_SHAPE_IS_THE_PARSERS_SHAPE_BUT_AN_INTERIOR_LINE_BREAK_ENDS_IT_on_purpose_a_declared_form_content_type_covers_that_row"
+  - "DECODED_REMAINDERS_OF_NON_FORM_STRINGS_KEEP_THE_STRICT_SHAPE_else_logprobs_json_after_its_first_equals_is_an_empty_name_pair"
+  - "ACCEPTED_TRADEOFF_single_line_prose_starting_name_equals_with_a_later_token_colon_24_chars_now_refused_253_refused_it_too"
+  - "259_URLS_OUTSIDE_THE_REQUEST_URL_UNTOUCHED_JT_DECISION_probe_rows_unchanged_main_vs_fix"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: []
+---
