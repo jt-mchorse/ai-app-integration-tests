@@ -245,7 +245,7 @@ export function redactHeaders(headers: Record<string, string>): Record<string, s
 const CREDENTIAL_NAMES =
   "api[-_]?(?:key|token|secret)|access[-_]?(?:token|key)|auth[-_]?token|subscription[-_]?key|" +
   "client[-_]?secret|refresh[-_]?token|id[-_]?token|subject[-_]?token|actor[-_]?token|" +
-  "private[-_]?token|session[-_]?token|security[-_]?token|secret[-_]?key|password|assertion";
+  "private[-_]?token|session[-_]?token|security[-_]?token|secret[-_]?key|password|client[-_]?assertion";
 
 /** What follows a credential name: `=` or `:`, optional quotes, a 24+ char value. */
 const CREDENTIAL_VALUE = String.raw`["']?\s*[=:]\s*["']?([A-Za-z0-9_\-.+/=]{24,})`;
@@ -360,13 +360,14 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   //     `session_token` / `security_token` (AWS STS, `X-Amz-Security-Token=`),
   //     `access_key` / `secret_key` / `aws_secret_access_key`, `api_secret`,
   //     `x-client-secret`, and `<vendor>-token` headers (`x-vault-token`).
-  // `password` and `assertion` mean a credential whatever is joined in front
-  // (`db_password`, `client_assertion`), so they take the lookbehind. `token`
-  // and `secret` are generic nouns like `key` and take its `\b`: `x-vault-token`
-  // is refused, `next_page_token` is not. RFC 6749's `code` is left out: it is
-  // the error-code field of every JSON error body, single-use, and a name rule
-  // on it would refuse ordinary responses.
-  new RegExp(String.raw`(?:(?<![A-Za-z0-9])(?:${CREDENTIAL_NAMES})|\b(?:key|token|secret))${CREDENTIAL_VALUE}`, "i"),
+  // `password` means a credential whatever is joined in front (`db_password`),
+  // so it takes the lookbehind. `secret` is a generic noun like `key` and takes
+  // its `\b`. RFC 6749's `code` is left out: it is the error-code field of
+  // every JSON error body, single-use, and a name rule on it would refuse
+  // ordinary responses. Bare `token` and `assertion` are left out of this
+  // pattern for the same reason, and refused on the form surfaces only
+  // (`FORM_SURFACE_PATTERNS`, #256).
+  new RegExp(String.raw`(?:(?<![A-Za-z0-9])(?:${CREDENTIAL_NAMES})|\b(?:key|secret))${CREDENTIAL_VALUE}`, "i"),
   // The camelCase join (#251). #248's lookbehind blocks every letter in front
   // of a compound name, so `openaiApiKey`, `xApiKey` and `userAccessToken` (the
   // usual join in a JS/TS JSON body) went live and were written while `apiKey`
@@ -383,33 +384,75 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   new RegExp(String.raw`(?<=[A-Za-z0-9])(?=[A-Z])(?:${anyCase(CREDENTIAL_NAMES)})${CREDENTIAL_VALUE}`),
 ];
 
+/**
+ * Names that are a credential only where the specs put them (#256): the URL
+ * query, a request header, and a form body (form-urlencoded, multipart, or a
+ * FormData record). `assertNoLeakedSecrets` applies these to the texts
+ * `scanTexts` collects from those surfaces, and to nothing else.
+ *
+ * #253 added bare `token` (RFC 7009/7662) and `assertion` (RFC 7521) to the
+ * pattern above, which reads every text in the cassette. An OpenAI logprobs
+ * response carries every output token as `{"token": "<text>", ...}`, in a
+ * JSON body and in each SSE `data:` chunk, and tokenizers have single tokens
+ * of 24+ value-class characters: cl100k_base has 71 (32 dashes, 32 `=`,
+ * `.translatesAutoresizingMaskIntoConstraints`, ...), o200k_base 45. Such a
+ * response was refused after the live call. `{"assertion": ...}` and
+ * `{"lastAssertion": ...}` are eval-shaped JSON in the same way. RFC 7009 and
+ * 7521 send both names form-urlencoded, and `x-vault-token`-style headers put
+ * `token` in a header name, so those surfaces keep the rule. Compound names
+ * (`access_token`, `refresh_token`, `client_assertion`, ...) are in the pattern
+ * above and are refused everywhere. `test/leak-scanner-logprobs-token.test.ts`
+ * pins the table.
+ */
+const FORM_SURFACE_PATTERNS: Array<RegExp> = [
+  new RegExp(String.raw`(?:(?<![A-Za-z0-9])assertion|\btoken)${CREDENTIAL_VALUE}`, "i"),
+  new RegExp(String.raw`(?<=[A-Za-z0-9])(?=[A-Z])${anyCase("assertion")}${CREDENTIAL_VALUE}`),
+];
+
+/**
+ * A whole string in `application/x-www-form-urlencoded` shape (#256): one or
+ * more `name=value` pairs joined by `&`, a name of URL-safe characters, and no
+ * whitespace anywhere. A JSON text or an SSE frame never has this shape (`{`,
+ * `"` or a space), so a JSON field named `token` is not read as a form field.
+ */
+const FORM_URLENCODED = /^[A-Za-z0-9_.~*%+\-[\]]+=[^&\s]*(?:&[A-Za-z0-9_.~*%+\-[\]]+=[^&\s]*)*$/;
+
 // Where a match was found, and what will actually remove it from there (#151).
 // The message used to say "Update redactHeaders() and re-record" for every
 // match, but `redactHeaders` only ever sees header NAMES in a fixed list callers
 // cannot extend, while #113's pattern exists for the URL and body, which
 // `normalizeUrl` and the body canonicalizer record as-is.
-const LEAK_LOCATIONS: ReadonlyArray<[string, (c: CassetteV1) => unknown, string]> = [
+//
+// The last field says whether every text of that part is a form surface for
+// `FORM_SURFACE_PATTERNS` (#256): the URL (its query) and the request headers
+// (their names) are; a body or response is one only where `scanTexts` finds a
+// form inside it.
+const LEAK_LOCATIONS: ReadonlyArray<[string, (c: CassetteV1) => unknown, string, boolean]> = [
   [
     "the request URL",
     (c) => c.request.url,
     "the query string is recorded as-is; send the credential as a header " +
       "(e.g. `x-goog-api-key`, `api-key`, `authorization`) so redaction strips it",
+    true,
   ],
   [
     "the request headers",
     (c) => c.request.headers,
     "that header's name is not in the redaction list (SENSITIVE_HEADER_NAMES in " +
       "src/cassette.ts); send the credential under a name it lists, or add the name there",
+    true,
   ],
   [
     "the request body",
     (c) => c.request.body,
     "the body is recorded verbatim; keep the credential out of it, e.g. in a header",
+    false,
   ],
   [
     "the response",
     (c) => c.response,
     "the upstream echoed a credential; record against an endpoint or key that does not",
+    false,
   ],
 ];
 
@@ -556,11 +599,19 @@ function isFormDataRecord(v: unknown[]): boolean {
   return v.length === arity && v.every((item) => typeof item === "string");
 }
 
-function scanTexts(value: unknown, depth = 0): string[] {
+/**
+ * `form` collects the texts that come from a form inside `value` (#256): a
+ * string in form-urlencoded shape and its decoded pairs, each multipart part
+ * and each FormData record, as `name=value`. Only those, plus the URL and the
+ * request headers, are read by `FORM_SURFACE_PATTERNS`.
+ */
+function scanTexts(value: unknown, form: string[] = [], depth = 0): string[] {
   const out = [JSON.stringify(value) ?? ""];
   const visit = (v: unknown): void => {
     if (typeof v === "string") {
       out.push(v);
+      const formShaped = FORM_URLENCODED.test(v);
+      if (formShaped) form.push(v);
       if (depth >= MAX_NESTED_JSON_DEPTH) return;
       // An SSE line ends at ANY of `\r\n`, `\r` or `\n`, the three forms
       // `captureSse` splits frames on (D-012), and an event's `data:` lines are
@@ -586,7 +637,7 @@ function scanTexts(value: unknown, depth = 0): string[] {
         const t = text.trim();
         if (!(t.startsWith("{") || t.startsWith("["))) continue;
         try {
-          out.push(...scanTexts(JSON.parse(t), depth + 1));
+          out.push(...scanTexts(JSON.parse(t), form, depth + 1));
         } catch {
           // Not JSON: the string itself was already pushed.
         }
@@ -606,6 +657,7 @@ function scanTexts(value: unknown, depth = 0): string[] {
       if (v.includes("=") && /[%+]/.test(v)) {
         for (const [name, decoded] of new URLSearchParams(v)) {
           out.push(`${name}=${decoded}`);
+          if (formShaped) form.push(`${name}=${decoded}`);
           visit(decoded);
         }
       }
@@ -621,7 +673,10 @@ function scanTexts(value: unknown, depth = 0): string[] {
       // name the parameter list gives, in any spelling (#247).
       if (/form-data/i.test(v)) {
         for (const [, params, value] of v.matchAll(MULTIPART_PART)) {
-          for (const name of dispositionNames(params)) out.push(`${name}=${value}`);
+          for (const name of dispositionNames(params)) {
+            out.push(`${name}=${value}`);
+            form.push(`${name}=${value}`);
+          }
           visit(value);
         }
       }
@@ -631,7 +686,10 @@ function scanTexts(value: unknown, depth = 0): string[] {
       // name and its value, which the `key=` family never matches. A bare
       // 32-hex or opaque token has no prefix for any other pattern, so an
       // `api_key` field was written to the cassette. Also emit `name=value`.
-      if (isFormDataRecord(v)) out.push(`${v[1]}=${v[v.length - 1]}`);
+      if (isFormDataRecord(v)) {
+        out.push(`${v[1]}=${v[v.length - 1]}`);
+        form.push(`${v[1]}=${v[v.length - 1]}`);
+      }
       // An `fb` record's last field is base64 (#147): a FormData file that is
       // not valid UTF-8. Its body is `json` (one entry) or `raw` (several), never
       // `base64`, so `scanView` never decoded it, and a key in such a file was
@@ -656,13 +714,29 @@ function scanTexts(value: unknown, depth = 0): string[] {
   return out;
 }
 
+/**
+ * `value`'s texts, and the subset `FORM_SURFACE_PATTERNS` may read (#256):
+ * all of them when `value` is itself a form surface (the URL, the request
+ * headers), otherwise the forms `scanTexts` finds inside it.
+ */
+function surfaceTexts(value: unknown, isFormSurface: boolean): { all: string[]; form: string[] } {
+  const form: string[] = [];
+  const all = scanTexts(value, form);
+  return { all, form: isFormSurface ? all : form };
+}
+
 export function assertNoLeakedSecrets(cassette: CassetteV1): void {
   const view = scanView(cassette);
-  const texts = scanTexts(view);
-  for (const pattern of API_KEY_PATTERNS) {
-    if (!texts.some((t) => pattern.test(t))) continue;
-    const found = LEAK_LOCATIONS.find(([, part]) =>
-      scanTexts(part(view)).some((t) => pattern.test(t)),
+  const whole = surfaceTexts(view, false);
+  const form = [...whole.form, ...scanTexts(view.request.url), ...scanTexts(view.request.headers)];
+  const checks: Array<[RegExp, "all" | "form"]> = [
+    ...API_KEY_PATTERNS.map((p): [RegExp, "all"] => [p, "all"]),
+    ...FORM_SURFACE_PATTERNS.map((p): [RegExp, "form"] => [p, "form"]),
+  ];
+  for (const [pattern, surface] of checks) {
+    if (!(surface === "all" ? whole.all : form).some((t) => pattern.test(t))) continue;
+    const found = LEAK_LOCATIONS.find(([, part, , isFormSurface]) =>
+      surfaceTexts(part(view), isFormSurface)[surface].some((t) => pattern.test(t)),
     );
     const where = found ? ` in ${found[0]}` : "";
     const advice = found ? ` ${found[2]}, then re-record.` : " Remove it, then re-record.";
