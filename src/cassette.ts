@@ -417,6 +417,47 @@ const FORM_SURFACE_PATTERNS: Array<RegExp> = [
  */
 const FORM_URLENCODED = /^[A-Za-z0-9_.~*%+\-[\]]+=[^&\s]*(?:&[A-Za-z0-9_.~*%+\-[\]]+=[^&\s]*)*$/;
 
+/**
+ * The form shape that form parsers accept (#258). URLSearchParams, undici's
+ * `Response.formData()` and Python's `parse_qsl` all read `token` out of a
+ * body with a trailing or doubled `&`, a raw space or tab in a value, a
+ * trailing newline, a leading BOM, a bare flag (`verbose&token=...`) or an
+ * empty name (`=x&token=...`). `FORM_URLENCODED` refused every one of them,
+ * so a revocation body built by hand lost the bare `token` rule: the token
+ * was sent live and written. So: the ends are trimmed (`trim` also strips a
+ * BOM), an empty segment or a name without `=` is a pair, a name may start
+ * with a space or BOM, and a value runs to the next `&` or line end. The
+ * name's URL-safe characters are what still tell a form from JSON (`{`,
+ * `"`), an SSE line (`data:`, a space) and a URL (`:`, `/`, `?`), and an
+ * interior line break still ends the form. A request whose recorded
+ * `content-type` says form-urlencoded is a form whatever its shape
+ * (`FORM_CONTENT_TYPE`).
+ */
+const FORM_PAIR = String.raw`[ \t\uFEFF]*[A-Za-z0-9_.~*%+\-[\]]*(?:=[^&\r\n]*)?`;
+const FORM_PARSED = new RegExp(`^${FORM_PAIR}(?:&${FORM_PAIR})*$`);
+
+/**
+ * Whether `v` is a form. A string decoded out of a NON-form string (the
+ * remainder of a JSON text after its first `=`, #237) keeps #256's strict
+ * shape: under the parsers' shape a remainder such as `===...","top_logprobs":
+ * [{"token":"===...` is one pair with an empty name, and the logprobs `token`
+ * field inside it would be read as a form field.
+ */
+function isForm(v: string, strict: boolean): boolean {
+  if (strict) return FORM_URLENCODED.test(v);
+  return v.includes("=") && FORM_PARSED.test(v.trim());
+}
+
+/** A `content-type` header value that says form-urlencoded (#258). */
+const FORM_CONTENT_TYPE = /^\s*application\/x-www-form-urlencoded\s*(?:;|$)/i;
+
+/** Whether `headers` (any name case) declare a form-urlencoded body (#258). */
+function declaresForm(headers: Record<string, string> | undefined): boolean {
+  return Object.entries(headers ?? {}).some(
+    ([name, value]) => name.toLowerCase() === "content-type" && FORM_CONTENT_TYPE.test(String(value)),
+  );
+}
+
 // Where a match was found, and what will actually remove it from there (#151).
 // The message used to say "Update redactHeaders() and re-record" for every
 // match, but `redactHeaders` only ever sees header NAMES in a fixed list callers
@@ -425,34 +466,35 @@ const FORM_URLENCODED = /^[A-Za-z0-9_.~*%+\-[\]]+=[^&\s]*(?:&[A-Za-z0-9_.~*%+\-[
 //
 // The last field says whether every text of that part is a form surface for
 // `FORM_SURFACE_PATTERNS` (#256): the URL (its query) and the request headers
-// (their names) are; a body or response is one only where `scanTexts` finds a
-// form inside it.
-const LEAK_LOCATIONS: ReadonlyArray<[string, (c: CassetteV1) => unknown, string, boolean]> = [
+// (their names) are; a body or response is one when its recorded
+// `content-type` says form-urlencoded (#258), and otherwise only where
+// `scanTexts` finds a form inside it.
+const LEAK_LOCATIONS: ReadonlyArray<[string, (c: CassetteV1) => unknown, string, (c: CassetteV1) => boolean]> = [
   [
     "the request URL",
     (c) => c.request.url,
     "the query string is recorded as-is; send the credential as a header " +
       "(e.g. `x-goog-api-key`, `api-key`, `authorization`) so redaction strips it",
-    true,
+    () => true,
   ],
   [
     "the request headers",
     (c) => c.request.headers,
     "that header's name is not in the redaction list (SENSITIVE_HEADER_NAMES in " +
       "src/cassette.ts); send the credential under a name it lists, or add the name there",
-    true,
+    () => true,
   ],
   [
     "the request body",
     (c) => c.request.body,
     "the body is recorded verbatim; keep the credential out of it, e.g. in a header",
-    false,
+    (c) => declaresForm(c.request.headers),
   ],
   [
     "the response",
     (c) => c.response,
     "the upstream echoed a credential; record against an endpoint or key that does not",
-    false,
+    (c) => c.response.kind === "non_streaming" && declaresForm(c.response.headers),
   ],
 ];
 
@@ -607,10 +649,10 @@ function isFormDataRecord(v: unknown[]): boolean {
  */
 function scanTexts(value: unknown, form: string[] = [], depth = 0): string[] {
   const out = [JSON.stringify(value) ?? ""];
-  const visit = (v: unknown): void => {
+  const visit = (v: unknown, strict = false): void => {
     if (typeof v === "string") {
       out.push(v);
-      const formShaped = FORM_URLENCODED.test(v);
+      const formShaped = isForm(v, strict);
       if (formShaped) form.push(v);
       if (depth >= MAX_NESTED_JSON_DEPTH) return;
       // An SSE line ends at ANY of `\r\n`, `\r` or `\n`, the three forms
@@ -658,7 +700,7 @@ function scanTexts(value: unknown, form: string[] = [], depth = 0): string[] {
         for (const [name, decoded] of new URLSearchParams(v)) {
           out.push(`${name}=${decoded}`);
           if (formShaped) form.push(`${name}=${decoded}`);
-          visit(decoded);
+          visit(decoded, !formShaped);
         }
       }
       // A multipart body is also read part by part (#243). The recorder parses
@@ -717,7 +759,8 @@ function scanTexts(value: unknown, form: string[] = [], depth = 0): string[] {
 /**
  * `value`'s texts, and the subset `FORM_SURFACE_PATTERNS` may read (#256):
  * all of them when `value` is itself a form surface (the URL, the request
- * headers), otherwise the forms `scanTexts` finds inside it.
+ * headers, a body declared form-urlencoded), otherwise the forms `scanTexts`
+ * finds inside it.
  */
 function surfaceTexts(value: unknown, isFormSurface: boolean): { all: string[]; form: string[] } {
   const form: string[] = [];
@@ -728,7 +771,8 @@ function surfaceTexts(value: unknown, isFormSurface: boolean): { all: string[]; 
 export function assertNoLeakedSecrets(cassette: CassetteV1): void {
   const view = scanView(cassette);
   const whole = surfaceTexts(view, false);
-  const form = [...whole.form, ...scanTexts(view.request.url), ...scanTexts(view.request.headers)];
+  const form = [...whole.form];
+  for (const [, part, , isFormSurface] of LEAK_LOCATIONS) if (isFormSurface(view)) form.push(...scanTexts(part(view)));
   const checks: Array<[RegExp, "all" | "form"]> = [
     ...API_KEY_PATTERNS.map((p): [RegExp, "all"] => [p, "all"]),
     ...FORM_SURFACE_PATTERNS.map((p): [RegExp, "form"] => [p, "form"]),
@@ -736,7 +780,7 @@ export function assertNoLeakedSecrets(cassette: CassetteV1): void {
   for (const [pattern, surface] of checks) {
     if (!(surface === "all" ? whole.all : form).some((t) => pattern.test(t))) continue;
     const found = LEAK_LOCATIONS.find(([, part, , isFormSurface]) =>
-      surfaceTexts(part(view), isFormSurface)[surface].some((t) => pattern.test(t)),
+      surfaceTexts(part(view), isFormSurface(view))[surface].some((t) => pattern.test(t)),
     );
     const where = found ? ` in ${found[0]}` : "";
     const advice = found ? ` ${found[2]}, then re-record.` : " Remove it, then re-record.";
