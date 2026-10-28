@@ -2116,3 +2116,12 @@ The leak check did not see a form, so the token was sent and saved. The check
 now accepts the same shapes those parsers accept. A body sent with a
 form-urlencoded content-type counts as a form whatever it looks like. OpenAI
 token-probability responses still record. 79 new tests.
+
+## 2026-10-28 — Secrets containing "~" are no longer recorded (#261)
+
+The recorder refuses to save anything that looks like an API key or token. Its
+pattern for a token's characters did not include `~`. Every Microsoft Entra
+ID (Azure AD) client secret contains one, so a standard sign-in request was
+sent live and saved with the secret in it, and the CI check that rescans saved
+recordings let it through. `~` is now included, and such a request is refused
+before anything is sent. PR #262.

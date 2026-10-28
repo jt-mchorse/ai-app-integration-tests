@@ -2632,3 +2632,21 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: []
 ---
+
+---
+session: 2026-10-28T08:32Z
+issue: 261
+branch: session/2026-10-28-0832-issue-261
+focus: CREDENTIAL_VALUE_AND_BEARER_CLASSES_LACKED_TILDE_SO_EVERY_ENTRA_ID_CLIENT_SECRET_WENT_LIVE_WAS_RECORDED_AND_PASSED_THE_RESCAN
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 27
+  suite: "1307 passed (78 files); typecheck clean; README count updated"
+decisions_made: []
+measured: "origin/main f29403d assertNoLeakedSecrets with aB38Q~...: form raw/encoded, JSON, response access_token, URL, Bearer -> all passed; x-for-~ control refused. After: all refused. Revert 24 red / 3 green. Recorder e2e: 0 upstream calls, nothing written."
+context_for_next_session:
+  - "CHECK_EVERY_CREDENTIAL_CHARCLASS_AGAINST_ITS_GRAMMAR_b64token_includes_tilde"
+  - "OPEN_FROM_THE_SAME_HUNT_non_utf8_query_bytes_collapse_to_FFFD_and_JSON_ints_above_2_53_collide_in_the_hash_to_be_filed"
+followups: []
+---

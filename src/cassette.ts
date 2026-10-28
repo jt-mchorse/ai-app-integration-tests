@@ -247,8 +247,16 @@ const CREDENTIAL_NAMES =
   "client[-_]?secret|refresh[-_]?token|id[-_]?token|subject[-_]?token|actor[-_]?token|" +
   "private[-_]?token|session[-_]?token|security[-_]?token|secret[-_]?key|password|client[-_]?assertion";
 
-/** What follows a credential name: `=` or `:`, optional quotes, a 24+ char value. */
-const CREDENTIAL_VALUE = String.raw`["']?\s*[=:]\s*["']?([A-Za-z0-9_\-.+/=]{24,})`;
+/**
+ * What follows a credential name: `=` or `:`, optional quotes, a 24+ char value.
+ *
+ * `~` is in the class (#261): it is in RFC 6750's `b64token` and RFC 3986's
+ * unreserved set, and every Microsoft Entra ID client secret has one at
+ * position 5 (`xxxNQ~…`). Without it a `~` in the first 24 characters ended the
+ * match, so the request went out live, the secret was written to the cassette,
+ * and the committed-cassette rescan passed it.
+ */
+const CREDENTIAL_VALUE = String.raw`["']?\s*[=:]\s*["']?([A-Za-z0-9_\-.+/=~]{24,})`;
 
 /** Each letter `x` as `[xX]`: a case-insensitive name in a case-sensitive pattern (#251). */
 function anyCase(source: string): string {
@@ -288,7 +296,8 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   // sender chose. Without it `bearer <token>` and `BASIC <base64>` were written
   // to the cassette. The credential classes already hold both cases, so the
   // flag changes only how the scheme word matches.
-  /\bBearer\s+[A-Za-z0-9_.\-/+=]{20,}/i,
+  // `~` as for `CREDENTIAL_VALUE`: RFC 6750's `b64token` allows it (#261).
+  /\bBearer\s+[A-Za-z0-9_.\-/+=~]{20,}/i,
   // Google / Gemini / Vertex AI keys (`AIza` + 35+ url-safe chars; real keys
   // are 39 chars total). The `x-goog-api-key` header is already redacted (#22);
   // this catches the same key class leaking through an un-redacted channel —
