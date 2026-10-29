@@ -2650,3 +2650,22 @@ context_for_next_session:
   - "OPEN_FROM_THE_SAME_HUNT_non_utf8_query_bytes_collapse_to_FFFD_and_JSON_ints_above_2_53_collide_in_the_hash_to_be_filed"
 followups: []
 ---
+
+---
+session: 2026-10-29T07:33Z
+issue: 263
+branch: session/2026-10-29-0733-issue-263
+focus: URL_USERINFO_LEAK_PATTERN_REQUIRED_A_NON_EMPTY_USERNAME_SO_REDIS_COLON_PASSWORD_AT_HOST_WAS_RECORDED
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 21
+  suite: "1307 -> 1328 passed (79 files) on Node 20.9 and Node 25.5; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "origin/main ee87607 assertNoLeakedSecrets JSON body: redis://:pw@, rediss://:pw@/0, amqp://:pw@ PASSED; redis://default:pw@ and postgresql://app:pw@ REFUSED. After: username class [^/@\\s:]* (may be empty), password [^/@\\s]+ unchanged; 7 empty-user schemes refused in JSON and env-string bodies; recorder e2e REDIS_URL=rediss://:pw@ in a messages body refused, 0 upstream calls, 0 files. Controls record: ssh://git@github.com, redis://user:@h, redis://:@h. Revert of src/cassette.ts: 15 of 21 red, 6 controls green. Wrong-fix probe (password also optional): 2 red (empty-password controls). PR #266 (Closes #263)."
+context_for_next_session:
+  - "ONLY_USERINFO_HAD_THE_REQUIRED_EMPTY_ALLOWED_SIDE_SHAPE_bearer_basic_need_1SP_name_rules_need_the_name"
+  - "OUT_OF_SCOPE_TOKEN_AS_USERNAME_NO_COLON_https_token_at_github_com_design_call_ssh_git_at_must_record"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: []
+---

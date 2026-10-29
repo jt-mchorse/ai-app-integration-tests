@@ -2125,3 +2125,13 @@ ID (Azure AD) client secret contains one, so a standard sign-in request was
 sent live and saved with the secret in it, and the CI check that rescans saved
 recordings let it through. `~` is now included, and such a request is refused
 before anything is sent. PR #262.
+
+## 2026-10-29 — Redis/AMQP passwords with no username are no longer recorded (#263)
+
+The leak check catches connection strings like `postgres://user:password@host`,
+but it needed a username before the colon. Redis and AMQP normally write a
+password with no user as `redis://:password@host`, and those passwords are
+often too short for the separate `password` name rule, so such a URL in a
+request body was sent and saved. The username can now be empty, and the
+password still has to be present, so `ssh://git@github.com` and
+`redis://user:@host` still record. 21 new tests. PR #266.
