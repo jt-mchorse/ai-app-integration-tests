@@ -2669,3 +2669,23 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: []
 ---
+
+---
+session: 2026-10-29T07:33Z
+issue: 264
+branch: session/2026-10-29-0733-issue-264
+focus: JSON_INTS_ABOVE_2_53_AND_OVERFLOWING_LITERALS_COLLAPSED_IN_THE_REQUEST_HASH_SO_REPLAY_SERVED_ANOTHER_REQUESTS_RESPONSE
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 50
+  suite: "1307 -> 1357 passed (79 files) on Node 25.5 and Node 20.9; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "main ee87607: {seed:...993},{seed:...992},{x:1e400},{x:null},{x:-1e400} -> 2 cassettes for 5 requests, replay ...993 served ...992. After: 7 cassettes for 7 (adds top-level 1e400 vs no-body). 34 ordinary bodies recorded on main and branch: 33 byte-identical and pinned (1.0/1, 1e2/100, -0/0, 1e-400/0, 1e21 int/float, 9007199254740993.0/...992 still share), the 34th held a lossy int and moves. Revert of src/fetch-recorder.ts: 14 red / 36 green controls. Wrong-fix probes: no string skipping 6 red, flag every >15-digit int 7 red. PR #267 (Closes #264)."
+context_for_next_session:
+  - "LOSSY_JSON_NUMBER_BODIES_HASH_AS_SOURCE_TEXT_UNDER_RAW_no_new_discriminator_raw_bodies_are_otherwise_text_JSON_parse_refuses"
+  - "FLOATS_KEEP_DOUBLE_SEMANTICS_only_integer_literals_inexact_as_a_double_and_overflow_to_Infinity_are_flagged"
+  - "ACCEPTED_TRADEOFF_a_reordered_lossy_body_misses_loudly_canonicalizing_needs_a_number_preserving_serializer"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: []
+---
