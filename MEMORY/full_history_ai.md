@@ -2689,3 +2689,23 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: []
 ---
+
+---
+session: 2026-10-29T07:39Z
+issue: 265
+branch: session/2026-10-29-0739-issue-265
+focus: NORMALIZEURL_COLLAPSED_NON_UTF8_QUERY_ESCAPES_TO_EF_BF_BD_SO_DISTINCT_QUERIES_SHARED_A_CASSETTE
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 42
+  suite: "1378 -> 1420 passed (81 files, rebased on #267) on Node 20.9; 1328 -> 1370 on Node 25.5 before the rebase; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "origin/main 9c79c76: ?s=%FF, ?s=%FE, ?s=%E9, ?s=%e9 all -> ?s=%EF%BF%BD; ?%FF=1 and ?%FE=1 -> ?%EF%BF%BD=1; path /%FF/a kept raw; fragment dropped (#56). After: each pair percent-decoded to bytes; valid UTF-8 pairs serialized by URLSearchParams (unchanged), others byte-serialized with the same form rules; sort = lenient decode, tie-break = written pair. 28 ordinary URLs pinned to origin/main normalizeUrl + hashRequest values, byte-identical. Fuzz 200000 random queries main vs fix: 54 differ, all contain a non-UTF-8 pair. Recorder e2e: 1 -> 2 cassettes. Revert of src/cassette.ts: 11 of 42 red, 31 green (28 pins + 3 controls). Wrong-fix probes: no written tie-break 2 red; raw piece instead of byte re-encode 1 red. PR #268 (Closes #265)."
+context_for_next_session:
+  - "QUERY_PAIRS_ARE_BYTES_valid_utf8_through_URLSearchParams_lossy_through_formEncodeBytes_TextDecoder_needs_ignoreBOM_true"
+  - "PATH_IS_NEVER_DECODED_BY_THE_URL_PARSER_FRAGMENT_IS_STRIPPED_neither_had_the_shape"
+  - "FLAKE_SEEN_leak-scanner-camel-case-prefix_rescan_arm_failed_once_under_full_suite_load_on_Node_20_passed_3x_alone_and_on_full_rerun"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: []
+---
