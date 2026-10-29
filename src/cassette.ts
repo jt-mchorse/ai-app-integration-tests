@@ -124,8 +124,18 @@ export function normalizeUrl(url: string): string {
   // breaking cross-environment replay and diverging from `canonicalize`'s
   // default `.sort()` on body keys. `compareCodeUnits` is locale-independent
   // and matches that body-key ordering exactly.
-  const params = [...u.searchParams.entries()].sort(
-    ([ka, va], [kb, vb]) => compareCodeUnits(ka, kb) || compareCodeUnits(va, vb),
+  //
+  // Each pair is serialized from its BYTES (#265). `searchParams` decodes a
+  // non-UTF-8 escape to U+FFFD and `append` re-encodes that as `%EF%BF%BD`, so
+  // `?s=%FF`, `?s=%FE` and `?s=%EF%BF%BD` were one cassette, and replay served
+  // whichever was recorded last. A pair that is valid UTF-8 is still written by
+  // `URLSearchParams`, so its bytes and every existing hash are unchanged. The
+  // lenient decode is still the sort key; the written pair breaks ties.
+  const params = queryPairs(u.search).sort(
+    (a, b) =>
+      compareCodeUnits(a.name, b.name) ||
+      compareCodeUnits(a.value, b.value) ||
+      compareCodeUnits(a.written, b.written),
   );
   u.search = "";
   // Drop the fragment: per RFC 3986 §3.5 / the WHATWG fetch spec it is a
@@ -144,8 +154,68 @@ export function normalizeUrl(url: string): string {
   // the same canonicalization class as the fragment strip above (#56). See #64.
   u.username = "";
   u.password = "";
-  for (const [k, v] of params) u.searchParams.append(k, v);
+  u.search = params.map((p) => p.written).join("&");
   return u.toString();
+}
+
+const LENIENT_UTF8 = new TextDecoder("utf-8", { ignoreBOM: true });
+const STRICT_UTF8 = new TextDecoder("utf-8", { ignoreBOM: true, fatal: true });
+
+/**
+ * The query's pairs as the form-urlencoded parser reads them (split on `&`,
+ * skip empty pieces, split on the first `=`, `+` is a space, percent-decode).
+ * `name`/`value` are its lenient UTF-8 decode, which is what `searchParams`
+ * yields; `written` is the pair as `normalizeUrl` writes it (#265).
+ */
+function queryPairs(search: string): Array<{ name: string; value: string; written: string }> {
+  const out: Array<{ name: string; value: string; written: string }> = [];
+  for (const piece of search.replace(/^\?/, "").split("&")) {
+    if (piece === "") continue;
+    const eq = piece.indexOf("=");
+    const nameBytes = formDecodeBytes(eq === -1 ? piece : piece.slice(0, eq));
+    const valueBytes = formDecodeBytes(eq === -1 ? "" : piece.slice(eq + 1));
+    const name = LENIENT_UTF8.decode(nameBytes);
+    const value = LENIENT_UTF8.decode(valueBytes);
+    let written: string;
+    try {
+      STRICT_UTF8.decode(nameBytes);
+      STRICT_UTF8.decode(valueBytes);
+      written = new URLSearchParams([[name, value]]).toString();
+    } catch {
+      written = `${formEncodeBytes(nameBytes)}=${formEncodeBytes(valueBytes)}`;
+    }
+    out.push({ name, value, written });
+  }
+  return out;
+}
+
+/** `+` to a space, then percent-decode; a `%` without two hex digits is itself. */
+function formDecodeBytes(text: string): Uint8Array {
+  const bytes = new TextEncoder().encode(text.replace(/\+/g, " "));
+  const out: number[] = [];
+  const isHex = (b: number | undefined) =>
+    b !== undefined && ((b >= 0x30 && b <= 0x39) || (b >= 0x41 && b <= 0x46) || (b >= 0x61 && b <= 0x66));
+  for (let i = 0; i < bytes.length; i++) {
+    if (bytes[i] === 0x25 && isHex(bytes[i + 1]) && isHex(bytes[i + 2])) {
+      out.push(parseInt(String.fromCharCode(bytes[i + 1], bytes[i + 2]), 16));
+      i += 2;
+    } else {
+      out.push(bytes[i]);
+    }
+  }
+  return Uint8Array.from(out);
+}
+
+/** The form-urlencoded byte serializer `URLSearchParams` applies after UTF-8 encoding. */
+function formEncodeBytes(bytes: Uint8Array): string {
+  let s = "";
+  for (const b of bytes) {
+    const c = String.fromCharCode(b);
+    if (b === 0x20) s += "+";
+    else if (/[A-Za-z0-9*\-._]/.test(c)) s += c;
+    else s += `%${b.toString(16).toUpperCase().padStart(2, "0")}`;
+  }
+  return s;
 }
 
 export function hashRequest(req: NormalizedRequest): string {
@@ -702,7 +772,7 @@ function scanTexts(value: unknown, form: string[] = [], depth = 0): string[] {
         }
       }
       // A form-urlencoded string is also read as what it says (#237): a URL,
-      // whose query `normalizeUrl` rebuilds with `searchParams.append`, and a
+      // whose query `normalizeUrl` writes form-urlencoded, and a
       // `URLSearchParams` body, stored as its `toString()`. Both encode `/` as
       // `%2F`, `+` as `%2B`, `=` as `%3D` and a space as `+`, so the `key=`
       // family stopped at the first `%` and `Bearer\s+` never matched
