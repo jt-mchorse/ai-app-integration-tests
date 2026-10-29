@@ -51,6 +51,14 @@ async function normalizeRequest(
       try {
         parsedBody = JSON.parse(bodyText);
         bodyEncoding = "json";
+        if (holdsUnparseableNumber(bodyText)) {
+          // A number the parse rounded or overflowed (#264): hash the text as
+          // sent. `raw` already means "hashed as its text", and every other raw
+          // body is text JSON.parse refuses, so this text cannot collide with
+          // one, and the folded tag keeps it apart from every JSON body.
+          parsedBody = bodyText;
+          bodyEncoding = "raw";
+        }
       } catch {
         // Non-JSON body: hash on the raw text directly, tagged bodyEncoding:"raw"
         // so it can never collide with a JSON body of the same canonical shape
@@ -87,6 +95,42 @@ async function normalizeRequest(
   // `bodyText` is text a caller could send. Base64 of binary bytes is a hash
   // key, not a body, so it is never handed out as one (#147).
   return { normalized, rawHeaders, bodyText: read !== null && read.binary ? null : bodyText };
+}
+
+/**
+ * A JSON string literal, or a JSON number literal with its fraction and
+ * exponent captured. String literals are matched only so the scan can step
+ * over them: a digit inside a string is text, not a number.
+ */
+const JSON_STRING_OR_NUMBER = /"[^"\\]*(?:\\[\s\S][^"\\]*)*"|-?\d+(\.\d+)?([eE][+-]?\d+)?/g;
+
+/**
+ * Whether a text `JSON.parse` accepted holds a number literal the parse lost
+ * (#264). `JSON.parse` reads every number as a double, so the integer
+ * 9007199254740993 parsed as 9007199254740992 and `1e400` as Infinity, which
+ * serializes as `null`. Each pair hashed as one body, the second recording
+ * overwrote the first, and replay served the other request's response. An
+ * int64 server reads ...992 and ...993 as different values.
+ *
+ * Two shapes are lost: an integer literal (no fraction, no exponent) whose
+ * exact value is not the double it parses to, and any literal that overflows
+ * to +/-Infinity. Everything else keeps double semantics and its hash, on
+ * purpose: `1.0` and `1`, `1e2` and `100`, `-0` and `0`, `1e-400` and `0`, or
+ * `9007199254740993.0` and `9007199254740992` are the same double, and moving
+ * those hashes would re-key cassettes that are not ambiguous. Node 20 (CI) has
+ * no reviver `context.source`, so the source spelling comes from this scan.
+ */
+function holdsUnparseableNumber(text: string): boolean {
+  for (const m of text.matchAll(JSON_STRING_OR_NUMBER)) {
+    const token = m[0];
+    if (token.charCodeAt(0) === 0x22) continue;
+    const value = Number(token);
+    if (!Number.isFinite(value)) return true;
+    // Fifteen digits or fewer is always below 2^53, so always exact.
+    const isInteger = m[1] === undefined && m[2] === undefined;
+    if (isInteger && token.length > 15 && BigInt(token) !== BigInt(value)) return true;
+  }
+  return false;
 }
 
 /**

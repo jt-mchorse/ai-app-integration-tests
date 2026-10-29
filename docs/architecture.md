@@ -466,3 +466,21 @@ Field names and filenames are left as they are. The wire percent-escapes them
 where Node 22 and later decode it. So the record a Request gives for such a
 name depends on the runtime, and choosing a canonical form for names is still
 open on #233.
+
+### Numbers `JSON.parse` loses hash as their text (#264)
+
+`JSON.parse` reads every JSON number as a double. So the integer
+9007199254740993 hashed as 9007199254740992, and `1e400` became Infinity,
+which serializes as `null`. Each pair recorded one cassette, and replay served
+the other request's response, even though an int64 server reads the two as
+different values. A body that `JSON.parse` accepts but that holds such a
+literal now hashes as its text under `bodyEncoding: "raw"`. That covers an
+integer literal (no fraction or exponent) whose exact value is not its
+double, and any literal that overflows to Infinity. A raw scan finds these,
+skipping string literals, because Node 20 has no reviver `context.source`.
+Every other raw body is text `JSON.parse` refuses, and the folded tag keeps
+these bodies apart from every JSON body, so no new discriminator is needed.
+Everything else keeps double semantics and its hash: `1.0` and `1`, `1e2` and
+`100`, `-0` and `0` still share a cassette. Thirty-three hashes captured from
+the previous code are pinned. Because the hash is the text, a reordered body
+with such a number misses loudly (D-005) instead of matching.

@@ -2135,3 +2135,14 @@ often too short for the separate `password` name rule, so such a URL in a
 request body was sent and saved. The username can now be empty, and the
 password still has to be present, so `ssh://git@github.com` and
 `redis://user:@host` still record. 21 new tests. PR #266.
+
+## 2026-10-29 — Large JSON integers and 1e400 get their own recordings (#264)
+
+The recorder decided which saved recording matches a request by reading its
+JSON body first, and JavaScript rounds every number to a double. So the IDs
+9007199254740993 and 9007199254740992 looked like the same request, and
+`1e400` looked like `null`. The second recording overwrote the first, and
+replay returned the other request's response. A body with an integer too big
+to hold exactly, or a number that overflows, is now matched by its exact text.
+Every other request matches exactly as before, which 33 recorded hashes prove,
+and `1.0` still matches `1`. 50 new tests. PR #267.
