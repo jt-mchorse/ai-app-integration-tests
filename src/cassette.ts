@@ -313,12 +313,20 @@ const API_KEY_PATTERNS: Array<RegExp> = [
   // URL userinfo credentials (`scheme://user:pass@host`, RFC 3986 §3.2.1).
   // `normalizeUrl` now strips userinfo before write (#64), but a userinfo URL
   // can still surface through an un-redacted channel — an echoed error body, a
-  // request body carrying a connection string. Anchored on `//` + a non-empty
-  // userinfo + `:` + non-empty password + `@` so it matches the `scheme://u:p@`
-  // shape specifically; the `//` and the no-`@`/no-space charclasses keep it off
+  // request body carrying a connection string. Anchored on `//` + a username +
+  // `:` + non-empty password + `@` so it matches the `scheme://u:p@` shape
+  // specifically; the `//` and the no-`@`/no-space charclasses keep it off
   // incidental JSON `:`/`@` (timestamps like `12:30`, emails like `a@b.com`,
   // which have no preceding `//`). Catches the credential leaking either way (D-004).
-  /\/\/[^/@\s:]+:[^/@\s]+@/,
+  //
+  // The username may be EMPTY (#263). RFC 3986 lets either side of the `:` be
+  // empty, and `redis://:password@host` is the ordinary Redis/AMQP form for a
+  // password with no user. Requiring a username passed it, and such passwords
+  // are often under the 24 characters the `password` name rule needs, so it was
+  // written. The password stays non-empty: `redis://user:@host` carries nothing.
+  // A token as the username with no `:` (`https://<token>@github.com`) is not
+  // matched, because `ssh://git@github.com` has the same shape and must record.
+  /\/\/[^/@\s:]*:[^/@\s]+@/,
   // A `key=`-family name followed by a credential-shaped value. The docstring
   // above promised this prefix for a long time and no pattern implemented it
   // (#113); these are the shapes the other six structurally cannot see. Five of
