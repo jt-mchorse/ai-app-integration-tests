@@ -2146,3 +2146,13 @@ replay returned the other request's response. A body with an integer too big
 to hold exactly, or a number that overflows, is now matched by its exact text.
 Every other request matches exactly as before, which 33 recorded hashes prove,
 and `1.0` still matches `1`. 50 new tests. PR #267.
+
+## 2026-10-29 — Query strings that are not UTF-8 no longer share a recording (#265)
+
+The recorder files each request under its URL with the query parameters
+sorted. To sort them it decoded each parameter as text. A percent-escape that
+is not valid UTF-8, such as `%FF`, became the replacement character `�`, so
+`?s=%FF` and `?s=%FE` were saved as the same recording and replay could
+return the wrong response. Each parameter is now kept as its exact bytes.
+Every ordinary URL is written exactly as before, and the hashes of 28 such
+URLs are pinned. 42 new tests. PR #268.
