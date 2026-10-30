@@ -500,3 +500,19 @@ two different objects is not a repeat, and every other body keeps its hash:
 #267's 33 pins and 14 more bodies are pinned. Because the text is now in the
 cassette, a credential the parse used to drop is seen by the leak scan and the
 request is refused before the live call.
+
+### The leak scan reads every value of a repeated key (#273)
+
+`scanTexts` scans the parse of any JSON a string holds, and the parse keeps
+only the last value of a repeated key. An earlier value was never read
+decoded, and the raw text misses it when an escape sits before the
+credential (`\nsk-…`, the #183 case). Since #271 stores such a request body
+as its text, a key behind `\n` in the first of two `note` values reached
+the cassette and the committed-cassette rescan passed it; a response body
+had the same gap before.
+When a JSON text repeats a key, `scanTexts` now also scans
+`parseKeepingDuplicates` from `src/json-text.ts`, which reads an object that
+repeats a key as the list of its members, each a one-member object. A value
+keeps its key beside it, so the `key=` patterns see a 32-hex `api_key` whose
+key was spelled with an escape. One site covers request bodies, response
+bodies and SSE payloads, for the recorder and the rescan alike.
