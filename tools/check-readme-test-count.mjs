@@ -428,6 +428,8 @@ export function isInvokedDirectly(argv1 = process.argv[1], moduleUrl = import.me
   }
 }
 
+// `exitCode`, not `process.exit()` (#269): the message above can still be
+// queued on a macOS pipe when `main` returns, and `process.exit()` drops it.
 if (isInvokedDirectly()) {
-  process.exit(main(process.argv.slice(2)));
+  process.exitCode = main(process.argv.slice(2));
 }

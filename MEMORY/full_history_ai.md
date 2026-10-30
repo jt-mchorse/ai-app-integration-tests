@@ -2728,3 +2728,23 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: []
 ---
+
+---
+session: 2026-10-30T07:23Z
+issue: 269
+branch: session/2026-10-29-0809-issue-269
+focus: SCAN_COMMITTED_CASSETTES_PROCESS_EXIT_AFTER_CONSOLE_ERROR_DROPPED_THE_QUEUED_REPORT_ON_A_MACOS_PIPE
+phase: shipped
+delta:
+  files_changed: 5
+  tests_added: 6
+  suite: "1489 -> 1495 passed (83 files) on Node 20.9; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "origin/main c13be64, macOS, 1000 refused cassettes (~500-byte ::error lines), reader not reading until child exit: Node 20.9 49/1000 lines (24,785 bytes), Node 25.5 259/1000 (131,022 bytes), no summary, exit 1. After: 1000/1000 + summary, exit 1. Revert of the 3 scripts: 4 red / 2 green controls in 8 of 8 runs (Node 20.9 x4, 25.5 x4). A 1 s fixed stall was red only 4 of 6 reverted runs (cold scan outlasted it), so the reader resumes on child exit or after 5 s. Resumed from the 2026-10-29 interrupted draft: sources kept, test written fresh. PR #272 (Closes #269)."
+context_for_next_session:
+  - "SPAWNED_SCRIPTS_SET_PROCESS_EXITCODE_NEVER_PROCESS_EXIT_shape_lock_in_test_scan-committed-cassettes-pipe-drain"
+  - "A_READER_PAUSED_UNTIL_CHILD_EXIT_DEADLOCKS_THE_FIXED_SCRIPT_resume_on_exit_or_timeout"
+  - "LINUX_PIPES_ARE_SYNC_overflow_arm_is_a_control_on_ubuntu_ci"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: []
+---

@@ -28,42 +28,54 @@ import {
 // two spaces. `readNonBlankEnv` refuses blanks *and* hands back the trimmed
 // value, which is the half that matters for a padded-but-valid path.
 const fixturesDir = readNonBlankEnv("MISSING_CASSETTE_DEMO_FIXTURES");
+
+/**
+ * The demo itself; the return value is the exit code.
+ *
+ * Every outcome sets `process.exitCode` and lets the script end, never
+ * `process.exit()` right after a print (#269): on a macOS pipe the print can
+ * still be queued, and `process.exit()` drops the queue.
+ */
+async function demo(fixturesDir: string): Promise<number> {
+  // Force replay mode regardless of the caller's env. The whole point
+  // is to show what happens when a replay request misses.
+  process.env.ANTHROPIC_TEST_MODE = "replay";
+  installFromEnv({ fixturesDir });
+
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": "sk-ant-test-key-do-not-use-1234567890abcdef",
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 64,
+        messages: [{ role: "user", content: "unrecorded request" }],
+      }),
+    });
+    console.log("UNEXPECTED: request succeeded with status", r.status);
+    return 3;
+  } catch (e) {
+    uninstall();
+    if (e instanceof MissingCassetteError) {
+      console.log("caught MissingCassetteError — D-005 enforced:");
+      console.log("  " + e.message);
+      return 0;
+    }
+    const err = e as { name?: string; message?: string };
+    console.log("UNEXPECTED error:", err.name, err.message);
+    return 4;
+  }
+}
+
 if (fixturesDir === undefined) {
   console.error(
     "MISSING_CASSETTE_DEMO_FIXTURES must be set (caller should pass an empty tempdir).",
   );
-  process.exit(2);
-}
-
-// Force replay mode regardless of the caller's env. The whole point
-// is to show what happens when a replay request misses.
-process.env.ANTHROPIC_TEST_MODE = "replay";
-installFromEnv({ fixturesDir });
-
-try {
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": "sk-ant-test-key-do-not-use-1234567890abcdef",
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 64,
-      messages: [{ role: "user", content: "unrecorded request" }],
-    }),
-  });
-  console.log("UNEXPECTED: request succeeded with status", r.status);
-  process.exit(3);
-} catch (e) {
-  uninstall();
-  if (e instanceof MissingCassetteError) {
-    console.log("caught MissingCassetteError — D-005 enforced:");
-    console.log("  " + e.message);
-    process.exit(0);
-  }
-  const err = e as { name?: string; message?: string };
-  console.log("UNEXPECTED error:", err.name, err.message);
-  process.exit(4);
+  process.exitCode = 2;
+} else {
+  process.exitCode = await demo(fixturesDir);
 }
