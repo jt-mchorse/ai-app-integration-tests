@@ -2169,3 +2169,15 @@ already existed in the committed-recording scanner, so it moved into `src/`
 and both use it. As a side effect, a credential hidden under a repeated key is
 now caught before the request goes out. 47 recorded hashes prove every other
 request matches exactly as before. 69 new tests. PR #271.
+
+## 2026-10-30 — The committed-recording scanner's report is no longer cut short (#269)
+
+The scanner that checks committed recordings for leaked secrets printed one
+line per bad file and a summary, then exited immediately. On a Mac, output to
+a pipe is written in the background, and exiting immediately throws away
+whatever has not been written yet. A reader that fell behind received only 49
+of 1000 lines and no summary. The scanner still failed, but the report did
+not say which files. This caused an intermittent local test failure. The
+scanner now sets its exit code and finishes normally, so everything is written
+first. Two other scripts that printed and then exited get the same change.
+6 new tests. PR #272.
