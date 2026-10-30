@@ -2748,3 +2748,22 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: []
 ---
+
+---
+session: 2026-10-30T07:35Z
+issue: 273
+branch: session/2026-10-30-0731-issue-273
+focus: LEAK_SCAN_READ_THE_LAST_WINS_PARSE_SO_A_CREDENTIAL_IN_A_DROPPED_DUPLICATE_KEY_VALUE_WAS_WRITTEN_AND_PASSED_THE_RESCAN
+phase: shipped
+delta:
+  files_changed: 5
+  tests_added: 23
+  suite: "1495 -> 1518 passed (84 files) on Node 25.5; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "origin/main 2d26ce7, KEY=sk-+A*40 built at runtime: request {model:m,note:see\\nKEY,note:ok} recorded with KEY in file and rescan exit 0 'no leaked secrets found in 1 cassette(s)'; response {error:bad key\\nKEY,error:x} same; both refused without the repeat. After: both refused (request with 0 upstream calls), rescan exit 1 naming both files. Revert of src/cassette.ts: 11 red / 12 green controls of 23. Flat decoded-literal variant (the issue's suggested shape): 1 red (32-hex api_key under an escaped repeated key), so members keep their key. PR #274 (Closes #273)."
+context_for_next_session:
+  - "PARSEKEEPINGDUPLICATES_IN_SRC_JSON_TEXT_TS_reads_a_repeating_object_as_a_list_of_one_member_objects_scanTexts_scans_it_only_when_duplicateKey_hits"
+  - "ARCHITECTURE_DOC_LOCK_reads_backticked_escapes_like_see_backslash_nKEY_as_a_symbol_nKEY_keep_escapes_out_of_doc_codespans"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: []
+---
