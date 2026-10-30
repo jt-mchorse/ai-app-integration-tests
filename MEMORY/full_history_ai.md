@@ -2709,3 +2709,22 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: []
 ---
+
+---
+session: 2026-10-30T07:15Z
+issue: 270
+branch: session/2026-10-29-0809-issue-270
+focus: JSON_BODY_WITH_A_REPEATED_KEY_HASHED_AS_ITS_LAST_WINS_PARSE_SO_REPLAY_SERVED_ITS_TWINS_RESPONSE
+phase: shipped
+delta:
+  files_changed: 6
+  tests_added: 69
+  suite: "1420 -> 1489 passed (82 files) on Node 25.5; lint, typecheck, readme-count, build, scan-committed-cassettes clean"
+decisions_made: []
+measured: "origin/main ac72e13: {model:a,model:b} recorded under {model:b}'s hash and replayed its response; same for nested, in-array, \\u0061-vs-a and a\\/b-vs-a/b keys; {api_key:sk-ant-...,api_key:[REDACTED]} was sent upstream and recorded. After: 10 colliding pairs -> 2 cassettes each, each replays its own; credential body refused with 0 upstream calls. 47 bodies without a repeat (#267's 33 + 14 multi-object/value-spelled-like-key) pinned byte-identical to main. Revert of src/fetch-recorder.ts (helper kept): 12 red / 57 green controls of 69. Resumed from the 2026-10-29 interrupted draft, reviewed and kept as-is. PR #271 (Closes #270)."
+context_for_next_session:
+  - "DUPLICATEKEY_LIVES_IN_SRC_JSON_TEXT_TS_shared_by_the_recorder_and_scripts_scan-committed-cassettes"
+  - "LOSSY_JSON_BODIES_HASH_AS_TEXT_UNDER_RAW_now_two_losses_numbers_264_and_repeated_keys_270"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: []
+---

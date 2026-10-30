@@ -9,6 +9,7 @@ import {
   redactHeaders,
 } from "./cassette.js";
 import { CassetteStore } from "./io.js";
+import { duplicateKey } from "./json-text.js";
 
 export interface RecorderOptions {
   /** Underlying fetch to delegate to. Defaults to global fetch. */
@@ -51,11 +52,14 @@ async function normalizeRequest(
       try {
         parsedBody = JSON.parse(bodyText);
         bodyEncoding = "json";
-        if (holdsUnparseableNumber(bodyText)) {
-          // A number the parse rounded or overflowed (#264): hash the text as
-          // sent. `raw` already means "hashed as its text", and every other raw
-          // body is text JSON.parse refuses, so this text cannot collide with
-          // one, and the folded tag keeps it apart from every JSON body.
+        if (holdsUnparseableNumber(bodyText) || duplicateKey(bodyText) !== null) {
+          // A number the parse rounded or overflowed (#264), or a key repeated
+          // in one object, whose earlier values the parse dropped (#270): hash
+          // the text as sent. `raw` already means "hashed as its text", and the
+          // other raw bodies are text JSON.parse refuses, so this text cannot
+          // collide with one, and the folded tag keeps it apart from every JSON
+          // body. A server that keeps the first value, or refuses the body,
+          // reads `{"model":"a","model":"b"}` differently from `{"model":"b"}`.
           parsedBody = bodyText;
           bodyEncoding = "raw";
         }

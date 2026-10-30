@@ -484,3 +484,19 @@ Everything else keeps double semantics and its hash: `1.0` and `1`, `1e2` and
 `100`, `-0` and `0` still share a cassette. Thirty-three hashes captured from
 the previous code are pinned. Because the hash is the text, a reordered body
 with such a number misses loudly (D-005) instead of matching.
+
+### A body with a repeated key hashes as its text (#270)
+
+`JSON.parse` keeps the last value of a repeated key, so
+`{"model":"a","model":"b"}` hashed as `{"model":"b"}` and replay served one
+request's response for the other. Many servers keep the last value too, but a
+strict parser keeps the first or refuses the body, and there the replay is
+wrong. This is the loss #216 names for committed cassettes, so the
+scanner's `duplicateKey` moved to `src/json-text.ts` and both use it. A JSON
+body with a key repeated inside one object, at any depth and compared after
+unescaping (`"a"` repeats `"a"`), hashes as its text under
+`bodyEncoding: "raw"`, the same rule #264 applies to a lost number. One key in
+two different objects is not a repeat, and every other body keeps its hash:
+#267's 33 pins and 14 more bodies are pinned. Because the text is now in the
+cassette, a credential the parse used to drop is seen by the leak scan and the
+request is refused before the live call.
