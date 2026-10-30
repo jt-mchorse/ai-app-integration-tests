@@ -2194,3 +2194,17 @@ same gap. When a JSON text repeats a key, the scanner now also reads every
 value, each next to its own key. Both the recorder and the committed-recording
 scanner now refuse these recordings, and the request is refused before it is
 sent. 23 new tests. PR #274.
+
+## 2026-10-30 — The leak scan decodes a JSON string, and its nesting cap fails closed (#275)
+
+The leak scanner read JSON stored inside a recording only when it began with
+a brace or a bracket. A JSON value can also be just a quoted string, and those
+were never decoded. That covers a server response that is a bare string, a
+streaming event whose payload is a string, and a "double-encoded" response
+where a proxy turned JSON into a string. A key hidden behind an escape in one
+of these was written to the recording, and the scanner for committed
+recordings passed it. The scanner now decodes quoted strings too, and a
+double-encoded body is unwrapped layer by layer. Separately, the scanner
+stopped silently after four layers of JSON-inside-a-string, so a key wrapped
+deeper was never read. It now refuses a recording that is still nested at
+that depth. 33 new tests. PR #276.

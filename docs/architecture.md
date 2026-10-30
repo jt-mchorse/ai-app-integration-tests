@@ -516,3 +516,19 @@ repeats a key as the list of its members, each a one-member object. A value
 keeps its key beside it, so the `key=` patterns see a 32-hex `api_key` whose
 key was spelled with an escape. One site covers request bodies, response
 bodies and SSE payloads, for the recorder and the rescan alike.
+
+### The leak scan decodes a JSON string, and its nesting cap fails closed (#275)
+
+`scanTexts` parsed only a candidate starting with a brace or a bracket. A
+JSON string literal is JSON too, and its escapes were never decoded: a string
+response body, an SSE data payload that is a string, a string NDJSON line,
+and a double-encoded body (a proxy that stringifies JSON). A key after an
+escaped newline, or an `access_token` whose quotes were escaped, was written
+and the committed-cassette rescan passed it. A candidate starting with a
+quote is now parsed as well; its parse is a string, visited one level down,
+so double encoding unwraps through the same recursion.
+`MAX_NESTED_JSON_DEPTH` stopped the scan silently, so a key wrapped four or
+more times in a JSON-in-a-string object was written. At the cap, a candidate
+that still parses as JSON now refuses the cassette, the way invalid JSON and a
+repeated key already do. The URL-decode and multipart passes, which the old
+early return also skipped, run at the cap too.

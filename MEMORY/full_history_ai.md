@@ -2767,3 +2767,23 @@ context_for_next_session:
   - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
 followups: []
 ---
+
+---
+session: 2026-10-30T08:09Z
+issue: 275
+branch: session/2026-10-30-0805-issue-275
+focus: LEAK_SCAN_NEVER_DECODED_A_JSON_STRING_LITERAL_AND_ITS_NESTING_CAP_FAILED_OPEN
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 33
+  suite: "1518 -> 1551 passed (85 files) on Node 25.5; new file + #273 file also green on Node 20.9; lint, typecheck, readme-count, build, scan-committed-cassettes fixtures clean"
+decisions_made: []
+measured: "origin/main db760dc, recorder + rescan, KEY=sk-+A*40 and hex built at runtime: double-encoded access_token, JSON string body and SSE data string were recorded with the secret on disk and rescan exit 0; wrapped 1-3 refused, 4-6 recorded and rescan exit 0. After: all refused, 0 files written; d>=4 by the cap message. Revert of src/cassette.ts: 16 red / 17 green controls of 33. A %0A-hidden key at depth 4 was a false arm (the outermost text URL-decodes too), rewritten as form-encoded JSON only the cap pass parses. PR #276 (Closes #275)."
+context_for_next_session:
+  - "SCANTEXTS_PARSES_CANDIDATES_STARTING_WITH_BRACE_BRACKET_OR_QUOTE_a_parsed_string_is_visited_at_depth_plus_1"
+  - "MAX_NESTED_JSON_DEPTH_FAILS_CLOSED_a_candidate_that_parses_at_the_cap_throws_parse_is_outside_the_try_so_deeper_refusals_propagate"
+  - "RECORDER_STORES_A_JSON_REQUEST_BODY_PARSED_so_a_JSON_string_request_body_was_already_decoded_only_raw_stored_bodies_had_the_gap"
+  - "NOT_RUN_LOCALLY_example_app_and_playwright_jobs_nothing_in_example_app_changed"
+followups: []
+---

@@ -627,7 +627,11 @@ function scanView(cassette: CassetteV1): CassetteV1 {
   return view;
 }
 
-/** How deep `scanTexts` follows JSON nested inside a string (#183). */
+/**
+ * How deep `scanTexts` follows JSON nested inside a string (#183). A text that
+ * still parses at this depth is refused, not skipped (#275): it may hold
+ * anything, so the scan fails closed there as it does on invalid JSON.
+ */
 const MAX_NESTED_JSON_DEPTH = 4;
 
 /**
@@ -743,7 +747,6 @@ function scanTexts(value: unknown, form: string[] = [], depth = 0): string[] {
       out.push(v);
       const formShaped = isForm(v, strict);
       if (formShaped) form.push(v);
-      if (depth >= MAX_NESTED_JSON_DEPTH) return;
       // An SSE line ends at ANY of `\r\n`, `\r` or `\n`, the three forms
       // `captureSse` splits frames on (D-012), and an event's `data:` lines are
       // joined with `\n` (#191). Splitting on `\r?\n` alone left a CR-framed
@@ -766,17 +769,35 @@ function scanTexts(value: unknown, form: string[] = [], depth = 0): string[] {
       if (data.length > 1) candidates.push(data.join("\n"));
       for (const text of candidates) {
         const t = text.trim();
-        if (!(t.startsWith("{") || t.startsWith("["))) continue;
+        // A JSON string literal too (#275): a `"…"` body, an SSE `data: "…"`
+        // payload, and a double-encoded body (a proxy that stringifies JSON),
+        // which is one. Its escapes were never decoded, so `\nsk-…` and
+        // `access_token\":\"…` were written and the rescan passed them. Its
+        // parse is a string, visited one level down, so double encoding
+        // unwraps through this same recursion.
+        if (!(t.startsWith("{") || t.startsWith("[") || t.startsWith('"'))) continue;
+        let parsed: unknown;
         try {
-          out.push(...scanTexts(JSON.parse(t), form, depth + 1));
-          // A key repeated in one object (#273): the parse kept only its last
-          // value, and an escape hides an earlier one from the raw text
-          // (`\nsk-…`), so the recorder wrote it and the rescan passed it. Since
-          // #271 such a request body is stored as its text. Read every member.
-          if (duplicateKey(t) !== null) out.push(...scanTexts(parseKeepingDuplicates(t), form, depth + 1));
+          parsed = JSON.parse(t);
         } catch {
-          // Not JSON: the string itself was already pushed.
+          continue; // Not JSON: the string itself was already pushed.
         }
+        // The cap fails closed (#275). It returned silently, so a key wrapped
+        // in `{inner: JSON.stringify(...)}` four times was written. Outside the
+        // `try` above, so a refusal from a deeper level is not read as "not
+        // JSON" on the way up.
+        if (depth >= MAX_NESTED_JSON_DEPTH) {
+          throw new Error(
+            `cassette holds JSON nested inside strings more than ${MAX_NESTED_JSON_DEPTH} levels deep, ` +
+              `which the secret scan does not read; refusing to write. Store the inner value decoded, then re-record.`,
+          );
+        }
+        out.push(...scanTexts(parsed, form, depth + 1));
+        // A key repeated in one object (#273): the parse kept only its last
+        // value, and an escape hides an earlier one from the raw text
+        // (`\nsk-…`), so the recorder wrote it and the rescan passed it. Since
+        // #271 such a request body is stored as its text. Read every member.
+        if (duplicateKey(t) !== null) out.push(...scanTexts(parseKeepingDuplicates(t), form, depth + 1));
       }
       // A form-urlencoded string is also read as what it says (#237): a URL,
       // whose query `normalizeUrl` writes form-urlencoded, and a
