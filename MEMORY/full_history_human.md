@@ -2156,3 +2156,16 @@ is not valid UTF-8, such as `%FF`, became the replacement character `�`, so
 return the wrong response. Each parameter is now kept as its exact bytes.
 Every ordinary URL is written exactly as before, and the hashes of 28 such
 URLs are pinned. 42 new tests. PR #268.
+
+## 2026-10-30 — A JSON body with a repeated key gets its own recording (#270)
+
+JavaScript keeps only the last value when a JSON object repeats a key. So the
+recorder read `{"model":"a","model":"b"}` as `{"model":"b"}`, saved both
+under one recording, and replay returned the other request's response. A
+server that keeps the first value, or rejects the body, treats them
+differently. A body with a repeated key is now matched by its exact text, the
+same rule #267 uses for numbers JavaScript cannot hold exactly. The check
+already existed in the committed-recording scanner, so it moved into `src/`
+and both use it. As a side effect, a credential hidden under a repeated key is
+now caught before the request goes out. 47 recorded hashes prove every other
+request matches exactly as before. 69 new tests. PR #271.
