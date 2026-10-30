@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { duplicateKey, parseKeepingDuplicates } from "./json-text.js";
+
 /**
  * Cassette schema (v1).
  *
@@ -767,6 +769,11 @@ function scanTexts(value: unknown, form: string[] = [], depth = 0): string[] {
         if (!(t.startsWith("{") || t.startsWith("["))) continue;
         try {
           out.push(...scanTexts(JSON.parse(t), form, depth + 1));
+          // A key repeated in one object (#273): the parse kept only its last
+          // value, and an escape hides an earlier one from the raw text
+          // (`\nsk-…`), so the recorder wrote it and the rescan passed it. Since
+          // #271 such a request body is stored as its text. Read every member.
+          if (duplicateKey(t) !== null) out.push(...scanTexts(parseKeepingDuplicates(t), form, depth + 1));
         } catch {
           // Not JSON: the string itself was already pushed.
         }

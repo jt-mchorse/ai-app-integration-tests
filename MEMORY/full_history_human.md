@@ -2181,3 +2181,16 @@ not say which files. This caused an intermittent local test failure. The
 scanner now sets its exit code and finishes normally, so everything is written
 first. Two other scripts that printed and then exited get the same change.
 6 new tests. PR #272.
+
+## 2026-10-30 — The leak scan reads every value of a repeated key (#273)
+
+The leak scanner reads JSON stored inside a recording by parsing it, and
+JavaScript keeps only the last value when a JSON object repeats a key. A key
+placed in an earlier value, right after a `\n`, was never seen: neither the
+parse nor the raw text showed it. Since #271 such a request is stored as its
+exact text, so the key was written to the recording, and the scanner that
+checks committed recordings passed it. Error responses from a server had the
+same gap. When a JSON text repeats a key, the scanner now also reads every
+value, each next to its own key. Both the recorder and the committed-recording
+scanner now refuse these recordings, and the request is refused before it is
+sent. 23 new tests. PR #274.
