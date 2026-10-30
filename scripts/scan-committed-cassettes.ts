@@ -99,22 +99,35 @@ function problem(path: string): string | null {
   return null;
 }
 
-const dir = process.argv[2] ?? "fixtures";
-if (!existsSync(dir) || !statSync(dir).isDirectory()) {
-  console.error(`scan-committed-cassettes: ${JSON.stringify(dir)} is not a directory`);
-  process.exit(2);
+/**
+ * Scan `dir` and print the report; the return value is the exit code.
+ *
+ * The caller sets `process.exitCode` and lets the script end, never
+ * `process.exit()` (#269). A write to a pipe is asynchronous on macOS (and
+ * Windows): once the socket buffer is full, the rest of the report waits in
+ * the stream's queue, and `process.exit()` throws that queue away. A reader
+ * slower than the scan got 22 of 200 `::error` lines and no summary, with the
+ * exit code still 1. Ending normally lets the event loop drain the queue first.
+ */
+function main(dir: string): number {
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+    console.error(`scan-committed-cassettes: ${JSON.stringify(dir)} is not a directory`);
+    return 2;
+  }
+  const files = jsonFiles(dir);
+  let bad = 0;
+  for (const path of files) {
+    const why = problem(path);
+    if (why === null) continue;
+    bad += 1;
+    console.error(`::error file=${path}::${why}`);
+  }
+  if (bad > 0) {
+    console.error(`${bad} of ${files.length} cassette(s) under ${dir}/ refused.`);
+    return 1;
+  }
+  console.log(`no leaked secrets found in ${files.length} cassette(s) under ${dir}/`);
+  return 0;
 }
 
-const files = jsonFiles(dir);
-let bad = 0;
-for (const path of files) {
-  const why = problem(path);
-  if (why === null) continue;
-  bad += 1;
-  console.error(`::error file=${path}::${why}`);
-}
-if (bad > 0) {
-  console.error(`${bad} of ${files.length} cassette(s) under ${dir}/ refused.`);
-  process.exit(1);
-}
-console.log(`no leaked secrets found in ${files.length} cassette(s) under ${dir}/`);
+process.exitCode = main(process.argv[2] ?? "fixtures");
